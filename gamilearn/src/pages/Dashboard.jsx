@@ -19,6 +19,27 @@ const Dashboard = () => {
   const [level, setLevel] = useState(1);
   const [achievements, setAchievements] = useState([]);
 
+  const defaultAchievementIcon = 'https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/award.svg';
+
+  const renderAchievementIcon = (icon, alt, className) => {
+    const isUrl = typeof icon === 'string' && icon.startsWith('http');
+    if (isUrl) {
+      return (
+        <img
+          src={icon}
+          alt={alt}
+          className={className}
+          onError={(e) => {
+            if (e.target.dataset.fallback) return;
+            e.target.dataset.fallback = '1';
+            e.target.src = defaultAchievementIcon;
+          }}
+        />
+      );
+    }
+    return <span className={className}>{icon || '🏆'}</span>;
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -307,7 +328,7 @@ const Dashboard = () => {
                   transition: { duration: 0.4 }
                 }}
               >
-                <span className="achievement-icon-large">{achievement.icon}</span>
+                {renderAchievementIcon(achievement.icon, achievement.name, 'achievement-icon-large')}
                 {achievement.earned && <span className="achievement-glow" />}
               </motion.div>
             ))}

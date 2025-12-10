@@ -2,121 +2,397 @@ const mongoose = require('mongoose');
 const Module = require('./models/Module');
 require('dotenv').config();
 
-// Sample game development learning modules
+// Sample game development learning modules (rewritten and expanded)
 const sampleModules = [
   {
-    title: 'JavaScript Basics - Variables and Data Types',
-    description: 'Learn the fundamentals of JavaScript variables, data types, and basic operations.',
+    title: 'JavaScript Basics - Setup and Console',
+    description: 'Set up a page, run JavaScript, and use the console for quick feedback.',
     difficulty: 'beginner',
     category: 'javascript-basics',
     order: 1,
-    content: `# JavaScript Basics: Variables and Data Types
+    content: `# JavaScript Setup and Console
 
-## Introduction
-JavaScript is the programming language of the web. Let's start with the basics!
+## Why start here?
+The console is the fastest way to see what your code is doing. You will log values, run small tests, and spot mistakes.
 
-## Variables
-Variables are containers for storing data values. In JavaScript, we use \`let\`, \`const\`, or \`var\` to declare variables.
-
+## Example
 \`\`\`javascript
-let playerName = "Hero";
-const maxHealth = 100;
-let currentHealth = 100;
+console.log('Hello, GamiLearn');
+const level = 1;
+console.log('Player level:', level);
 \`\`\`
 
 ## Your Task
-Create a simple game character with properties using variables. Display them in the console.`,
+Print a short status report that includes your player name, a starting level, and whether tutorials are completed.`,
     starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>JS Basics</title>\n</head>\n<body>\n  <h1>JavaScript Basics</h1>\n  <p>Open the console to see your code output</p>\n</body>\n</html>',
-      css: 'body {\n  font-family: Arial, sans-serif;\n  padding: 20px;\n  background: #f0f0f0;\n}\n\nh1 {\n  color: #333;\n}',
-      javascript: '// Create your game character here\nlet characterName = "Hero";\nlet characterLevel = 1;\nlet characterHealth = 100;\n\n// Display character info\nconsole.log("Character Name:", characterName);\nconsole.log("Level:", characterLevel);\nconsole.log("Health:", characterHealth);'
+      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Console Warmup</title>\n</head>\n<body>\n  <h1>Open the DevTools console</h1>\n  <p>Use Option+Command+I (Mac) to open it.</p>\n</body>\n</html>',
+      css: 'body {\n  font-family: Arial, sans-serif;\n  padding: 24px;\n  background: #f4f6fb;\n}\n\nh1 {\n  color: #1f2d3d;\n}',
+      javascript: "const playerName = 'Rookie';\nconst level = 1;\nconst tutorialsComplete = false;\n\nconsole.log('Player:', playerName);\nconsole.log('Level:', level);\nconsole.log('Tutorials done?', tutorialsComplete);"
     },
     objectives: [
-      'Declare variables using let and const',
-      'Assign values to variables',
-      'Use console.log to display information'
+      'Open the browser console',
+      'Log strings, numbers, and booleans',
+      'Describe what the output means'
     ],
     hints: [
-      'Use let for values that can change',
-      'Use const for values that stay the same',
-      'console.log() helps you see your output'
+      'Use console.log for quick feedback',
+      'Strings use quotes, booleans are true/false',
+      'Keep logs short and clear'
     ]
   },
   {
-    title: 'JavaScript Basics - Functions',
-    description: 'Learn how to create reusable code with functions.',
+    title: 'JavaScript Basics - Variables and Types',
+    description: 'Declare variables with let and const, and track core data types.',
     difficulty: 'beginner',
     category: 'javascript-basics',
     order: 2,
-    content: `# Functions in JavaScript
+    content: `# Variables and Types
 
-## What are Functions?
-Functions are reusable blocks of code that perform specific tasks.
+## Core idea
+Variables store state for your game. Use \`const\` when a value should not change, and \`let\` when it should.
 
+## Example
 \`\`\`javascript
-function attackEnemy(damage) {
-  console.log("Attacking for " + damage + " damage!");
-}
-
-attackEnemy(10);
+const maxHealth = 100;
+let currentHealth = 90;
+let playerName = 'Sky';
 \`\`\`
 
 ## Your Task
-Create functions for game actions like attack, heal, and defend.`,
+Track a player name, score, and a flag for tutorial completion. Log the types using \`typeof\`.`,
     starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Functions</title>\n</head>\n<body>\n  <h1>Game Functions</h1>\n  <p>Check console for game actions</p>\n</body>\n</html>',
-      css: 'body {\n  font-family: Arial, sans-serif;\n  padding: 20px;\n  background: #e8f4f8;\n}\n\nh1 {\n  color: #2c3e50;\n}',
-      javascript: '// Create game action functions\n\nfunction attack(damage) {\n  console.log("⚔️ Attacking for " + damage + " damage!");\n  return damage;\n}\n\nfunction heal(amount) {\n  console.log("❤️ Healing for " + amount + " HP!");\n  return amount;\n}\n\n// Test your functions\nattack(15);\nheal(10);'
+      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Variables</title>\n</head>\n<body>\n  <h1>Variables and Types</h1>\n  <p>Check the console for output.</p>\n</body>\n</html>',
+      css: 'body {\n  font-family: Arial, sans-serif;\n  padding: 24px;\n  background: #eef2f7;\n  color: #1b2a41;\n}',
+      javascript: "const maxHealth = 100;\nlet currentHealth = 75;\nlet playerName = 'Sky';\nlet tutorialComplete = false;\n\nconsole.log('Player:', playerName, '| Type:', typeof playerName);\nconsole.log('Current health:', currentHealth, '| Type:', typeof currentHealth);\nconsole.log('Tutorial complete:', tutorialComplete, '| Type:', typeof tutorialComplete);"
     },
     objectives: [
-      'Create functions with parameters',
-      'Call functions with arguments',
-      'Return values from functions'
+      'Use let and const',
+      'Store strings, numbers, and booleans',
+      'Use typeof to inspect data'
     ],
     hints: [
-      'Functions can take parameters (inputs)',
-      'Use the return keyword to send values back',
-      'Call functions by their name followed by ()'
+      'Choose const when the value should stay fixed',
+      'Numbers can be integers or decimals',
+      'typeof returns a string like "string" or "number"'
+    ]
+  },
+  {
+    title: 'JavaScript Basics - Strings and Templates',
+    description: 'Combine text with template literals and practice string methods.',
+    difficulty: 'beginner',
+    category: 'javascript-basics',
+    order: 3,
+    content: `# Strings and Template Literals
+
+## Template literals
+Backticks let you embed values: \`\${value}\`.
+
+## Example
+\`\`\`javascript
+const name = 'Nova';
+const level = 2;
+console.log(\`Player \${name} is level \${level}\`);
+\`\`\`
+
+## Your Task
+Build a status line like: "Nova | Level 2 | Health 90/100" using a template literal and a couple of string methods.`,
+    starterCode: {
+      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Strings</title>\n</head>\n<body>\n  <h1>String Workshop</h1>\n  <p>Open the console for output.</p>\n</body>\n</html>',
+      css: 'body {\n  font-family: Arial, sans-serif;\n  padding: 24px;\n  background: #f7f9fb;\n  color: #1b2a41;\n}',
+      javascript: "const name = 'Nova';\nconst level = 2;\nconst health = 90;\nconst maxHealth = 100;\n\nconst status = `Player ${name.toUpperCase()} | Level ${level} | Health ${health}/${maxHealth}`;\nconsole.log(status);"
+    },
+    objectives: [
+      'Create template literals',
+      'Use string methods like toUpperCase()',
+      'Embed variables in strings'
+    ],
+    hints: [
+      'Template literals use backticks, not quotes',
+      'Call methods with parentheses, for example text.trim()',
+      'Include separators like | for readability'
+    ]
+  },
+  {
+    title: 'JavaScript Basics - Functions and Scope',
+    description: 'Write reusable functions and understand local versus global scope.',
+    difficulty: 'beginner',
+    category: 'javascript-basics',
+    order: 4,
+    content: `# Functions and Scope
+
+## Why functions?
+Functions group steps into a named action. Scope controls what variables they can see.
+
+## Example
+\`\`\`javascript
+function heal(amount, current, max) {
+  const next = Math.min(current + amount, max);
+  return next;
+}
+\`\`\`
+
+## Your Task
+Create three functions: addScore, takeDamage, and resetPlayer. Each should return updated values without relying on globals.`,
+    starterCode: {
+      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Functions</title>\n</head>\n<body>\n  <h1>Functions and Scope</h1>\n  <p>Inspect console output.</p>\n</body>\n</html>',
+      css: 'body {\n  font-family: Arial, sans-serif;\n  padding: 24px;\n  background: #e8f4ff;\n  color: #0f172a;\n}',
+      javascript: "function addScore(score, amount) {\n  return score + amount;\n}\n\nfunction takeDamage(health, amount) {\n  const next = Math.max(0, health - amount);\n  return next;\n}\n\nfunction resetPlayer() {\n  return { score: 0, health: 100, level: 1 };\n}\n\nlet score = 0;\nlet health = 100;\n\nscore = addScore(score, 50);\nhealth = takeDamage(health, 30);\n\nconsole.log('Score now:', score);\nconsole.log('Health now:', health);\nconsole.log('Reset player:', resetPlayer());"
+    },
+    objectives: [
+      'Declare and call functions',
+      'Return values instead of mutating globals',
+      'Use Math.min/Math.max for bounds'
+    ],
+    hints: [
+      'Pass needed data as parameters',
+      'Return new values instead of modifying outer variables',
+      'Keep functions focused on one job'
+    ]
+  },
+  {
+    title: 'JavaScript Basics - Control Flow',
+    description: 'Use conditionals to branch game logic.',
+    difficulty: 'beginner',
+    category: 'javascript-basics',
+    order: 5,
+    content: `# Control Flow
+
+## Decisions
+if/else blocks choose what happens next based on conditions.
+
+## Example
+\`\`\`javascript
+const stamina = 40;
+if (stamina > 50) {
+  console.log('Sprint allowed');
+} else {
+  console.log('Catch your breath');
+}
+\`\`\`
+
+## Your Task
+Implement a chooseAction function that returns "attack", "defend", or "flee" based on player health and enemy distance.`,
+    starterCode: {
+      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Control Flow</title>\n</head>\n<body>\n  <h1>Control Flow</h1>\n  <p>Review console output.</p>\n</body>\n</html>',
+      css: 'body {\n  font-family: Arial, sans-serif;\n  padding: 24px;\n  background: #f3f4f6;\n  color: #111827;\n}',
+      javascript: "function chooseAction(health, distance) {\n  if (health < 20) return 'flee';\n  if (distance > 20) return 'attack';\n  return 'defend';\n}\n\nconsole.log('Decision A:', chooseAction(80, 30));\nconsole.log('Decision B:', chooseAction(15, 10));\nconsole.log('Decision C:', chooseAction(50, 5));"
+    },
+    objectives: [
+      'Use if/else to branch logic',
+      'Return different outcomes based on conditions',
+      'Keep conditions readable'
+    ],
+    hints: [
+      'Order conditions from most specific to most general',
+      'Return early when a decision is made',
+      'Use descriptive variable names'
+    ]
+  },
+  {
+    title: 'JavaScript Basics - Arrays and Loops',
+    description: 'Manage collections of items with arrays, and iterate with loops.',
+    difficulty: 'beginner',
+    category: 'javascript-basics',
+    order: 6,
+    content: `# Arrays and Loops
+
+## Why arrays?
+Games track inventory, enemies, projectiles, and more. Arrays hold ordered lists.
+
+## Example
+\`\`\`javascript
+const inventory = ['sword', 'shield'];
+for (let i = 0; i < inventory.length; i++) {
+  console.log(inventory[i]);
+}
+\`\`\`
+
+## Your Task
+Create an inventory array, add items with push, remove one with pop, and print each item with its index.`,
+    starterCode: {
+      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Arrays</title>\n</head>\n<body>\n  <h1>Inventory</h1>\n  <div id="inventory"></div>\n  <button onclick="addItem()">Add Item</button>\n  <button onclick="useItem()">Use Last Item</button>\n</body>\n</html>',
+      css: '#inventory {\n  padding: 12px;\n  margin: 16px 0;\n  background: #e5e7eb;\n  border-radius: 8px;\n  font-family: Arial, sans-serif;\n}\nbutton {\n  margin-right: 8px;\n  padding: 10px 16px;\n}',
+      javascript: `const inventory = ['Map'];
+const possibleItems = ['Sword', 'Shield', 'Potion', 'Key', 'Compass'];
+
+function addItem() {
+  const next = possibleItems[Math.floor(Math.random() * possibleItems.length)];
+  inventory.push(next);
+  render();
+}
+
+function useItem() {
+  inventory.pop();
+  render();
+}
+
+function render() {
+  const div = document.getElementById('inventory');
+  div.innerHTML = '<strong>Items:</strong>';
+  for (let i = 0; i < inventory.length; i++) {
+    div.innerHTML += '<div>' + (i + 1) + '. ' + inventory[i] + '</div>';
+  }
+  div.innerHTML += '<div>Total: ' + inventory.length + '</div>';
+}
+
+render();`
+    },
+    objectives: [
+      'Create and update arrays',
+      'Iterate with for loops',
+      'Render array contents to the page'
+    ],
+    hints: [
+      'Use push to add and pop to remove the last item',
+      'Loop until i < array.length',
+      'Re-render after each change'
+    ]
+  },
+  {
+    title: 'JavaScript Basics - Objects and Methods',
+    description: 'Bundle related data and behavior inside objects.',
+    difficulty: 'beginner',
+    category: 'javascript-basics',
+    order: 7,
+    content: `# Objects and Methods
+
+## Why objects?
+They model entities like players or enemies with properties and actions.
+
+## Example
+\`\`\`javascript
+const player = {
+  name: 'Ranger',
+  level: 3,
+  attack() {
+    return 'Ranger attacks';
+  }
+};
+\`\`\`
+
+## Your Task
+Create a character object with properties for name, level, and health, plus methods levelUp and describe that return strings.`,
+    starterCode: {
+      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Objects</title>\n</head>\n<body>\n  <h1>Character Sheet</h1>\n  <div id="character"></div>\n  <button onclick="levelUp()">Level Up</button>\n</body>\n</html>',
+      css: 'body {\n  font-family: Arial, sans-serif;\n  background: #0f172a;\n  color: #f8fafc;\n  padding: 24px;\n}\nbutton {\n  margin-top: 12px;\n  padding: 10px 16px;\n}',
+      javascript: "const character = {\n  name: 'Ranger',\n  level: 1,\n  health: 100,\n  levelUp() {\n    this.level += 1;\n    this.health = 100 + this.level * 10;\n  },\n  describe() {\n    return `${this.name} | Level ${this.level} | Health ${this.health}`;\n  }\n};\n\nfunction render() {\n  document.getElementById('character').textContent = character.describe();\n}\n\nfunction levelUp() {\n  character.levelUp();\n  render();\n}\n\nrender();"
+    },
+    objectives: [
+      'Define objects with properties and methods',
+      'Use this to reference object data',
+      'Return formatted strings from methods'
+    ],
+    hints: [
+      'Methods are functions defined inside objects',
+      'Use template literals to format the summary',
+      'Update the DOM after state changes'
+    ]
+  },
+  {
+    title: 'JavaScript Basics - DOM and Events',
+    description: 'Read and update the DOM, and react to user actions.',
+    difficulty: 'beginner',
+    category: 'javascript-basics',
+    order: 8,
+    content: `# DOM and Events
+
+## Interactivity
+The DOM is the live page. You can select elements, change them, and listen for events like clicks.
+
+## Example
+\`\`\`javascript
+document.getElementById('start').addEventListener('click', () => {
+  console.log('Start pressed');
+});
+\`\`\`
+
+## Your Task
+Create a start button that toggles between "Start" and "Pause", updating a status line each time it is clicked.`,
+    starterCode: {
+      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>DOM and Events</title>\n</head>\n<body>\n  <h1>DOM Practice</h1>\n  <button id="start">Start</button>\n  <p id="status">Game is stopped.</p>\n</body>\n</html>',
+      css: 'body {\n  font-family: Arial, sans-serif;\n  padding: 24px;\n  background: #f8fafc;\n  color: #0f172a;\n}\nbutton {\n  padding: 10px 16px;\n  margin-bottom: 12px;\n}',
+      javascript: "const button = document.getElementById('start');\nconst status = document.getElementById('status');\nlet running = false;\n\nbutton.addEventListener('click', () => {\n  running = !running;\n  button.textContent = running ? 'Pause' : 'Start';\n  status.textContent = running ? 'Game is running...' : 'Game is stopped.';\n});"
+    },
+    objectives: [
+      'Select DOM elements with getElementById',
+      'Attach click event listeners',
+      'Update textContent based on state'
+    ],
+    hints: [
+      'Track state in a boolean',
+      'Update both the button and the status text',
+      'Use textContent instead of innerHTML for plain text'
+    ]
+  },
+  {
+    title: 'JavaScript Basics - Debugging and Console Tools',
+    description: 'Use console methods and breakpoints to diagnose issues.',
+    difficulty: 'beginner',
+    category: 'javascript-basics',
+    order: 9,
+    content: `# Debugging
+
+## Console helpers
+console.warn highlights warnings, and console.table prints arrays or objects in a readable grid.
+
+## Example
+\`\`\`javascript
+const enemies = [\n  { name: 'Slime', hp: 10 },\n  { name: 'Orc', hp: 30 }\n];\nconsole.table(enemies);
+\`\`\`
+
+## Your Task
+Create a small array of player stats and print them with console.table. Set a breakpoint in your browser to step through a function that adjusts hit points.`,
+    starterCode: {
+      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Debugging</title>\n</head>\n<body>\n  <h1>Debugging Playground</h1>\n  <p>Use DevTools to pause in the adjustHealth function.</p>\n</body>\n</html>',
+      css: 'body {\n  font-family: Arial, sans-serif;\n  padding: 24px;\n  background: #eef2f7;\n  color: #0f172a;\n}',
+      javascript: "const players = [\n  { name: 'Ada', hp: 12 },\n  { name: 'Lin', hp: 18 },\n  { name: 'Mina', hp: 20 }\n];\n\nconsole.table(players);\n\nfunction adjustHealth(list, name, change) {\n  const target = list.find(p => p.name === name);\n  if (!target) return list;\n  target.hp = Math.max(0, target.hp + change);\n  return list;\n}\n\nadjustHealth(players, 'Lin', -5);\nconsole.table(players);"
+    },
+    objectives: [
+      'Use console.warn and console.table',
+      'Set a breakpoint and step through code',
+      'Inspect how data changes over time'
+    ],
+    hints: [
+      'Right-click the line number to toggle a breakpoint',
+      'Refresh the page after adding a breakpoint',
+      'Check the Scope panel to see variable values'
     ]
   },
   {
     title: 'Canvas Drawing Basics',
-    description: 'Learn to draw shapes on HTML Canvas - the foundation of game graphics.',
+    description: 'Learn to draw shapes on HTML Canvas as the foundation of game graphics.',
     difficulty: 'beginner',
     category: 'game-development',
     order: 1,
     content: `# HTML Canvas - Drawing Basics
 
 ## Introduction
-The HTML Canvas is where we draw our game graphics. It's like a digital drawing board!
+The HTML canvas is your digital drawing surface. You will draw rectangles and circles to form a simple character.
 
-## Getting Started
+## Example
 \`\`\`javascript
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-
-// Draw a rectangle
 ctx.fillStyle = 'blue';
 ctx.fillRect(50, 50, 100, 100);
 \`\`\`
 
 ## Your Task
-Draw a simple game character using basic shapes (rectangles, circles).`,
+Draw a simple game character using basic shapes (rectangles and circles).`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Canvas Drawing</title>\n</head>\n<body>\n  <canvas id="gameCanvas" width="800" height="600"></canvas>\n</body>\n</html>',
       css: 'body {\n  margin: 0;\n  padding: 20px;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  background: #34495e;\n}\n\ncanvas {\n  border: 3px solid #2c3e50;\n  background: white;\n}',
-      javascript: 'const canvas = document.getElementById("gameCanvas");\nconst ctx = canvas.getContext("2d");\n\n// Draw a player character (square)\nctx.fillStyle = "#3498db";\nctx.fillRect(100, 100, 50, 50);\n\n// Draw player head (circle)\nctx.fillStyle = "#e74c3c";\nctx.beginPath();\nctx.arc(125, 80, 20, 0, Math.PI * 2);\nctx.fill();\n\nconsole.log("Character drawn!");'
+      javascript: 'const canvas = document.getElementById("gameCanvas");\nconst ctx = canvas.getContext("2d");\n\nctx.fillStyle = "#3498db";\nctx.fillRect(100, 100, 50, 50);\n\nctx.fillStyle = "#e74c3c";\nctx.beginPath();\nctx.arc(125, 80, 20, 0, Math.PI * 2);\nctx.fill();\n\nconsole.log("Character drawn");'
     },
     objectives: [
-      'Get canvas context',
-      'Draw rectangles with fillRect()',
-      'Draw circles with arc()',
-      'Change colors with fillStyle'
+      'Get a 2D canvas context',
+      'Draw rectangles and circles',
+      'Change fillStyle to set colors'
     ],
     hints: [
-      'ctx.fillRect(x, y, width, height) draws a rectangle',
-      'ctx.arc(x, y, radius, startAngle, endAngle) draws a circle',
-      'Use Math.PI * 2 for a full circle'
+      'ctx.fillRect(x, y, width, height) draws rectangles',
+      'ctx.arc uses radians; use Math.PI * 2 for a full circle',
+      'Call beginPath before drawing arcs'
     ]
   },
   {
@@ -252,85 +528,6 @@ Create a game where the player collects items that appear on screen.`,
     ]
   },
   {
-    title: 'JavaScript - Arrays and Loops',
-    description: 'Master arrays and loops to handle multiple game objects efficiently.',
-    difficulty: 'beginner',
-    category: 'javascript-basics',
-    order: 3,
-    content: `# Arrays and Loops
-
-## Working with Multiple Items
-Games often need to manage many objects - enemies, bullets, collectibles. Arrays and loops help us do this!
-
-\`\`\`javascript
-const enemies = ["goblin", "orc", "dragon"];
-
-for (let i = 0; i < enemies.length; i++) {
-  console.log("Enemy:", enemies[i]);
-}
-\`\`\`
-
-## Your Task
-Create an inventory system using arrays to store and display items.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Arrays & Loops</title>\n</head>\n<body>\n  <h1>Inventory System</h1>\n  <div id="inventory"></div>\n  <button onclick="addItem()">Add Random Item</button>\n</body>\n</html>',
-      css: 'body {\n  font-family: Arial, sans-serif;\n  padding: 40px;\n  background: #2c3e50;\n  color: white;\n}\n\n#inventory {\n  margin: 20px 0;\n  padding: 20px;\n  background: rgba(255,255,255,0.1);\n  border-radius: 8px;\n}\n\nbutton {\n  padding: 12px 24px;\n  font-size: 16px;\n  cursor: pointer;\n  background: #3498db;\n  color: white;\n  border: none;\n  border-radius: 8px;\n}',
-      javascript: 'const inventory = [];\nconst possibleItems = ["⚔️ Sword", "🛡️ Shield", "💎 Gem", "🗝️ Key", "📜 Scroll"];\n\nfunction addItem() {\n  const randomItem = possibleItems[Math.floor(Math.random() * possibleItems.length)];\n  inventory.push(randomItem);\n  displayInventory();\n}\n\nfunction displayInventory() {\n  const inventoryDiv = document.getElementById("inventory");\n  inventoryDiv.innerHTML = "<h3>Your Items:</h3>";\n  \n  for (let i = 0; i < inventory.length; i++) {\n    inventoryDiv.innerHTML += `<p>${i + 1}. ${inventory[i]}</p>`;\n  }\n  \n  inventoryDiv.innerHTML += `<p><strong>Total Items: ${inventory.length}</strong></p>`;\n}\n\ndisplayInventory();'
-    },
-    objectives: [
-      'Create and manipulate arrays',
-      'Use for loops to iterate through arrays',
-      'Add items to arrays with push()',
-      'Display array contents dynamically'
-    ],
-    hints: [
-      'Arrays store multiple values in a single variable',
-      'Use array.length to get the number of items',
-      'Math.floor(Math.random() * array.length) gives a random index'
-    ]
-  },
-  {
-    title: 'JavaScript - Objects and Properties',
-    description: 'Learn to create complex game entities using JavaScript objects.',
-    difficulty: 'beginner',
-    category: 'javascript-basics',
-    order: 4,
-    content: `# Objects and Properties
-
-## Organizing Data
-Objects let us group related data together - perfect for game characters, items, and more!
-
-\`\`\`javascript
-const player = {
-  name: "Hero",
-  health: 100,
-  attack: function() {
-    console.log(this.name + " attacks!");
-  }
-};
-\`\`\`
-
-## Your Task
-Create a character creation system using objects with properties and methods.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Objects</title>\n</head>\n<body>\n  <h1>Character Creator</h1>\n  <div id="character"></div>\n  <button onclick="levelUp()">Level Up</button>\n  <button onclick="attack()">Attack</button>\n</body>\n</html>',
-      css: 'body {\n  font-family: Arial, sans-serif;\n  padding: 40px;\n  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n  color: white;\n}\n\n#character {\n  margin: 20px 0;\n  padding: 30px;\n  background: rgba(0,0,0,0.3);\n  border-radius: 12px;\n  backdrop-filter: blur(10px);\n}\n\nbutton {\n  margin: 5px;\n  padding: 12px 24px;\n  font-size: 16px;\n  cursor: pointer;\n  background: #f093fb;\n  color: white;\n  border: none;\n  border-radius: 8px;\n}',
-      javascript: 'const character = {\n  name: "Warrior",\n  level: 1,\n  health: 100,\n  maxHealth: 100,\n  attack: 10,\n  \n  levelUp: function() {\n    this.level++;\n    this.maxHealth += 20;\n    this.health = this.maxHealth;\n    this.attack += 5;\n    console.log("Level up! Now level " + this.level);\n  },\n  \n  performAttack: function() {\n    const damage = this.attack + Math.floor(Math.random() * 10);\n    console.log(this.name + " attacks for " + damage + " damage!");\n    return damage;\n  },\n  \n  display: function() {\n    return `<h2>${this.name}</h2>\n            <p>⭐ Level: ${this.level}</p>\n            <p>❤️ Health: ${this.health}/${this.maxHealth}</p>\n            <p>⚔️ Attack Power: ${this.attack}</p>`;\n  }\n};\n\nfunction levelUp() {\n  character.levelUp();\n  updateDisplay();\n}\n\nfunction attack() {\n  const damage = character.performAttack();\n  updateDisplay();\n}\n\nfunction updateDisplay() {\n  document.getElementById("character").innerHTML = character.display();\n}\n\nupdateDisplay();'
-    },
-    objectives: [
-      'Create objects with properties',
-      'Add methods to objects',
-      'Use "this" keyword to access object properties',
-      'Update object data dynamically'
-    ],
-    hints: [
-      'Objects use key-value pairs',
-      'Methods are functions inside objects',
-      '"this" refers to the current object',
-      'Use dot notation to access properties'
-    ]
-  },
-  {
     title: 'Sprite Animation',
     description: 'Bring characters to life with sprite sheet animation.',
     difficulty: 'advanced',
@@ -393,7 +590,7 @@ const audioContext = new AudioContext();
 ## Your Task
 Create a simple game with sound effects using oscillators.`,
     starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Game Audio</title>\n</head>\n<body>\n  <h1>Audio Demo</h1>\n  <button id="jumpBtn">Jump 🎵</button>\n  <button id="collectBtn">Collect 💰</button>\n  <button id="hurtBtn">Hurt 💔</button>\n  <button id="winBtn">Win 🎉</button>\n</body>\n</html>',
+      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Game Audio</title>\n</head>\n<body>\n  <h1>Audio Demo</h1>\n  <button id="jumpBtn">Jump Sound</button>\n  <button id="collectBtn">Collect Sound</button>\n  <button id="hurtBtn">Hurt Sound</button>\n  <button id="winBtn">Win Fanfare</button>\n</body>\n</html>',
       css: 'body {\n  font-family: Arial, sans-serif;\n  padding: 40px;\n  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n  color: white;\n  text-align: center;\n}\n\nbutton {\n  margin: 10px;\n  padding: 20px 40px;\n  font-size: 20px;\n  cursor: pointer;\n  background: rgba(255,255,255,0.2);\n  color: white;\n  border: 2px solid white;\n  border-radius: 12px;\n  backdrop-filter: blur(10px);\n  transition: all 0.3s;\n}\n\nbutton:hover {\n  background: rgba(255,255,255,0.3);\n  transform: scale(1.05);\n}',
       javascript: 'const audioContext = new (window.AudioContext || window.webkitAudioContext)();\n\nfunction playSound(frequency, duration, type = "sine") {\n  const oscillator = audioContext.createOscillator();\n  const gainNode = audioContext.createGain();\n  \n  oscillator.connect(gainNode);\n  gainNode.connect(audioContext.destination);\n  \n  oscillator.type = type;\n  oscillator.frequency.value = frequency;\n  \n  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);\n  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);\n  \n  oscillator.start(audioContext.currentTime);\n  oscillator.stop(audioContext.currentTime + duration);\n}\n\nfunction jumpSound() {\n  playSound(400, 0.2);\n  setTimeout(() => playSound(600, 0.1), 100);\n}\n\nfunction collectSound() {\n  playSound(800, 0.1);\n  setTimeout(() => playSound(1000, 0.1), 80);\n  setTimeout(() => playSound(1200, 0.1), 160);\n}\n\nfunction hurtSound() {\n  playSound(200, 0.3, "sawtooth");\n}\n\nfunction winSound() {\n  playSound(523, 0.15); // C\n  setTimeout(() => playSound(659, 0.15), 150); // E\n  setTimeout(() => playSound(784, 0.15), 300); // G\n  setTimeout(() => playSound(1047, 0.3), 450); // C\n}\n\ndocument.getElementById("jumpBtn").addEventListener("click", jumpSound);\ndocument.getElementById("collectBtn").addEventListener("click", collectSound);\ndocument.getElementById("hurtBtn").addEventListener("click", hurtSound);\ndocument.getElementById("winBtn").addEventListener("click", winSound);'
     },
@@ -432,9 +629,82 @@ const score = localStorage.getItem('highScore');
 ## Your Task
 Build a high score system that persists data.`,
     starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>High Scores</title>\n</head>\n<body>\n  <h1>🏆 High Score System</h1>\n  <div id="gameArea">\n    <p>Current Score: <span id="score">0</span></p>\n    <p>High Score: <span id="highScore">0</span></p>\n    <button onclick="addPoints()">Earn Points</button>\n    <button onclick="resetGame()">Reset Game</button>\n  </div>\n  <div id="leaderboard">\n    <h2>Leaderboard</h2>\n    <ol id="topScores"></ol>\n  </div>\n</body>\n</html>',
+      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>High Scores</title>\n</head>\n<body>\n  <h1>High Score System</h1>\n  <div id="gameArea">\n    <p>Current Score: <span id="score">0</span></p>\n    <p>High Score: <span id="highScore">0</span></p>\n    <button onclick="addPoints()">Earn Points</button>\n    <button onclick="resetGame()">Reset Game</button>\n  </div>\n  <div id="leaderboard">\n    <h2>Leaderboard</h2>\n    <ol id="topScores"></ol>\n  </div>\n</body>\n</html>',
       css: 'body {\n  font-family: Arial, sans-serif;\n  padding: 40px;\n  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);\n  color: white;\n  text-align: center;\n}\n\n#gameArea {\n  background: rgba(0,0,0,0.2);\n  padding: 30px;\n  border-radius: 16px;\n  margin: 20px auto;\n  max-width: 400px;\n  backdrop-filter: blur(10px);\n}\n\n#gameArea p {\n  font-size: 24px;\n  margin: 15px 0;\n}\n\nbutton {\n  margin: 10px;\n  padding: 12px 24px;\n  font-size: 16px;\n  cursor: pointer;\n  background: rgba(255,255,255,0.3);\n  color: white;\n  border: 2px solid white;\n  border-radius: 8px;\n}\n\n#leaderboard {\n  background: rgba(0,0,0,0.2);\n  padding: 20px;\n  border-radius: 16px;\n  margin: 20px auto;\n  max-width: 400px;\n  backdrop-filter: blur(10px);\n}\n\n#topScores {\n  text-align: left;\n  font-size: 18px;\n}',
-      javascript: 'let currentScore = 0;\n\nfunction loadHighScore() {\n  const saved = localStorage.getItem("highScore");\n  return saved ? parseInt(saved) : 0;\n}\n\nfunction saveHighScore(score) {\n  localStorage.setItem("highScore", score);\n}\n\nfunction loadLeaderboard() {\n  const saved = localStorage.getItem("leaderboard");\n  return saved ? JSON.parse(saved) : [];\n}\n\nfunction saveLeaderboard(scores) {\n  localStorage.setItem("leaderboard", JSON.stringify(scores));\n}\n\nfunction showToast(msg) {\n  // basic DOM toast used in sample code (not using React), avoids blocking alert()\n  const t = document.createElement(\'div\');\n  t.textContent = msg;\n  Object.assign(t.style, { position: \'fixed\', right: \'20px\', top: \'20px\', padding: \'12px 16px\', background: \'rgba(0,0,0,0.85)\', color: \'white\', borderRadius: \'8px\', zIndex: 9999 });\n  document.body.appendChild(t);\n  setTimeout(() => t.remove(), 3500);\n}\n\nfunction addPoints() {\n  const points = Math.floor(Math.random() * 100) + 50;\n  currentScore += points;\n  \n  document.getElementById("score").textContent = currentScore;\n  \n  const highScore = loadHighScore();\n  if (currentScore > highScore) {\n    saveHighScore(currentScore);\n    document.getElementById("highScore").textContent = currentScore;\n    showToast("🎉 New High Score!");\n  }\n}\n\nfunction resetGame() {\n  if (currentScore > 0) {\n    const leaderboard = loadLeaderboard();\n    leaderboard.push(currentScore);\n    leaderboard.sort((a, b) => b - a);\n    leaderboard.splice(5); // Keep top 5\n    saveLeaderboard(leaderboard);\n    displayLeaderboard();\n  }\n  \n  currentScore = 0;\n  document.getElementById("score").textContent = 0;\n}\n\nfunction displayLeaderboard() {\n  const scores = loadLeaderboard();\n  const list = document.getElementById("topScores");\n  list.innerHTML = "";\n  \n  if (scores.length === 0) {\n    list.innerHTML = "<li>No scores yet!</li>";\n    return;\n  }\n  \n  scores.forEach(score => {\n    const li = document.createElement("li");\n    li.textContent = score.toLocaleString();\n    list.appendChild(li);\n  });\n}\n\n// Initialize\ndocument.getElementById("highScore").textContent = loadHighScore();\ndisplayLeaderboard();'
+      javascript: `let currentScore = 0;
+
+function loadHighScore() {
+  const saved = localStorage.getItem("highScore");
+  return saved ? parseInt(saved, 10) : 0;
+}
+
+function saveHighScore(score) {
+  localStorage.setItem("highScore", score);
+}
+
+function loadLeaderboard() {
+  const saved = localStorage.getItem("leaderboard");
+  return saved ? JSON.parse(saved) : [];
+}
+
+function saveLeaderboard(scores) {
+  localStorage.setItem("leaderboard", JSON.stringify(scores));
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, { position: 'fixed', right: '20px', top: '20px', padding: '12px 16px', background: 'rgba(0,0,0,0.85)', color: 'white', borderRadius: '8px', zIndex: 9999 });
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+function addPoints() {
+  const points = Math.floor(Math.random() * 100) + 50;
+  currentScore += points;
+  document.getElementById("score").textContent = currentScore;
+
+  const highScore = loadHighScore();
+  if (currentScore > highScore) {
+    saveHighScore(currentScore);
+    document.getElementById("highScore").textContent = currentScore;
+    showToast("New High Score!");
+  }
+}
+
+function resetGame() {
+  if (currentScore > 0) {
+    const leaderboard = loadLeaderboard();
+    leaderboard.push(currentScore);
+    leaderboard.sort((a, b) => b - a);
+    leaderboard.splice(5);
+    saveLeaderboard(leaderboard);
+    displayLeaderboard();
+  }
+
+  currentScore = 0;
+  document.getElementById("score").textContent = 0;
+}
+
+function displayLeaderboard() {
+  const scores = loadLeaderboard();
+  const list = document.getElementById("topScores");
+  list.innerHTML = "";
+
+  if (scores.length === 0) {
+    list.innerHTML = "<li>No scores yet!</li>";
+    return;
+  }
+
+  scores.forEach(score => {
+    const li = document.createElement("li");
+    li.textContent = score.toLocaleString();
+    list.appendChild(li);
+  });
+}
+
+document.getElementById("highScore").textContent = loadHighScore();
+displayLeaderboard();`
     },
     objectives: [
       'Use localStorage to save data',
@@ -528,7 +798,7 @@ Create enemies that chase the player when nearby.`,
       'Switch between AI states'
     ],
     hints: [
-      'Use distance formula: sqrt(dx² + dy²)',
+      'Use distance formula: sqrt(dx^2 + dy^2)',
       'Normalize direction vectors for consistent speed',
       'State machines help organize AI behavior',
       'Detection ranges make AI feel more realistic'

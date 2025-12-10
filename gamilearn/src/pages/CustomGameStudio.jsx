@@ -160,6 +160,25 @@ h1 {
   });
   const [achievements, setAchievements] = useState([]);
   const [showAchievements, setShowAchievements] = useState(false);
+  const defaultAchievementIcon = 'https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/award.svg';
+  const renderAchievementIcon = (icon, alt, className) => {
+    const isUrl = typeof icon === 'string' && icon.startsWith('http');
+    if (isUrl) {
+      return (
+        <img
+          src={icon}
+          alt={alt}
+          className={className}
+          onError={(e) => {
+            if (e.target.dataset.fallback) return;
+            e.target.dataset.fallback = '1';
+            e.target.src = defaultAchievementIcon;
+          }}
+        />
+      );
+    }
+    return <span className={className}>{icon || '🏆'}</span>;
+  };
   
   // Projects
   const [projectName, setProjectName] = useState('My Game');
@@ -779,7 +798,7 @@ h1 {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <div className="achievement-icon-large">{ach.icon}</div>
+                  {renderAchievementIcon(ach.icon, ach.name, 'achievement-icon-large')}
                   <div className="achievement-info">
                     <h4>{ach.name}</h4>
                     <p>{ach.description}</p>

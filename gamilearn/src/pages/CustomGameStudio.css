@@ -602,8 +602,18 @@
 }
 
 .achievement-icon-large {
-  font-size: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
   flex-shrink: 0;
+}
+
+.achievement-icon-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .achievement-info {

@@ -299,11 +299,19 @@
 }
 
 .achievement-icon {
-  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.achievement-icon-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
   filter: grayscale(100%);
 }
 
-.achievement-item.earned .achievement-icon {
+.achievement-item.earned .achievement-icon-img {
   filter: grayscale(0%);
   animation: bounce 0.6s ease;
 }
