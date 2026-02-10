@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI, userAPI } from '../api/api';
+import { createContext, useContext, useState, useEffect } from "react";
+import { authAPI, userAPI } from "../api/api";
 
 const AuthContext = createContext(null);
 
@@ -8,9 +8,9 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    
+    const token = localStorage.getItem("token");
+    const userData = localStorage.getItem("user");
+
     if (token && userData) {
       setUser(JSON.parse(userData));
     }
@@ -20,22 +20,27 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const response = await authAPI.login({ email, password });
     const { token, user } = response.data;
-    
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
+
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
     setUser(user);
-    
+
     return user;
   };
 
   const signup = async (name, email, password, knowsJavaScript) => {
-    const response = await authAPI.signup({ name, email, password, knowsJavaScript });
+    const response = await authAPI.signup({
+      name,
+      email,
+      password,
+      knowsJavaScript,
+    });
     const { token, user } = response.data;
-    
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
+
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
     setUser(user);
-    
+
     return user;
   };
 
@@ -43,23 +48,25 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await userAPI.getProfile();
       const newUser = response.data.user;
-      localStorage.setItem('user', JSON.stringify(newUser));
+      localStorage.setItem("user", JSON.stringify(newUser));
       setUser(newUser);
       return newUser;
     } catch (error) {
-      console.error('Error refreshing profile:', error);
+      console.error("Error refreshing profile:", error);
       return null;
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, refreshProfile, loading }}>
+    <AuthContext.Provider
+      value={{ user, login, signup, logout, refreshProfile, loading }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -68,7 +75,7 @@ export const AuthProvider = ({ children }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+    throw new Error("useAuth must be used within AuthProvider");
   }
   return context;
 };

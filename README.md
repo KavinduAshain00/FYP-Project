@@ -9,6 +9,7 @@ A full-stack web application for learning game development through interactive c
 - 🎯 **Learning Modules**: Game development focused modules (Canvas, Animation, Collision Detection, etc.)
 - 💻 **In-Browser Code Editor**: CodeMirror-based IDE with HTML, CSS, and JavaScript tabs
 - 🚀 **Live Preview**: Real-time preview of code changes in an iframe sandbox
+- 🤖 **AI Tutor**: Ask the integrated Gemini AI tutor for help directly from the editor (server-side proxy + rate-limited)
 - 📊 **Progress Tracking**: Track completed modules and learning progress
 - 🎨 **Modern UI**: Beautiful gradient design with responsive layout
 
@@ -53,6 +54,9 @@ Create a `.env` file in the backend directory (already created):
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/gamilearn
 JWT_SECRET=your_jwt_secret_key_change_this_in_production
+# Gemini/Vertex AI settings
+GEMINI_API_KEY=your_api_key_here
+GEMINI_MODEL=gemini-1.5
 ```
 
 Seed the database with sample learning modules:

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { isAdminEmail } = require('../utils/admin');
 
 const auth = async (req, res, next) => {
   // Allow preflight requests to pass through without authentication
@@ -18,19 +19,31 @@ const auth = async (req, res, next) => {
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // Find user
     const user = await User.findById(decoded.userId).select('-password');
-    
+
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
     }
 
     req.user = user;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: 'Token is not valid' });
+    return next();
+  } catch {
+    return res.status(401).json({ message: 'Token is not valid' });
   }
 };
 
+/** Use after auth(); returns 403 if the current user's email is not in ADMIN_EMAILS. */
+const requireAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+  if (!isAdminEmail(req.user.email)) {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+  return next();
+};
+
 module.exports = auth;
+module.exports.requireAdmin = requireAdmin;

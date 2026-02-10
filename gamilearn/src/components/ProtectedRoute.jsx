@@ -1,20 +1,22 @@
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { toast } from 'react-toastify';
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { toast } from "react-toastify";
 
-const ProtectedRoute = ({ children, requireGameStudio = false }) => {
+const ProtectedRoute = ({ children, requireGameStudio = false, requireAdmin = false }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: '#1e1e1e',
-        color: 'white'
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          background: "#1e1e1e",
+          color: "white",
+        }}
+      >
         <div>Loading...</div>
       </div>
     );
@@ -25,7 +27,12 @@ const ProtectedRoute = ({ children, requireGameStudio = false }) => {
   }
 
   if (requireGameStudio && !user?.gameStudioEnabled) {
-    toast.info('Game Studio locked: complete your learning path to unlock it.');
+    toast.info("Game Studio locked: complete your learning path to unlock it.");
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requireAdmin && !user?.isAdmin) {
+    toast.error("Admin access required.");
     return <Navigate to="/dashboard" replace />;
   }
 

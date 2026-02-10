@@ -37,7 +37,11 @@ export const authAPI = {
 // User API
 export const userAPI = {
   getProfile: () => api.get('/user/profile'),
-  completeModule: (moduleId) => api.put('/user/module/complete', { moduleId }),
+  getDashboard: () => api.get('/user/dashboard'),
+  getAvatars: () => api.get('/user/avatars'),
+  updateProfile: (payload) => api.put('/user/profile', payload),
+  completeModule: (moduleId, sessionStats = {}) =>
+    api.put('/user/module/complete', { moduleId, sessionStats }),
   setCurrentModule: (moduleId) => api.put('/user/module/current', { moduleId }),
 };
 
@@ -45,6 +49,17 @@ export const userAPI = {
 export const modulesAPI = {
   getAll: (category) => api.get(`/modules${category ? `?category=${category}` : ''}`),
   getById: (id) => api.get(`/modules/${id}`),
+  create: (data) => api.post('/modules', data),
+  update: (id, data) => api.put(`/modules/${id}`, data),
+  delete: (id) => api.delete(`/modules/${id}`),
+};
+
+// Admin API (requires admin role)
+export const adminAPI = {
+  getUsers: () => api.get('/admin/users'),
+  getUser: (id) => api.get(`/admin/users/${id}`),
+  updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
 };
 
 // Achievements API
@@ -53,6 +68,31 @@ export const achievementsAPI = {
   getUserAchievements: () => api.get('/achievements/user'),
   earnAchievement: (achievementId) => api.post('/achievements/earn', { achievementId }),
   getStats: () => api.get('/achievements/stats'),
+  checkAchievements: (progressData) => api.post('/achievements/check', progressData),
+};
+
+// Tutor API (Gemini / Ollama)
+export const tutorAPI = {
+  ask: (message, context) => api.post('/tutor', { message, context }),
+  verifyStep: (payload) => api.post('/tutor/verify', payload),
+  generateMCQs: (payload) => api.post('/tutor/mcq/generate', payload),
+  verifyMCQ: (payload) => api.post('/tutor/mcq/verify', payload),
+  explainCode: (code, language) => api.post('/tutor/explain-code', { code, language }),
+  generateStarterCode: (planning) => api.post('/tutor/generate-starter-code', { planning }),
+};
+
+// Diagrams API (Mermaid)
+export const diagramsAPI = {
+  generate: (description, diagramType, options) =>
+    api.post('/diagrams/generate', { description, diagramType, options }),
+  validate: (mermaidCode) =>
+    api.post('/diagrams/validate', { mermaidCode }),
+};
+
+// Config API (studio level, avatars)
+export const configAPI = {
+  getStudioLevel: (points) => api.get('/config/studio-level', { params: { points } }),
+  getAvatars: () => api.get('/config/avatars'),
 };
 
 export default api;
