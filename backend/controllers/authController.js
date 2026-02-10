@@ -1,7 +1,5 @@
 const User = require('../models/User');
-const Module = require('../models/Module');
 const { generateToken } = require('../utils/jwt');
-const { XP_PER_LEVEL } = require('../constants/levelRanks');
 const { isAdminEmail } = require('../utils/admin');
 
 /**
@@ -36,14 +34,14 @@ async function signup(req, res) {
       learningPath,
     });
 
+    // All new users start with zero progress: no completed modules, level 1, 0 totalPoints.
+    // New Explorer (javascript-basics path) and Experienced Coder (advanced path) both start fresh.
     if (learningPath === 'javascript-basics') {
-      const basicModules = await Module.find({ category: 'javascript-basics' }).select('_id');
-      if (basicModules && basicModules.length > 0) {
-        user.completedModules = basicModules.map((m) => ({ moduleId: m._id }));
-        user.totalPoints = (basicModules.length || 0) * 100;
-        user.level = Math.max(1, Math.floor((user.totalPoints || 0) / XP_PER_LEVEL) + 1);
-        user.gameStudioEnabled = true;
-      }
+      user.gameStudioEnabled = false;
+    }
+
+    if (learningPath === 'advanced') {
+      user.gameStudioEnabled = true;
     }
 
     await user.save();

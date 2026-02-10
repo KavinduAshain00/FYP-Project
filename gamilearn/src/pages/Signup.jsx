@@ -70,7 +70,7 @@ const Signup = () => {
       if (user.learningPath === "javascript-basics") {
         navigate("/dashboard?message=start-basics");
       } else {
-        navigate("/dashboard");
+        navigate("/dashboard?message=start-advanced");
       }
     } catch (err) {
       console.error("Signup error:", err);
