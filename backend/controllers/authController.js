@@ -34,8 +34,6 @@ async function signup(req, res) {
       learningPath,
     });
 
-    // All new users start with zero progress: no completed modules, level 1, 0 totalPoints.
-    // New Explorer (javascript-basics path) and Experienced Coder (advanced path) both start fresh.
     if (learningPath === 'javascript-basics') {
       user.gameStudioEnabled = false;
     }
