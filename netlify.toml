@@ -1,0 +1,14 @@
+# Netlify configuration for GamiLearn frontend
+# Builds the Vite app in `gamilearn` and publishes the `dist` folder.
+[build]
+  command = "cd gamilearn && npm run build"
+  publish = "gamilearn/dist"
+
+# Single Page App fallback: serve index.html for all routes (200), enabling client-side routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = true
+
+
