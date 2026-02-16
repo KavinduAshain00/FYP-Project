@@ -19,7 +19,6 @@ ENV PORT=5001
 ENV MONGODB_URI=mongodb+srv://kavinduashaingo_db_user:KATpro2005@gamilearn.xkrrazj.mongodb.net/
 ENV JWT_SECRET=1692f6d6ee76f79a7268f76f87802833
 ENV OLLAMA_API_KEY=0fafadac1ddd4932a4181462eeb79e1c.mz00gNiM6I030l_APQsh1qzE
-ENV ADMIN_EMAILS=katpro@gamilearn.ai
 
 EXPOSE 5001
 

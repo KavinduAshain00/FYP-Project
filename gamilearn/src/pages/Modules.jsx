@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { modulesAPI, userAPI } from "../api/api";
+import { userAPI } from "../api/api";
 import { FaCheckCircle, FaPlay, FaFilter } from "react-icons/fa";
 import { GameLayout } from "../components/layout/GameLayout";
 
@@ -17,12 +17,9 @@ const Modules = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [modulesRes, profileRes] = await Promise.all([
-          modulesAPI.getAll("all"),
-          userAPI.getProfile(),
-        ]);
-        setModules(modulesRes.data.modules);
-        setProfile(profileRes.data.user);
+        const res = await userAPI.getModulesContext();
+        setModules(res.data.modules || []);
+        setProfile(res.data.user || null);
         setLoading(false);
       } catch (error) {
         console.error("Error fetching modules:", error);
@@ -34,8 +31,8 @@ const Modules = () => {
 
   const handleStartModule = async (moduleId) => {
     try {
-      await userAPI.setCurrentModule(moduleId);
-      if (refreshProfile) await refreshProfile();
+      const res = await userAPI.setCurrentModule(moduleId);
+      if (res.data.user) refreshProfile?.(res.data.user);
       navigate(`/editor/${moduleId}`);
     } catch (error) {
       console.error("Error starting module:", error);
@@ -148,7 +145,7 @@ const Modules = () => {
                   style={{ width: 96 }}
                 >
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all duration-500"
+                    className="h-full rounded-full bg-cyan-500 transition-all duration-500"
                     style={{ width: `${completionPct}%` }}
                   />
                 </div>
@@ -223,11 +220,11 @@ const Modules = () => {
               return (
                 <article
                   key={module._id}
-                  className={`group relative overflow-hidden rounded-2xl border bg-gray-900/60 transition-all duration-300 hover:shadow-xl hover:shadow-black/20 hover:-translate-y-0.5 ${
+                  className={`group relative overflow-hidden rounded-2xl border bg-gray-900/60 transition-all duration-300 hover:-translate-y-0.5 ${
                     done
-                      ? "border-gray-700/80 shadow-lg shadow-black/10"
+                      ? "border-gray-700/80"
                       : isNext
-                        ? "border-cyan-500/50 shadow-lg shadow-cyan-500/10"
+                        ? "border-cyan-500/50"
                         : "border-gray-700/60 hover:border-gray-600"
                   }`}
                 >
@@ -239,9 +236,9 @@ const Modules = () => {
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       loading="lazy"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gray-900/80" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <h3 className="font-semibold text-white text-sm sm:text-base truncate drop-shadow-lg">
+                      <h3 className="font-semibold text-white text-sm sm:text-base truncate">
                         {module.title}
                       </h3>
                       {module.difficulty && (
@@ -253,12 +250,12 @@ const Modules = () => {
                       )}
                     </div>
                     {done && (
-                      <div className="absolute top-3 right-3 rounded-full bg-emerald-500/90 p-1.5 shadow-lg">
+                      <div className="absolute top-3 right-3 rounded-full bg-emerald-500/90 p-1.5">
                         <FaCheckCircle className="text-white w-4 h-4" />
                       </div>
                     )}
                     {isNext && !done && (
-                      <div className="absolute top-3 right-3 rounded-full bg-cyan-500/90 px-2 py-1 text-[10px] font-bold text-white uppercase tracking-wider shadow-lg">
+                      <div className="absolute top-3 right-3 rounded-full bg-cyan-500/90 px-2 py-1 text-[10px] font-bold text-white uppercase tracking-wider">
                         Next
                       </div>
                     )}

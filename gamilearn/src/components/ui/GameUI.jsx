@@ -119,10 +119,8 @@ export const LevelBadge = ({
     <motion.div
       className={`relative flex items-center justify-center rounded-xl font-bold ${sizeClasses[size]} ${className}`}
       style={{
-        background:
-          "linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 107, 53, 0.2) 100%)",
+        background: "rgba(255, 215, 0, 0.2)",
         border: "2px solid rgba(255, 215, 0, 0.5)",
-        boxShadow: "0 0 20px rgba(255, 215, 0, 0.3)",
       }}
       animate={animated ? { scale: [1, 1.05, 1] } : {}}
       transition={{ duration: 2, repeat: Infinity }}
@@ -150,31 +148,26 @@ export const StatCard = ({
       bg: "rgba(0, 245, 255, 0.1)",
       border: "rgba(0, 245, 255, 0.3)",
       text: "text-neon-cyan",
-      glow: "hover:shadow-glow-cyan",
     },
     purple: {
       bg: "rgba(185, 79, 255, 0.1)",
       border: "rgba(185, 79, 255, 0.3)",
       text: "text-neon-purple",
-      glow: "hover:shadow-glow-purple",
     },
     gold: {
       bg: "rgba(255, 215, 0, 0.1)",
       border: "rgba(255, 215, 0, 0.3)",
       text: "text-neon-gold",
-      glow: "hover:shadow-glow-gold",
     },
     green: {
       bg: "rgba(0, 255, 136, 0.1)",
       border: "rgba(0, 255, 136, 0.3)",
       text: "text-neon-green",
-      glow: "hover:shadow-glow-green",
     },
     orange: {
       bg: "rgba(255, 107, 53, 0.1)",
       border: "rgba(255, 107, 53, 0.3)",
       text: "text-neon-orange",
-      glow: "hover:shadow-glow-gold",
     },
   };
 
@@ -182,7 +175,7 @@ export const StatCard = ({
 
   return (
     <motion.div
-      className={`game-card p-4 transition-all duration-300 ${colors.glow} ${className}`}
+      className={`game-card p-4 transition-all duration-300 ${className}`}
       style={{
         background: colors.bg,
         borderColor: colors.border,
@@ -222,27 +215,11 @@ export const AchievementBadge = ({
   className = "",
 }) => {
   const rarityColors = {
-    common: { bg: "rgba(148, 163, 184, 0.2)", border: "#94a3b8", glow: "none" },
-    uncommon: {
-      bg: "rgba(0, 255, 136, 0.2)",
-      border: "#00ff88",
-      glow: "var(--glow-green)",
-    },
-    rare: {
-      bg: "rgba(77, 124, 255, 0.2)",
-      border: "#4d7cff",
-      glow: "0 0 20px rgba(77, 124, 255, 0.5)",
-    },
-    epic: {
-      bg: "rgba(185, 79, 255, 0.2)",
-      border: "#b94fff",
-      glow: "var(--glow-purple)",
-    },
-    legendary: {
-      bg: "rgba(255, 215, 0, 0.2)",
-      border: "#ffd700",
-      glow: "var(--glow-gold)",
-    },
+    common: { bg: "rgba(148, 163, 184, 0.2)", border: "#94a3b8" },
+    uncommon: { bg: "rgba(0, 255, 136, 0.2)", border: "#00ff88" },
+    rare: { bg: "rgba(77, 124, 255, 0.2)", border: "#4d7cff" },
+    epic: { bg: "rgba(185, 79, 255, 0.2)", border: "#b94fff" },
+    legendary: { bg: "rgba(255, 215, 0, 0.2)", border: "#ffd700" },
   };
 
   const sizeClasses = {
@@ -275,7 +252,6 @@ export const AchievementBadge = ({
       style={{
         background: earned ? colors.bg : "rgba(30, 41, 59, 0.5)",
         borderColor: earned ? colors.border : "rgba(255, 255, 255, 0.1)",
-        boxShadow: earned ? colors.glow : "none",
       }}
       whileHover={{ scale: earned ? 1.05 : 1.02 }}
       whileTap={{ scale: 0.98 }}
@@ -433,8 +409,8 @@ export const QuestCard = ({
             style={{
               background:
                 status === "completed"
-                  ? "linear-gradient(90deg, var(--neon-green), #00cc6a)"
-                  : "linear-gradient(90deg, var(--neon-cyan), var(--neon-purple))",
+                  ? "var(--neon-green)"
+                  : "var(--neon-cyan)",
             }}
             initial={{ width: 0 }}
             animate={{ width: `${progressPercent}%` }}
@@ -586,7 +562,7 @@ export const GameAvatar = ({
         )}
       </div>
       {level && (
-        <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-gradient-to-br from-neon-gold to-neon-orange flex items-center justify-center text-game-void font-bold text-xs border-2 border-game-void">
+        <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-neon-gold flex items-center justify-center text-game-void font-bold text-xs border-2 border-game-void">
           {level}
         </div>
       )}
@@ -630,7 +606,7 @@ export const MiniStat = ({ icon: Icon, value, label, color = "cyan" }) => {
 export const StreakCounter = ({ count, label = "Day Streak" }) => {
   return (
     <motion.div
-      className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-neon-orange/20 to-hp-red/20 border border-neon-orange/30"
+      className="flex items-center gap-3 px-4 py-3 rounded-xl bg-neon-orange/20 border border-neon-orange/30"
       animate={{ scale: [1, 1.02, 1] }}
       transition={{ duration: 2, repeat: Infinity }}
     >

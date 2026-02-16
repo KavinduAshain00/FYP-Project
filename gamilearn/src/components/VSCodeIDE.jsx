@@ -107,7 +107,7 @@ export default App;`,
   margin: 0 auto;
   padding: 20px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   min-height: 100vh;
 }
 
@@ -169,7 +169,6 @@ export default App;`,
   background: white;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .todo-item {

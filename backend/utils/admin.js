@@ -1,23 +1,11 @@
 /**
- * Admin role is determined by email. Set ADMIN_EMAILS in .env (comma-separated).
- * Example: ADMIN_EMAILS=admin@example.com,other@example.com
+ * Admin is determined by the user's role in the database (user.role === 'admin').
+ * Set or change admin via PUT /api/admin/users/:id with { role: 'admin' },
+ * or use the bootstrap script: node scripts/setAdminByEmail.js <email>
  */
 
-function getAdminEmails() {
-  const raw = process.env.ADMIN_EMAILS || '';
-  return raw
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
+function isAdmin(user) {
+  return user && user.role === "admin";
 }
 
-function isAdminEmail(email) {
-  if (!email || typeof email !== 'string') return false;
-  const admins = getAdminEmails();
-  return admins.includes(email.trim().toLowerCase());
-}
-
-module.exports = {
-  getAdminEmails,
-  isAdminEmail,
-};
+module.exports = { isAdmin };

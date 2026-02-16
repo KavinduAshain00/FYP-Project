@@ -66,8 +66,8 @@ const Dashboard = () => {
 
   const handleStartModule = async (moduleId) => {
     try {
-      await userAPI.setCurrentModule(moduleId);
-      if (refreshProfile) await refreshProfile();
+      const res = await userAPI.setCurrentModule(moduleId);
+      if (res.data.user) refreshProfile?.(res.data.user);
       navigate(`/editor/${moduleId}`);
     } catch (error) {
       console.error("Error starting module:", error);

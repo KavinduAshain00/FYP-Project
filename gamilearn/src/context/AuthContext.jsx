@@ -44,7 +44,16 @@ export const AuthProvider = ({ children }) => {
     return user;
   };
 
-  const refreshProfile = async () => {
+  /**
+   * Refresh profile from server, or use provided user (e.g. from mutation response) to avoid an extra API call.
+   * @param {object|null} updatedUser - If provided, updates state and localStorage without fetching.
+   */
+  const refreshProfile = async (updatedUser = null) => {
+    if (updatedUser != null) {
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      return updatedUser;
+    }
     try {
       const response = await userAPI.getProfile();
       const newUser = response.data.user;

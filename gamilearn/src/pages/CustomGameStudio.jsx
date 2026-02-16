@@ -249,7 +249,7 @@ export default App;`,
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: linear-gradient(180deg, #0a0a1a 0%, #1a1a3a 50%, #0a0a1a 100%);
+  background: #0a0a1a;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: white;
   overflow: hidden;
@@ -274,22 +274,7 @@ export default App;`,
   flex: 1;
   position: relative;
   overflow: hidden;
-  background: radial-gradient(ellipse at center, #1a1a3a 0%, #0a0a1a 100%);
-}
-
-.game-area::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-image: radial-gradient(white 1px, transparent 1px);
-  background-size: 50px 50px;
-  opacity: 0.1;
-  animation: starfield 20s linear infinite;
-}
-
-@keyframes starfield {
-  from { transform: translateY(0); }
-  to { transform: translateY(50px); }
+  background: #1a1a3a;
 }
 
 .menu-screen {
@@ -319,7 +304,7 @@ export default App;`,
 }
 
 .menu-screen button {
-  background: linear-gradient(135deg, #ff00ff 0%, #00ffff 100%);
+  background: #ff00ff;
   color: white;
   border: none;
   padding: 15px 40px;
@@ -328,28 +313,20 @@ export default App;`,
   cursor: pointer;
   font-weight: bold;
   transition: all 0.3s ease;
-  box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
 }
 
 .menu-screen button:hover {
   transform: scale(1.1);
-  box-shadow: 0 0 40px rgba(0, 255, 255, 0.8);
 }
 
 .gameover h1 { color: #ff4444; }
-.new-record { color: #ffd700; font-size: 1.5rem; animation: bounce 0.5s ease infinite; }
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
+.new-record { color: #ffd700; font-size: 1.5rem; }
 
 .player {
   position: absolute;
   bottom: 10%;
   font-size: 2.5rem;
   transform: translateX(-50%);
-  filter: drop-shadow(0 0 10px #00ffff);
   transition: left 0.1s ease;
 }
 
@@ -357,23 +334,15 @@ export default App;`,
   position: absolute;
   font-size: 2rem;
   transform: translate(-50%, -50%);
-  filter: drop-shadow(0 0 8px #ff00ff);
-  animation: enemyPulse 0.5s ease infinite;
-}
-
-@keyframes enemyPulse {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, -50%) scale(1.1); }
 }
 
 .bullet {
   position: absolute;
   width: 4px;
   height: 15px;
-  background: linear-gradient(to top, #00ffff, #ffffff);
+  background: #00ffff;
   border-radius: 2px;
   transform: translateX(-50%);
-  box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
 }
 
 .controls-hint {
@@ -409,7 +378,7 @@ export default Button;`,
 }
 
 .custom-btn.primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
 }
 
@@ -421,7 +390,6 @@ export default Button;`,
 
 .custom-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }`,
     "src/utils/helpers.js": `// Utility functions for your game
 
@@ -952,7 +920,7 @@ export default App;`;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: linear-gradient(180deg, #0a0a1a 0%, #1a1a3a 50%, #0a0a1a 100%);
+  background: #0a0a1a;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: white;
   overflow: hidden;
@@ -980,7 +948,7 @@ export default App;`;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at center, #1a1a3a 0%, #0a0a1a 100%);
+  background: #1a1a3a;
 }
 
 .menu-screen {
@@ -991,13 +959,6 @@ export default App;`;
 .menu-screen h1 {
   font-size: 3rem;
   margin: 0 0 20px 0;
-  text-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff;
-  animation: glow 2s ease-in-out infinite alternate;
-}
-
-@keyframes glow {
-  from { text-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff; }
-  to { text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff; }
 }
 
 .menu-screen p {
@@ -1007,7 +968,7 @@ export default App;`;
 }
 
 .menu-screen button {
-  background: linear-gradient(135deg, #ff00ff 0%, #00ffff 100%);
+  background: #ff00ff;
   color: white;
   border: none;
   padding: 15px 40px;
@@ -1016,30 +977,23 @@ export default App;`;
   cursor: pointer;
   font-weight: bold;
   transition: all 0.3s ease;
-  box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
   margin: 10px;
 }
 
 .menu-screen button:hover {
   transform: scale(1.1);
-  box-shadow: 0 0 40px rgba(0, 255, 255, 0.8);
 }
 
 .gameover h1 { color: #ff4444; }
 .paused h1 { color: #ffaa00; }
-.new-record { color: #ffd700; font-size: 1.5rem; animation: bounce 0.5s ease infinite; }
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
+.new-record { color: #ffd700; font-size: 1.5rem; }
 
 .game-play-area {
   text-align: center;
 }
 
 .game-play-area button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   border: none;
   padding: 10px 25px;
@@ -3266,7 +3220,7 @@ Ask me anything as you go!`,
 
           <div className="flex-1 p-3">
             <div
-              className={`h-full rounded-2xl border border-white/10 bg-gray-900 shadow-xl ${previewMode === "mobile" ? "mx-auto w-[280px]" : "w-full"}`}
+              className={`h-full rounded-2xl border border-white/10 bg-gray-900 ${previewMode === "mobile" ? "mx-auto w-[280px]" : "w-full"}`}
             >
               <iframe
                 key={previewKey}
@@ -3359,7 +3313,7 @@ Ask me anything as you go!`,
       {/* Context Menu */}
       {contextMenu.show && (
         <div
-          className="fixed z-50 w-44 rounded-xl border border-white/10 bg-slate-900/95 p-1 text-xs text-slate-200 shadow-xl"
+          className="fixed z-50 w-44 rounded-xl border border-white/10 bg-slate-900/95 p-1 text-xs text-slate-200"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -3493,7 +3447,7 @@ Ask me anything as you go!`,
             onClick={() => setShowCreateModal(false)}
           >
             <motion.div
-              className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-6 text-slate-200 shadow-2xl"
+              className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-6 text-slate-200"
               initial={{ scale: 0.9, y: 50 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 50 }}
@@ -3603,7 +3557,7 @@ Ask me anything as you go!`,
             onClick={() => setShowPackageModal(false)}
           >
             <motion.div
-              className="w-full max-w-4xl rounded-2xl border border-white/10 bg-slate-900 p-6 text-slate-200 shadow-2xl"
+              className="w-full max-w-4xl rounded-2xl border border-white/10 bg-slate-900 p-6 text-slate-200"
               initial={{ scale: 0.9, y: 50 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 50 }}
@@ -3729,7 +3683,7 @@ Ask me anything as you go!`,
       <AnimatePresence>
         {showAchievements && (
           <motion.div
-            className="fixed right-4 top-20 z-40 w-96 rounded-2xl border border-white/10 bg-slate-900/90 p-4 text-slate-200 shadow-2xl"
+            className="fixed right-4 top-20 z-40 w-96 rounded-2xl border border-white/10 bg-slate-900/90 p-4 text-slate-200"
             initial={{ x: 400 }}
             animate={{ x: 0 }}
             exit={{ x: 400 }}
@@ -3818,7 +3772,7 @@ Ask me anything as you go!`,
             onClick={() => setShowProjectsModal(false)}
           >
             <motion.div
-              className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-6 text-slate-200 shadow-2xl"
+              className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-6 text-slate-200"
               initial={{ scale: 0.9, y: 50 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 50 }}
@@ -3878,7 +3832,7 @@ Ask me anything as you go!`,
       <AnimatePresence>
         {showAICompanion && (
           <motion.div
-            className="fixed right-4 top-20 z-40 flex max-h-[70vh] w-[360px] flex-col rounded-2xl border border-white/10 bg-slate-900/90 p-4 text-slate-200 shadow-2xl"
+            className="fixed right-4 top-20 z-40 flex max-h-[70vh] w-[360px] flex-col rounded-2xl border border-white/10 bg-slate-900/90 p-4 text-slate-200"
             initial={{ x: 400 }}
             animate={{ x: 0 }}
             exit={{ x: 400 }}

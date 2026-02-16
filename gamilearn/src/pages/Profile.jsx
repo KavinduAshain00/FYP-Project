@@ -16,7 +16,7 @@ import {
   FaLink,
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
-import { achievementsAPI, userAPI } from "../api/api";
+import { userAPI } from "../api/api";
 import { GameLayout } from "../components/layout/GameLayout";
 
 const buildPromptUrl = (prompt) =>
@@ -55,12 +55,8 @@ const Profile = () => {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const [profileRes, achievementsRes, avatarsRes] = await Promise.all([
-          userAPI.getProfile(),
-          achievementsAPI.getUserAchievements(),
-          userAPI.getAvatars(),
-        ]);
-        const userData = profileRes.data.user;
+        const res = await userAPI.getProfileFull();
+        const { user: userData, achievements: achList, avatars: avatarList } = res.data;
         setProfile(userData);
         setName(userData.name || "");
         setAvatarUrl(userData.avatarUrl || "");
@@ -68,8 +64,8 @@ const Profile = () => {
         setAiTone(prefs.tone || "friendly");
         setAiHintDetail(prefs.hintDetail || "moderate");
         setAiFrequency(prefs.assistanceFrequency || "normal");
-        setAchievements(achievementsRes.data.achievements || []);
-        setAvatars(avatarsRes.data.avatars || []);
+        setAchievements(achList || []);
+        setAvatars(avatarList || []);
       } catch (error) {
         console.error("Error loading profile:", error);
       } finally {
@@ -86,11 +82,11 @@ const Profile = () => {
     }
     setSaving(true);
     try {
-      await userAPI.updateProfile({
+      const res = await userAPI.updateProfile({
         name: name.trim(),
         avatarUrl: avatarUrl.trim(),
       });
-      await refreshProfile?.();
+      if (res.data.user) refreshProfile?.(res.data.user);
       toast.success("Your profile has been updated!");
       setEditMode(false);
     } catch {
@@ -103,14 +99,14 @@ const Profile = () => {
   const handleSaveAiSettings = async () => {
     setSavingAi(true);
     try {
-      await userAPI.updateProfile({
+      const res = await userAPI.updateProfile({
         aiPreferences: {
           tone: aiTone,
           hintDetail: aiHintDetail,
           assistanceFrequency: aiFrequency,
         },
       });
-      await refreshProfile?.();
+      if (res.data.user) refreshProfile?.(res.data.user);
       toast.success("AI Companion settings saved!");
     } catch {
       toast.error("Could not save AI settings. Please try again.");
@@ -347,7 +343,7 @@ const Profile = () => {
                                   title={!av.unlocked ? av.unlockLabel : undefined}
                                   className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:cursor-not-allowed disabled:opacity-60 ${
                                     selected
-                                      ? "border-amber-500 shadow-lg shadow-amber-500/20 scale-[1.02]"
+                                      ? "border-amber-500 scale-[1.02]"
                                       : av.unlocked
                                         ? "border-gray-600"
                                         : "border-gray-700 grayscale hover:border-gray-500 hover:opacity-90"
@@ -516,15 +512,22 @@ const Profile = () => {
                     </div>
                   )}
                 </div>
-                <span
-                  className={`text-xs font-bold px-2 py-0.5 border rounded ${
-                    ach.earned
-                      ? "border-gray-500 text-gray-400"
-                      : "border-gray-600 text-gray-500"
-                  }`}
-                >
-                  {ach.earned ? "UNLOCKED" : "LOCKED"}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {ach.rarity && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border border-gray-600 text-gray-500">
+                      {ach.rarity}
+                    </span>
+                  )}
+                  <span
+                    className={`text-xs font-bold px-2 py-0.5 border rounded ${
+                      ach.earned
+                        ? "border-gray-500 text-gray-400"
+                        : "border-gray-600 text-gray-500"
+                    }`}
+                  >
+                    {ach.earned ? "UNLOCKED" : "LOCKED"}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

@@ -2232,7 +2232,7 @@ You have two preview windows so you can test as Player 1 and Player 2. Ask me an
       {/* Context Menu */}
       {contextMenu.show && (
         <div
-          className="fixed bg-gray-900 border border-gray-700 py-1 z-50 min-w-40 rounded shadow-xl"
+          className="fixed bg-gray-900 border border-gray-700 py-1 z-50 min-w-40 rounded"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
           {contextMenu.type === "folder" && (

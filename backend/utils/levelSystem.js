@@ -1,4 +1,4 @@
-const { EXPERIENCE_RANKS, XP_PER_LEVEL } = require('../constants/levelRanks');
+const { EXPERIENCE_RANKS, XP_PER_LEVEL } = require("../constants/levelRanks");
 
 function getExperienceRank(level) {
   const lvl = Number(level) || 1;
@@ -44,16 +44,26 @@ function buildLevelInfo(totalPoints, _level) {
   return {
     level: lvl,
     totalPoints: total,
-    rank: { name: rank.name, title: rank.title, color: rank.color, bgColor: rank.bgColor, borderColor: rank.borderColor, description: rank.description },
-    xpProgress: { currentXP: xpProgress.currentXP, xpNeeded: xpProgress.xpNeeded, percentage: xpProgress.percentage, xpToNext: xpProgress.xpToNext },
-    rankProgress: { currentLevelInRank: rankProgress.currentLevelInRank, levelsInRank: rankProgress.levelsInRank, percentage: rankProgress.percentage },
+    rank: {
+      name: rank.name,
+      title: rank.title,
+      color: rank.color,
+      bgColor: rank.bgColor,
+      borderColor: rank.borderColor,
+      description: rank.description,
+    },
+    xpProgress: {
+      currentXP: xpProgress.currentXP,
+      xpNeeded: xpProgress.xpNeeded,
+      percentage: xpProgress.percentage,
+      xpToNext: xpProgress.xpToNext,
+    },
+    rankProgress: {
+      currentLevelInRank: rankProgress.currentLevelInRank,
+      levelsInRank: rankProgress.levelsInRank,
+      percentage: rankProgress.percentage,
+    },
   };
 }
 
-module.exports = {
-  getExperienceRank,
-  calculateXPProgress,
-  getRankProgress,
-  buildLevelInfo,
-  XP_PER_LEVEL,
-};
+module.exports = { buildLevelInfo };

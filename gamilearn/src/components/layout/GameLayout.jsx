@@ -2,32 +2,6 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ConfirmModal from "../ui/ConfirmModal";
 import { AnimatePresence, motion as Motion } from "framer-motion";
-
-/** Route order for transition direction: lower index = "back" when navigating to it */
-const ROUTE_ORDER = ["/dashboard", "/modules", "/profile", "/admin", "/editor", "/custom-game", "/game-planning", "/multiplayer-studio"];
-
-const getRouteDepth = (pathname) => {
-  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return 0;
-  if (pathname === "/modules" || pathname === "/profile" || pathname === "/admin") return 1;
-  return 2; // editor, custom-game, game-planning, multiplayer-studio
-};
-
-const getRouteOrderIndex = (pathname) => {
-  const base = pathname.split("/").slice(0, 2).join("/") || pathname;
-  const idx = ROUTE_ORDER.findIndex((p) => base === p || pathname.startsWith(p + "/"));
-  return idx >= 0 ? idx : ROUTE_ORDER.length;
-};
-
-/** Returns "back" or "forward" for page transition direction when navigating from currentPath to targetPath */
-const getNavigationDirection = (currentPath, targetPath) => {
-  const currentDepth = getRouteDepth(currentPath);
-  const targetDepth = getRouteDepth(targetPath);
-  if (targetDepth < currentDepth) return "back";
-  if (targetDepth > currentDepth) return "forward";
-  const currentOrder = getRouteOrderIndex(currentPath);
-  const targetOrder = getRouteOrderIndex(targetPath);
-  return targetOrder < currentOrder ? "back" : "forward";
-};
 import { useAuth } from "../../context/AuthContext";
 import {
   FaBars,
@@ -37,21 +11,11 @@ import {
   FaGamepad,
   FaHome,
   FaLayerGroup,
-  FaMap,
   FaShieldAlt,
   FaTimes,
-  FaTrophy,
   FaUser,
 } from "react-icons/fa";
-import {
-  ParticleBackground,
-  XPBar,
-  GameAvatar,
-} from "../ui/GameUI";
 
-/* ========================================
-   NAVBAR – minimal bar, flat colors
-   ======================================== */
 export const GameNavbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -69,8 +33,8 @@ export const GameNavbar = () => {
   const isActive = (path) => location.pathname === path;
 
   const handleNavClick = (path) => {
-    const direction = getNavigationDirection(location.pathname, path);
-    navigate(path, { state: { direction } });
+    setMobileMenuOpen(false);
+    navigate(path);
   };
 
   const handleLogout = () => setShowLogoutConfirm(true);
@@ -160,10 +124,7 @@ export const GameNavbar = () => {
                 <button
                   key={link.path}
                   type="button"
-                  onClick={() => {
-                    handleNavClick(link.path);
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={() => handleNavClick(link.path)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium rounded text-left ${
                     isActive(link.path)
                       ? "bg-[#1a1a1a] text-white"
@@ -196,143 +157,21 @@ export const GameNavbar = () => {
   );
 };
 
-/* ========================================
-   SIDEBAR – flat panels, no neon
-   ======================================== */
-export const GameSidebar = ({
-  user,
-  stats = {},
-  showXPBar = true,
-  showAchievements = false,
-  achievements = [],
-}) => {
-  const totalPoints = user?.totalPoints || 0;
-  const level = user?.level || 1;
-
-  return (
-    <aside className="w-64 shrink-0 space-y-4">
-      <div className="bg-[#0c0c0c] border border-[#1f1f1f] p-4">
-        <div className="flex items-center gap-3">
-          <GameAvatar
-            src={user?.avatarUrl}
-            size="md"
-            level={level}
-            animated={false}
-            className="!rounded border border-[#262626]"
-          />
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[#e5e5e5] text-sm truncate">
-              {user?.name || "User"}
-            </p>
-            <p className="text-[11px] text-[#737373] truncate">{user?.email}</p>
-          </div>
-        </div>
-        {showXPBar && (
-          <div className="mt-4">
-            <XPBar
-              current={totalPoints % 200}
-              max={200}
-              label={`XP to Lv.${level + 1}`}
-              variant="xp"
-              size="sm"
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="bg-[#0c0c0c] border border-[#1f1f1f] p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#737373] mb-3">
-          Stats
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="p-2.5 bg-[#141414] border border-[#262626]">
-            <p className="text-[10px] text-[#737373] uppercase">XP</p>
-            <p className="text-sm font-semibold text-[#e5e5e5]">{totalPoints}</p>
-          </div>
-          <div className="p-2.5 bg-[#141414] border border-[#262626]">
-            <p className="text-[10px] text-[#737373] uppercase">Level</p>
-            <p className="text-sm font-semibold text-[#e5e5e5]">{level}</p>
-          </div>
-          <div className="p-2.5 bg-[#141414] border border-[#262626]">
-            <p className="text-[10px] text-[#737373] uppercase">Quests</p>
-            <p className="text-sm font-semibold text-[#e5e5e5]">
-              {stats.completedModules ?? 0}
-            </p>
-          </div>
-          <div className="p-2.5 bg-[#141414] border border-[#262626]">
-            <p className="text-[10px] text-[#737373] uppercase">Badges</p>
-            <p className="text-sm font-semibold text-[#e5e5e5]">
-              {stats.achievements ?? 0}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {showAchievements && achievements.length > 0 && (
-        <div className="bg-[#0c0c0c] border border-[#1f1f1f] p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#737373] mb-3">
-            Recent badges
-          </p>
-          <div className="space-y-2">
-            {achievements.slice(0, 3).map((ach, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-2.5 p-2 bg-[#141414] border border-[#262626]"
-              >
-                <span className="w-7 h-7 flex items-center justify-center bg-[#1a1a1a] border border-[#262626] text-[#737373]">
-                  <FaTrophy className="text-[10px]" />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-medium text-[#e5e5e5] truncate">
-                    {ach.name}
-                  </p>
-                  <p className="text-[10px] text-[#737373] truncate">
-                    {ach.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </aside>
-  );
-};
-
-/* ========================================
-   LAYOUT WRAPPER – no particles, no glow
-   ======================================== */
 export const GameLayout = ({
   children,
   showNavbar = true,
-  showParticles = false,
-  showSidebar = false,
-  sidebarProps = {},
   className = "",
 }) => {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-[#e5e5e5]">
-      {showParticles && <ParticleBackground count={12} />}
       {showNavbar && <GameNavbar />}
-      <main className={showNavbar ? "" : ""}>
-        {showSidebar ? (
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-            <div className="flex gap-6">
-              <GameSidebar {...sidebarProps} />
-              <div className={`flex-1 min-w-0 ${className}`}>{children}</div>
-            </div>
-          </div>
-        ) : (
-          <div className={className}>{children}</div>
-        )}
+      <main>
+        <div className={className}>{children}</div>
       </main>
     </div>
   );
 };
 
-/* ========================================
-   PAGE HEADER – simple title block
-   ======================================== */
 export const PageHeader = ({
   title,
   subtitle,
@@ -376,7 +215,6 @@ export const PageHeader = ({
 
 export default {
   GameNavbar,
-  GameSidebar,
   GameLayout,
   PageHeader,
 };

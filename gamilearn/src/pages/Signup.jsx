@@ -90,7 +90,7 @@ const Signup = () => {
 
   if (step === 2) {
     return (
-      <GameLayout showNavbar={false} showParticles={false}>
+      <GameLayout showNavbar={false}>
         <div className="min-h-screen flex items-center justify-center px-4 py-12">
           <div className="w-full max-w-lg border border-gray-700 bg-gray-900/80 p-6 rounded-lg backdrop-blur-sm">
           <div className="flex items-center justify-between mb-6">
@@ -188,7 +188,7 @@ const Signup = () => {
   }
 
   return (
-    <GameLayout showNavbar={false} showParticles={false}>
+    <GameLayout showNavbar={false}>
       <div className="min-h-screen flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md border border-gray-700 bg-gray-900/80 p-6 rounded-lg backdrop-blur-sm">
         <div className="flex justify-center gap-2 mb-6">

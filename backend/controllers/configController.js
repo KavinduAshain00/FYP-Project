@@ -1,5 +1,5 @@
-const { getStudioLevel } = require('../constants/studioLevel');
-const { AVATAR_PRESETS } = require('../constants/avatars');
+const { getStudioLevel } = require("../constants/studioLevel");
+const { AVATAR_PRESETS } = require("../constants/avatars");
 
 /**
  * GET /api/config/studio-level?points=100
@@ -14,9 +14,8 @@ async function getStudioLevelInfo(req, res) {
       title: tier.title,
       color: tier.color,
     });
-  } catch (error) {
-    console.error('Get studio level error:', error);
-    return res.status(500).json({ message: 'Server error' });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error" });
   }
 }
 
@@ -27,9 +26,8 @@ async function getStudioLevelInfo(req, res) {
 async function getAvatars(req, res) {
   try {
     return res.json({ avatars: AVATAR_PRESETS });
-  } catch (error) {
-    console.error('Get avatars error:', error);
-    return res.status(500).json({ message: 'Server error' });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error" });
   }
 }
 

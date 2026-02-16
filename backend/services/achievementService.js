@@ -1,35 +1,71 @@
-const Achievement = require('../models/Achievement');
-const User = require('../models/User');
-const { XP_PER_LEVEL } = require('../constants/levelRanks');
+const Achievement = require("../models/Achievement");
+const User = require("../models/User");
+const { XP_PER_LEVEL } = require("../constants/levelRanks");
 
-/**
- * Check and award achievements based on progress data. Updates user in DB.
- * @param {string} userId - User _id
- * @param {object} progressData - totalEdits, totalRuns, sessionTime, saveCount, streak, totalPoints, completedModules, etc.
- * @returns {Promise<{ newlyEarned: Array, user: object }>}
- */
+/** Requirement string -> (data) => boolean. Must match ACHIEVEMENT_SEED in constants/achievements.js */
+const REQUIREMENT_CHECKS = {
+  signup: (d) => d.signup === true,
+  complete_1_module: (d) => d.completedModules >= 1,
+  complete_3_modules: (d) => d.completedModules >= 3,
+  complete_5_modules: (d) => d.completedModules >= 5,
+  complete_10_modules: (d) => d.completedModules >= 10,
+  complete_basics_track: (d) => d.complete_basics_track === true,
+  complete_setup_module: (d) => d.complete_setup_module === true,
+  edit_1_time: (d) => d.totalEdits >= 1,
+  edit_10_times: (d) => d.totalEdits >= 10,
+  edit_50_times: (d) => d.totalEdits >= 50,
+  streak_5: (d) => d.streak >= 5,
+  session_10_min: (d) => d.sessionTime >= 10,
+  session_30_min: (d) => d.sessionTime >= 30,
+  run_10_times: (d) => d.totalRuns >= 10,
+  save_5_times: (d) => d.saveCount >= 5,
+  debug_session: (d) => d.debug_session === true,
+  code_night: (d) => d.hour >= 0 && d.hour < 6 && d.totalEdits > 0,
+  points_100: (d) => d.totalPoints >= 100,
+  points_250: (d) => d.totalPoints >= 250,
+  points_500: (d) => d.totalPoints >= 500,
+  points_750: (d) => d.totalPoints >= 750,
+  points_1000: (d) => d.totalPoints >= 1000,
+  unlock_game_studio: (d) => d.unlock_game_studio === true,
+  publish_first_game: (d) => d.publish_first_game === true,
+  first_multiplayer_game: (d) => d.isMultiplayerGame === true,
+  complete_multiplayer_track: (d) => d.complete_multiplayer_track === true,
+  create_room: (d) => d.createdRoom === true,
+  full_lobby: (d) => d.fullLobby === true,
+  first_mp_win: (d) => d.multiplayerWins >= 1,
+  mp_win_streak_3: (d) => d.streak >= 3 && d.multiplayerWins > 0,
+  mp_wins_10: (d) => d.multiplayerWins >= 10,
+  mp_games_5: (d) => d.multiplayerGames >= 5,
+  complete_match: (d) => d.multiplayerGames >= 1,
+  rematch_after_loss: (d) => d.rematch_after_loss === true,
+  implement_state_sync: (d) => d.implement_state_sync === true,
+  implement_turns: (d) => d.implement_turns === true,
+  files_created_5: (d) => d.filesCreated >= 5,
+  packages_installed_3: (d) => d.packagesInstalled >= 3,
+  terminal_commands_10: (d) => d.terminalCommands >= 10,
+  plan_step_1: (d) => d.planStep1 === true,
+  plan_flow: (d) => d.planFlow === true,
+  plan_insights: (d) => d.planInsights === true,
+  plan_launch: (d) => d.planLaunch === true,
+};
+
+const DEFAULT_PROGRESS = {
+  signup: false, complete_basics_track: false, complete_setup_module: false,
+  totalEdits: 0, totalRuns: 0, sessionTime: 0, saveCount: 0, streak: 0,
+  totalPoints: 0, completedModules: 0, isMultiplayerGame: false, multiplayerWins: 0,
+  multiplayerGames: 0, createdRoom: false, fullLobby: false, filesCreated: 0,
+  packagesInstalled: 0, terminalCommands: 0, planStep1: false, planFlow: false,
+  planInsights: false, planLaunch: false, debug_session: false, unlock_game_studio: false,
+  publish_first_game: false, complete_multiplayer_track: false, rematch_after_loss: false,
+  implement_state_sync: false, implement_turns: false,
+};
+
 async function checkProgress(userId, progressData) {
-  const {
-    totalEdits = 0,
-    totalRuns = 0,
-    sessionTime = 0,
-    saveCount = 0,
-    streak = 0,
-    totalPoints = 0,
-    completedModules = 0,
-    isMultiplayerGame = false,
-    multiplayerWins = 0,
-    multiplayerGames = 0,
-    createdRoom = false,
-    fullLobby = false,
-    filesCreated = 0,
-    packagesInstalled = 0,
-    terminalCommands = 0,
-    planStep1 = false,
-    planFlow = false,
-    planInsights = false,
-    planLaunch = false,
-  } = progressData;
+  const data = {
+    ...DEFAULT_PROGRESS,
+    hour: new Date().getHours(),
+    ...progressData,
+  };
 
   const user = await User.findById(userId);
   if (!user) return { newlyEarned: [], user: null };
@@ -37,59 +73,43 @@ async function checkProgress(userId, progressData) {
 
   const allAchievements = await Achievement.find({ isActive: true });
   const newlyEarned = [];
-  const hour = new Date().getHours();
 
   for (const achievement of allAchievements) {
     if (user.earnedAchievements.includes(achievement.id)) continue;
+    const fn = REQUIREMENT_CHECKS[achievement.requirement];
+    if (!fn || !fn(data)) continue;
 
-    let shouldEarn = false;
-    const reqReq = achievement.requirement;
-
-    if (reqReq === 'edit_1_time' && totalEdits >= 1) shouldEarn = true;
-    else if (reqReq === 'edit_10_times' && totalEdits >= 10) shouldEarn = true;
-    else if (reqReq === 'edit_50_times' && totalEdits >= 50) shouldEarn = true;
-    else if (reqReq === 'streak_5' && streak >= 5) shouldEarn = true;
-    else if (reqReq === 'session_10_min' && sessionTime >= 10) shouldEarn = true;
-    else if (reqReq === 'session_30_min' && sessionTime >= 30) shouldEarn = true;
-    else if (reqReq === 'run_10_times' && totalRuns >= 10) shouldEarn = true;
-    else if (reqReq === 'save_5_times' && saveCount >= 5) shouldEarn = true;
-    else if (reqReq === 'code_night' && hour >= 0 && hour < 6 && totalEdits > 0) shouldEarn = true;
-    else if (reqReq === 'points_100' && totalPoints >= 100) shouldEarn = true;
-    else if (reqReq === 'points_250' && totalPoints >= 250) shouldEarn = true;
-    else if (reqReq === 'points_500' && totalPoints >= 500) shouldEarn = true;
-    else if (reqReq === 'points_750' && totalPoints >= 750) shouldEarn = true;
-    else if (reqReq === 'points_1000' && totalPoints >= 1000) shouldEarn = true;
-    else if (reqReq === 'complete_1_module' && completedModules >= 1) shouldEarn = true;
-    else if (reqReq === 'complete_3_modules' && completedModules >= 3) shouldEarn = true;
-    else if (reqReq === 'complete_5_modules' && completedModules >= 5) shouldEarn = true;
-    else if (reqReq === 'complete_10_modules' && completedModules >= 10) shouldEarn = true;
-    else if (reqReq === 'first_multiplayer_game' && isMultiplayerGame) shouldEarn = true;
-    else if (reqReq === 'create_room' && createdRoom) shouldEarn = true;
-    else if (reqReq === 'full_lobby' && fullLobby) shouldEarn = true;
-    else if (reqReq === 'first_mp_win' && multiplayerWins >= 1) shouldEarn = true;
-    else if (reqReq === 'mp_win_streak_3' && streak >= 3 && multiplayerWins > 0) shouldEarn = true;
-    else if (reqReq === 'mp_wins_10' && multiplayerWins >= 10) shouldEarn = true;
-    else if (reqReq === 'mp_games_5' && multiplayerGames >= 5) shouldEarn = true;
-    else if (reqReq === 'complete_match' && multiplayerGames >= 1) shouldEarn = true;
-    else if (reqReq === 'files_created_5' && filesCreated >= 5) shouldEarn = true;
-    else if (reqReq === 'packages_installed_3' && packagesInstalled >= 3) shouldEarn = true;
-    else if (reqReq === 'terminal_commands_10' && terminalCommands >= 10) shouldEarn = true;
-    else if (reqReq === 'plan_step_1' && planStep1) shouldEarn = true;
-    else if (reqReq === 'plan_flow' && planFlow) shouldEarn = true;
-    else if (reqReq === 'plan_insights' && planInsights) shouldEarn = true;
-    else if (reqReq === 'plan_launch' && planLaunch) shouldEarn = true;
-
-    if (shouldEarn) {
-      user.earnedAchievements.push(achievement.id);
-      user.totalPoints = (user.totalPoints || 0) + achievement.points;
-      user.level = Math.max(1, Math.floor((user.totalPoints || 0) / XP_PER_LEVEL) + 1);
-      newlyEarned.push(achievement);
-    }
+    user.earnedAchievements.push(achievement.id);
+    user.totalPoints = (user.totalPoints || 0) + achievement.points;
+    user.level = Math.max(1, Math.floor((user.totalPoints || 0) / XP_PER_LEVEL) + 1);
+    newlyEarned.push(achievement);
   }
 
   if (newlyEarned.length > 0) await user.save();
-
   return { newlyEarned, user };
 }
 
-module.exports = { checkProgress };
+/**
+ * Award a single achievement by id (e.g. from POST /achievements/earn).
+ * Returns { awarded, achievement, user } where awarded is true if newly granted.
+ */
+async function awardAchievement(userId, achievementId) {
+  const achievement = await Achievement.findOne({ id: achievementId, isActive: true });
+  if (!achievement) return { awarded: false, achievement: null, user: null };
+
+  const user = await User.findById(userId);
+  if (!user) return { awarded: false, achievement, user: null };
+  if (!user.earnedAchievements) user.earnedAchievements = [];
+
+  if (user.earnedAchievements.includes(achievementId)) {
+    return { awarded: false, achievement, user };
+  }
+
+  user.earnedAchievements.push(achievementId);
+  user.totalPoints = (user.totalPoints || 0) + achievement.points;
+  user.level = Math.max(1, Math.floor((user.totalPoints || 0) / XP_PER_LEVEL) + 1);
+  await user.save();
+  return { awarded: true, achievement, user };
+}
+
+module.exports = { checkProgress, awardAchievement };

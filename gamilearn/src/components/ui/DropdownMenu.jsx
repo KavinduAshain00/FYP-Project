@@ -46,7 +46,7 @@ export function DropdownMenu({
       </div>
       {open && (
         <div
-          className={`absolute top-full z-50 mt-1 min-w-[180px] rounded-lg border border-white/10 bg-slate-800/95 py-1 shadow-xl backdrop-blur-sm ${align === "right" ? "right-0" : "left-0"}`}
+          className={`absolute top-full z-50 mt-1 min-w-[180px] rounded-lg border border-white/10 bg-slate-800/95 py-1 backdrop-blur-sm ${align === "right" ? "right-0" : "left-0"}`}
         >
           {children}
         </div>

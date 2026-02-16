@@ -1,4 +1,5 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
+const { RARITY_VALUES } = require("../constants/achievements");
 
 const achievementSchema = new mongoose.Schema(
   {
@@ -26,8 +27,20 @@ const achievementSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['learning', 'coding', 'general', 'special', 'multiplayer', 'planning'],
-      default: 'general',
+      enum: [
+        "learning",
+        "coding",
+        "general",
+        "special",
+        "multiplayer",
+        "planning",
+      ],
+      default: "general",
+    },
+    rarity: {
+      type: String,
+      enum: RARITY_VALUES,
+      default: "common",
     },
     requirement: {
       type: String,
@@ -40,7 +53,7 @@ const achievementSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-module.exports = mongoose.model('Achievement', achievementSchema);
+module.exports = mongoose.model("Achievement", achievementSchema);

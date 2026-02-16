@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const moduleSchema = new mongoose.Schema(
   {
@@ -12,18 +12,18 @@ const moduleSchema = new mongoose.Schema(
     },
     difficulty: {
       type: String,
-      enum: ['beginner', 'intermediate', 'advanced'],
-      default: 'beginner',
+      enum: ["beginner", "intermediate", "advanced"],
+      default: "beginner",
     },
     category: {
       type: String,
       enum: [
-        'javascript-basics',
-        'game-development',
-        'multiplayer',
-        'advanced-concepts',
-        'react-fundamentals',
-        'react-game-dev',
+        "javascript-basics",
+        "game-development",
+        "multiplayer",
+        "advanced-concepts",
+        "react-fundamentals",
+        "react-game-dev",
       ],
       required: true,
     },
@@ -44,23 +44,24 @@ const moduleSchema = new mongoose.Schema(
       css: {
         type: String,
         default:
-          'body {\n  margin: 0;\n  padding: 0;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  background: #1a1a2e;\n}\n\ncanvas {\n  border: 2px solid #16213e;\n}',
+          "body {\n  margin: 0;\n  padding: 0;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  background: #1a1a2e;\n}\n\ncanvas {\n  border: 2px solid #16213e;\n}",
       },
       javascript: {
         type: String,
-        default: '// Start coding your game here!\nconsole.log("Game started");',
+        default:
+          '// Start coding your game here!\nconsole.log("Game started");',
       },
       // Support for React-based modules
       jsx: {
         type: String,
-        default: '',
+        default: "",
       },
     },
     // Module type: 'vanilla' or 'react'
     moduleType: {
       type: String,
-      enum: ['vanilla', 'react'],
-      default: 'vanilla',
+      enum: ["vanilla", "react"],
+      default: "vanilla",
     },
     objectives: [
       {
@@ -72,9 +73,13 @@ const moduleSchema = new mongoose.Schema(
     steps: [
       {
         title: { type: String, required: true },
-        instruction: { type: String, default: '' },
-        concept: { type: String, default: '' },
-        verifyType: { type: String, enum: ['code', 'checkConsole', 'checkComments'], default: 'code' },
+        instruction: { type: String, default: "" },
+        concept: { type: String, default: "" },
+        verifyType: {
+          type: String,
+          enum: ["code", "checkConsole", "checkComments"],
+          default: "code",
+        },
         expectedConsole: { type: mongoose.Schema.Types.Mixed, default: null }, // e.g. { type: 'any' } or { contains: ['It was love at first sight.'] }
       },
     ],
@@ -86,7 +91,7 @@ const moduleSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-module.exports = mongoose.model('Module', moduleSchema);
+module.exports = mongoose.model("Module", moduleSchema);

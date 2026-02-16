@@ -7,11 +7,12 @@ This backend includes a simple server-side proxy to call a Gemini/Vertex AI mode
 - `MONGODB_URI` - your MongoDB connection string
 - `PORT` - server port (defaults to 5000)
 - `JWT_SECRET` - secret used to sign auth tokens
-- `ADMIN_EMAILS` - comma-separated list of admin emails (e.g. `admin@example.com,other@example.com`). These users can add/edit/delete modules and manage users via `/api/admin`.
 - `GEMINI_API_KEY` - API key for the Generative Language / Vertex AI API (or use service account credentials via `GOOGLE_APPLICATION_CREDENTIALS`)
 - `GEMINI_MODEL` - optional model id (defaults to `gemini-1.5`)
 
 See `.env.example` for a sample.
+
+**Admin:** Admin access is stored in the database (`User.role`: `"user"` or `"admin"`). To promote the first admin, run from `backend/`: `node scripts/setAdminByEmail.js <email>`. Existing admins can change roles via `PUT /api/admin/users/:id` with `{ "role": "admin" }` or `{ "role": "user" }`.
 
 ## Install
 

@@ -589,7 +589,7 @@ const CodeEditor = () => {
     try {
       const sessionStats = { totalEdits: codeChanges, streak, totalRuns: 0, sessionTime: 0, saveCount: 0 };
       const resp = await userAPI.completeModule(moduleId, sessionStats);
-      if (refreshProfile) await refreshProfile();
+      if (resp.data.user) refreshProfile?.(resp.data.user);
       const totalPointsEarned = points + completionBonus;
       const newlyEarned = resp.data?.newlyEarned || [];
       let message = `Lesson complete! You earned ${points} points + ${completionBonus} bonus = ${totalPointsEarned} total.`;
@@ -1344,7 +1344,7 @@ const CodeEditor = () => {
 
         {/* Companion – overlay on top, does not cramp layout */}
         {showTutorSidebar && (
-          <aside className="fixed top-14 right-0 bottom-0 w-80 max-w-[90vw] z-50 flex flex-col border-l border-white/20 bg-slate-900/95 backdrop-blur-sm shadow-2xl">
+          <aside className="fixed top-14 right-0 bottom-0 w-80 max-w-[90vw] z-50 flex flex-col border-l border-white/20 bg-slate-900/95 backdrop-blur-sm">
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 shrink-0">
               <h2 className="text-sm font-semibold text-white">Companion</h2>
               <button onClick={() => setShowTutorSidebar(false)} className="p-2 rounded text-slate-400 hover:text-white hover:bg-white/10">
