@@ -55,6 +55,11 @@ const moduleSchema = new mongoose.Schema(
         type: String,
         default: '',
       },
+      // Support for multiplayer server code (Node.js / Socket.IO)
+      serverJs: {
+        type: String,
+        default: '',
+      },
     },
     // Module type: 'vanilla' or 'react'
     moduleType: {
