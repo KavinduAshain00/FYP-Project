@@ -2,7 +2,7 @@
  * AI (Ollama) configuration constants
  */
 const OLLAMA_HOST = 'https://ollama.com';
-const OLLAMA_MODEL = 'deepseek-v3.2';
+const OLLAMA_MODEL = 'gemini-3-flash-preview';
 /** Model used for MCQ generation and verification (explains why answers are wrong) */
 const OLLAMA_MCQ_MODEL = 'gpt-oss:20b';
 /** Model used for game starter code generation (React game scaffolding) */

@@ -82,9 +82,9 @@ console.log('Player level:', level);
 ## Your Task
 Print a short status report that includes your player name, a starting level, and whether tutorials are completed.`,
     starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Console Warmup</title>\n</head>\n<body>\n  <h1>Open the DevTools console</h1>\n  <p>Use Option+Command+I (Mac) or F12 to open it.</p>\n</body>\n</html>',
+      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Console Warmup</title>\n</head>\n<body>\n  <h1>Check the console below</h1>\n </body>\n</html>',
       css: 'body { font-family: Arial, sans-serif; padding: 24px; background: #f4f6fb; }\nh1 { color: #1f2d3d; }',
-      javascript: 'console.log("Ready! Add your code below.");\n// Step 1: Open the console (F12 or Option+Command+I)\n// Step 2: Add variables for player name, level, and tutorials completed\n// Step 3: Use console.log to print a short status report\n',
+      javascript: 'console.log("Ready! Add your code below.");\n// Step 1: Check the console\n// Step 2: Add variables for player name, level, and tutorials completed\n// Step 3: Use console.log to print a short status report\n',
     },
     objectives: [
       'Open the browser console',
@@ -92,7 +92,7 @@ Print a short status report that includes your player name, a starting level, an
       'Describe what the output means',
     ],
     steps: [
-      { title: 'Open the browser console.', instruction: 'Open the in-app Console panel below the editor (or use Option+Command+I on Mac / F12 on Windows). Confirm you can see the Console tab.', concept: 'The console is where JavaScript output and errors appear.', verifyType: 'checkConsole', expectedConsole: null },
+      { title: 'Open the browser console.', instruction: 'Open the in-app Console panel below the editor. Confirm you can see the Console tab.', concept: 'The console is where JavaScript output and errors appear.', verifyType: 'checkConsole', expectedConsole: null },
       { title: 'Add a variable for player name.', instruction: 'In the JavaScript panel, declare a variable for the player name (e.g. const playerName = "YourName";) and use console.log to print it.', concept: 'Variables store values; console.log displays them in the console.', verifyType: 'code', expectedConsole: null },
       { title: 'Add a starting level and tutorials-completed flag.', instruction: 'Add a variable for starting level (number) and one for whether tutorials are completed (boolean true or false). Log both.', concept: 'Numbers and booleans are core data types in JavaScript.', verifyType: 'code', expectedConsole: null },
       { title: 'Print a short status report.', instruction: 'Use console.log to print a single status line that includes player name, level, and tutorials completed (e.g. "Player X | Level 1 | Tutorials: true").', concept: 'Combining values in a log helps you inspect game state at a glance.', verifyType: 'code', expectedConsole: null },
@@ -451,7 +451,7 @@ Create a small array of player stats and print them with console.table. Set a br
     description: 'Learn to draw shapes on HTML Canvas as the foundation of game graphics.',
     difficulty: 'beginner',
     category: 'game-development',
-    order: 1,
+    order: 10,
     content: `# HTML Canvas - Drawing Basics
 
 ## Introduction
@@ -494,7 +494,7 @@ Draw a simple game character using basic shapes (rectangles and circles).`,
     description: 'Create smooth animations using requestAnimationFrame - the heart of every game.',
     difficulty: 'intermediate',
     category: 'game-development',
-    order: 2,
+    order: 11,
     content: `# Game Loop and Animation
 
 ## The Game Loop
@@ -545,7 +545,7 @@ Create a moving character that animates across the screen.`,
     description: 'Make your game interactive by handling keyboard input for player controls.',
     difficulty: 'intermediate',
     category: 'game-development',
-    order: 3,
+    order: 12,
     content: `# Keyboard Controls
 
 ## Handling Input
@@ -599,7 +599,7 @@ Create a character that moves in all directions with arrow keys.`,
     description: 'Detect when game objects collide - essential for interactive gameplay.',
     difficulty: 'intermediate',
     category: 'game-development',
-    order: 4,
+    order: 13,
     content: `# Collision Detection
 
 ## Detecting Collisions
@@ -644,7 +644,7 @@ Create a game where the player collects items that appear on screen.`,
     description: 'Bring characters to life with sprite sheet animation.',
     difficulty: 'advanced',
     category: 'game-development',
-    order: 5,
+    order: 14,
     content: `# Sprite Animation
 
 ## Animating Characters
@@ -691,7 +691,7 @@ Create a walking animation that cycles through different poses.`,
     description: 'Add audio to your game for an immersive experience.',
     difficulty: 'intermediate',
     category: 'game-development',
-    order: 6,
+    order: 15,
     content: `# Game Audio
 
 ## Adding Sound
@@ -736,7 +736,7 @@ Create a simple game with sound effects using oscillators.`,
     description: 'Save game data and create a high score system.',
     difficulty: 'intermediate',
     category: 'game-development',
-    order: 7,
+    order: 16,
     content: `# Saving Game Data
 
 ## Local Storage
@@ -781,7 +781,7 @@ Build a high score system that persists data.`,
     description: 'Create stunning visual effects with particle systems.',
     difficulty: 'advanced',
     category: 'game-development',
-    order: 8,
+    order: 17,
     content: `# Particle Systems
 
 ## Visual Effects
@@ -830,7 +830,7 @@ Create an explosion effect when clicking on the canvas.`,
     description: 'Create intelligent enemies that chase the player.',
     difficulty: 'advanced',
     category: 'game-development',
-    order: 9,
+    order: 18,
     content: `# Enemy AI
 
 ## Creating Smart Enemies
@@ -878,7 +878,7 @@ Create enemies that chase the player when nearby.`,
     description: 'Make your game playable on mobile devices with touch input.',
     difficulty: 'intermediate',
     category: 'game-development',
-    order: 10,
+    order: 19,
     content: `# Touch Controls
 
 ## Mobile-Friendly Games
@@ -925,7 +925,7 @@ Create a game with virtual joystick controls for mobile.`,
       'Learn the fundamentals of real-time communication with Socket.IO for multiplayer games.',
     difficulty: 'intermediate',
     category: 'multiplayer',
-    order: 1,
+    order: 20,
     content: `# Introduction to Socket.IO
 
 ## Why Socket.IO for Multiplayer?
@@ -1005,7 +1005,7 @@ Set up a basic Socket.IO connection that logs when players connect and disconnec
     description: 'Learn how to synchronize game state between multiple players.',
     difficulty: 'intermediate',
     category: 'multiplayer',
-    order: 2,
+    order: 21,
     content: `# Game State Synchronization
 
 ## The Challenge
@@ -1063,7 +1063,7 @@ Create a game that syncs player positions between clients using state updates.`,
     description: 'Implement turn-based gameplay mechanics for multiplayer games.',
     difficulty: 'intermediate',
     category: 'multiplayer',
-    order: 3,
+    order: 22,
     content: `# Turn-Based Multiplayer
 
 ## Turn Management
@@ -1126,7 +1126,7 @@ Build a simple turn-based game where players alternate making moves.`,
     description: 'Create game rooms and lobbies for players to join matches.',
     difficulty: 'intermediate',
     category: 'multiplayer',
-    order: 4,
+    order: 23,
     content: `# Room and Lobby System
 
 ## Why Rooms?
@@ -1186,7 +1186,7 @@ Build a lobby system with room creation and ready-up functionality.`,
     description: 'Implement win conditions and game end logic for multiplayer games.',
     difficulty: 'intermediate',
     category: 'multiplayer',
-    order: 5,
+    order: 24,
     content: `# Win Detection and Game End
 
 ## Handling Game Completion

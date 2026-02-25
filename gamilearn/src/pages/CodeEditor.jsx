@@ -53,6 +53,8 @@ const CodeEditor = () => {
   const [loading, setLoading] = useState(true);
   const [showInstructions, setShowInstructions] = useState(true);
   const [previewKey, setPreviewKey] = useState(0);
+  const [editorKey, setEditorKey] = useState(0); // Force editor remount when needed
+  const [isLoadingDraft, setIsLoadingDraft] = useState(false);
 
   // Step-by-step: use module.steps (4-5 small steps) when present, else objectives
   const steps = useMemo(() => {
@@ -177,6 +179,7 @@ const CodeEditor = () => {
         setExplainCodeResult(null);
         const stepCount = moduleData.steps?.length || moduleData.objectives?.length || 1;
         let usedSession = false;
+        setIsLoadingDraft(true);
         try {
           const saved = sessionStorage.getItem(STORAGE_KEY);
           if (saved) {
@@ -187,33 +190,46 @@ const CodeEditor = () => {
               usedSession = true;
             }
           }
-          if (!usedSession) {
-            const draft = await loadEditorDraft(moduleId);
-            if (draft?.stepsVerified?.length === stepCount && typeof draft.currentStepIndex === "number") {
-              setStepsVerified(draft.stepsVerified);
-              setCurrentStepIndex(Math.min(draft.currentStepIndex, stepCount - 1));
-            } else {
-              setStepsVerified([]);
-              setCurrentStepIndex(0);
+          
+          // Load draft code with delay to prevent cursor conflicts
+          setTimeout(async () => {
+            try {
+              if (!usedSession) {
+                const draft = await loadEditorDraft(moduleId);
+                if (draft?.stepsVerified?.length === stepCount && typeof draft.currentStepIndex === "number") {
+                  setStepsVerified(draft.stepsVerified);
+                  setCurrentStepIndex(Math.min(draft.currentStepIndex, stepCount - 1));
+                } else {
+                  setStepsVerified([]);
+                  setCurrentStepIndex(0);
+                }
+                if (draft?.code && typeof draft.code === "object") {
+                  if (draft.code.html != null) setHtmlCode(draft.code.html);
+                  if (draft.code.css != null) setCssCode(draft.code.css);
+                  if (draft.code.javascript != null) setJsCode(draft.code.javascript);
+                  if (draft.code.jsx != null) setJsxCode(draft.code.jsx);
+                  setEditorKey(prev => prev + 1); // Force remount after loading
+                }
+              } else {
+                const draft = await loadEditorDraft(moduleId);
+                if (draft?.code && typeof draft.code === "object") {
+                  if (draft.code.html != null) setHtmlCode(draft.code.html);
+                  if (draft.code.css != null) setCssCode(draft.code.css);
+                  if (draft.code.javascript != null) setJsCode(draft.code.javascript);
+                  if (draft.code.jsx != null) setJsxCode(draft.code.jsx);
+                  setEditorKey(prev => prev + 1); // Force remount after loading
+                }
+              }
+            } catch (draftError) {
+              console.warn('Could not load draft:', draftError);
+            } finally {
+              setIsLoadingDraft(false);
             }
-            if (draft?.code && typeof draft.code === "object") {
-              if (draft.code.html != null) setHtmlCode(draft.code.html);
-              if (draft.code.css != null) setCssCode(draft.code.css);
-              if (draft.code.javascript != null) setJsCode(draft.code.javascript);
-              if (draft.code.jsx != null) setJsxCode(draft.code.jsx);
-            }
-          } else {
-            const draft = await loadEditorDraft(moduleId);
-            if (draft?.code && typeof draft.code === "object") {
-              if (draft.code.html != null) setHtmlCode(draft.code.html);
-              if (draft.code.css != null) setCssCode(draft.code.css);
-              if (draft.code.javascript != null) setJsCode(draft.code.javascript);
-              if (draft.code.jsx != null) setJsxCode(draft.code.jsx);
-            }
-          }
+          }, 200);
         } catch {
           setStepsVerified([]);
           setCurrentStepIndex(0);
+          setIsLoadingDraft(false);
         }
         setLoading(false);
       } catch (error) {
@@ -233,18 +249,22 @@ const CodeEditor = () => {
     );
   }, [STORAGE_KEY, module, steps.length, stepsVerified, currentStepIndex, moduleId]);
 
-  // IndexedDB draft auto-save (every 5s) for code and steps before system save
+  // IndexedDB draft auto-save (every 10s) for code and steps before system save
+  // Increased interval to reduce interference with typing
   useEffect(() => {
-    if (!moduleId || !module) return;
+    if (!moduleId || !module || isLoadingDraft) return;
     const interval = setInterval(() => {
-      saveEditorDraft(moduleId, {
-        stepsVerified,
-        currentStepIndex,
-        code: { html: htmlCode, css: cssCode, javascript: jsCode, jsx: jsxCode },
-      });
-    }, 5000);
+      // Only save if user isn't actively typing and not loading draft
+      if (!window.codeChangeTimeout && !window.previewTimeout && !isLoadingDraft) {
+        saveEditorDraft(moduleId, {
+          stepsVerified,
+          currentStepIndex,
+          code: { html: htmlCode, css: cssCode, javascript: jsCode, jsx: jsxCode },
+        });
+      }
+    }, 10000);
     return () => clearInterval(interval);
-  }, [moduleId, module, stepsVerified, currentStepIndex, htmlCode, cssCode, jsCode, jsxCode]);
+  }, [moduleId, module, stepsVerified, currentStepIndex, htmlCode, cssCode, jsCode, jsxCode, isLoadingDraft]);
 
   const allStepsVerified = useMemo(() => {
     if (!steps.length) return false;
@@ -602,9 +622,19 @@ const CodeEditor = () => {
   };
 
   const handleCodeChange = (value, setter) => {
+    // Don't update if still loading draft to prevent conflicts
+    if (isLoadingDraft) return;
+    
     setter(value);
-    setCodeChanges((prev) => prev + 1);
-    setPoints((prev) => prev + 2);
+    
+    // Debounce state updates to avoid too many re-renders during typing
+    if (window.codeChangeTimeout) clearTimeout(window.codeChangeTimeout);
+    window.codeChangeTimeout = setTimeout(() => {
+      setCodeChanges((prev) => prev + 1);
+      setPoints((prev) => prev + 2);
+    }, 100);
+    
+    // Debounce preview updates
     if (window.previewTimeout) clearTimeout(window.previewTimeout);
     window.previewTimeout = setTimeout(() => setPreviewKey((k) => k + 1), 1500);
   };
@@ -636,6 +666,7 @@ const CodeEditor = () => {
     setMcqQuestions([]);
     setMcqResult(null);
     setPreviewKey((k) => k + 1);
+    setEditorKey((k) => k + 1); // Force editor remount
     setShowResetConfirm(false);
     sessionStorage.removeItem(STORAGE_KEY);
     toast.info("Code reset to starter template.");
@@ -682,11 +713,11 @@ const CodeEditor = () => {
     window.open(url, "_blank", "noopener");
   };
 
-  if (loading) {
+  if (loading || isLoadingDraft) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center gap-4">
         <div className="h-12 w-12 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
-        <p className="text-sm text-slate-400">Loading module...</p>
+        <p className="text-sm text-slate-400">{loading ? 'Loading module...' : 'Loading saved progress...'}</p>
       </div>
     );
   }
@@ -1037,13 +1068,13 @@ const CodeEditor = () => {
                 <div className="flex-1 overflow-hidden">
                   {activeTab === "html" && (
                     <CodeMirror
+                      key={`html-${editorKey}`}
                       value={htmlCode}
                       height="100%"
                       theme={vscodeDark}
                       extensions={[html()]}
                       onCreateEditor={(view) => { editorViewRef.current = view; }}
-                      onChange={(v, vu) => {
-                        if (vu?.view) editorViewRef.current = vu.view;
+                      onChange={(v) => {
                         handleCodeChange(v, setHtmlCode);
                       }}
                       options={{ lineNumbers: true, lineWrapping: true }}
@@ -1051,13 +1082,13 @@ const CodeEditor = () => {
                   )}
                   {activeTab === "css" && (
                     <CodeMirror
+                      key={`css-${editorKey}`}
                       value={cssCode}
                       height="100%"
                       theme={vscodeDark}
                       extensions={[css()]}
                       onCreateEditor={(view) => { editorViewRef.current = view; }}
-                      onChange={(v, vu) => {
-                        if (vu?.view) editorViewRef.current = vu.view;
+                      onChange={(v) => {
                         handleCodeChange(v, setCssCode);
                       }}
                       options={{ lineNumbers: true, lineWrapping: true }}
@@ -1065,13 +1096,13 @@ const CodeEditor = () => {
                   )}
                   {activeTab === "js" && (
                     <CodeMirror
+                      key={`js-${editorKey}`}
                       value={jsCode}
                       height="100%"
                       theme={vscodeDark}
                       extensions={[javascript()]}
                       onCreateEditor={(view) => { editorViewRef.current = view; }}
-                      onChange={(v, vu) => {
-                        if (vu?.view) editorViewRef.current = vu.view;
+                      onChange={(v) => {
                         handleCodeChange(v, setJsCode);
                       }}
                       options={{ lineNumbers: true, lineWrapping: true }}
@@ -1079,13 +1110,13 @@ const CodeEditor = () => {
                   )}
                   {activeTab === "jsx" && (
                     <CodeMirror
+                      key={`jsx-${editorKey}`}
                       value={jsxCode}
                       height="100%"
                       theme={vscodeDark}
                       extensions={[javascript({ jsx: true })]}
                       onCreateEditor={(view) => { editorViewRef.current = view; }}
-                      onChange={(v, vu) => {
-                        if (vu?.view) editorViewRef.current = vu.view;
+                      onChange={(v) => {
                         handleCodeChange(v, setJsxCode);
                       }}
                       options={{ lineNumbers: true, lineWrapping: true }}
