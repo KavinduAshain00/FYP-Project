@@ -2,1264 +2,596 @@ const mongoose = require('mongoose');
 const Module = require('./models/Module');
 require('dotenv').config();
 
-// Sample game development learning modules (rewritten and expanded)
+// 24 learning modules across 4 categories.
+// steps, hints, and starterCode are NOT seeded — the AI generates them on first load.
 const sampleModules = [
   {
-    title: 'JavaScript Basics - Comments',
-    description: 'Practice adding single-line and multi-line comments. Small steps with concept checks.',
-    difficulty: 'beginner',
-    category: 'javascript-basics',
-    order: 0,
-    content: `# Code Comments
-
-## Why comments?
-Comments help you and others understand code. They are ignored when the code runs.
-
-## Single-line comments
-Use two forward slashes: \`// Everything after is a comment\`
-
-## Multi-line comments
-Use \`/* ... */\` to comment out a block. Good for temporarily disabling code or long notes.
-
-\`\`\`javascript
-console.log(/*IGNORED!*/ 5); // Still just prints 5
-\`\`\`
-
-## Your Task
-Follow the steps on the left: add a single-line comment, then use a multi-line comment so only one line is logged.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Comments</title>\n</head>\n<body>\n  <h1>Open the console</h1>\n</body>\n</html>',
-      css: 'body { font-family: Arial, sans-serif; padding: 24px; background: #f4f6fb; }\nh1 { color: #1f2d3d; }',
-      javascript: `console.log('It was love at first sight.');
-// (add your single-line comment on line 1 above)
-
-console.log('The first time Yossarian saw the chaplain he fell madly in love with him.');
-console.log('Yossarian was in the hospital with a pain in his liver that fell just short of being jaundice.');
-console.log('The doctors were puzzled by the fact that it wasn't quite jaundice.');
-console.log('If it became jaundice they could treat it.');
-console.log('If it didn't become jaundice and went away they could discharge him.');
-console.log('But this just being short of jaundice all the time confused them.');
-`,
-    },
-    objectives: [
-      'Add a single-line comment on line 1',
-      'Run and check the console',
-      'Use a multi-line comment after the first console.log',
-      'Run again and verify only one line is logged',
-      'Add a short comment above the commented block',
+    "title": "JS Basics 1 – Code Comments",
+    "description": "Learn to annotate your code with single-line and multi-line comments so it stays readable and maintainable.",
+    "difficulty": "beginner",
+    "category": "javascript-basics",
+    "moduleType": "vanilla",
+    "order": 1,
+    "estimatedMinutes": 10,
+    "tags": [
+      "comments",
+      "syntax",
+      "readability"
     ],
-    steps: [
-      { title: "Add a single-line comment on line 1 that says 'Opening line.'", instruction: "On line 1, write a single-line comment that says Opening line. (Use // before the text.)", concept: 'Single-line comments use // and are ignored by JavaScript.', verifyType: 'checkComments', expectedConsole: null },
-      { title: 'Run the code and check the console.', instruction: 'Click Run and open the in-app Console panel below. Confirm that all the passage lines are still logged (multiple lines).', concept: 'Comments do not change how the code runs; they are ignored.', verifyType: 'checkConsole', expectedConsole: { type: 'multipleLines' } },
-      { title: "Use a multi-line comment to comment out the rest after the first console.log.", instruction: "After the first console.log line, add /* and before the last line add */ so everything in between is commented out. Only 'It was love at first sight.' should run.", concept: 'Multi-line comments use /* and */ and can wrap multiple lines.', verifyType: 'code', expectedConsole: null },
-      { title: "Run again and verify only 'It was love at first sight.' is logged.", instruction: 'Click Run again. In the Console panel below you should see only one line: It was love at first sight.', concept: 'Commenting out code prevents it from executing.', verifyType: 'checkConsole', expectedConsole: { exactLine: "It was love at first sight." } },
-      { title: "Add a short comment above the commented block (e.g. 'Rest of passage commented out').", instruction: "Above the multi-line comment block, add a single-line comment that briefly describes what you did, e.g. // Rest of passage commented out.", concept: 'Good comments explain intent and help others (and you) understand the code later.', verifyType: 'checkComments', expectedConsole: null },
-    ],
-    hints: [
-      'Single-line comments start with //',
-      'Multi-line comments start with /* and end with */',
-      'Only "It was love at first sight." should appear in the console when done.',
-    ],
+    "content": "# Code Comments\n\n## What are comments?\nComments are notes inside your code that JavaScript completely ignores at runtime.\nThey exist purely for humans — to explain *why* something is done, not just *what* it does.\n\n## Single-line comments\nStart the line (or trail after code) with `//`:\n\n    // This whole line is a comment\n    let score = 0; // score starts at zero\n\n## Multi-line comments\nWrap a block with `/* ... */`:\n\n    /*\n      This block is ignored.\n      Useful for disabling several lines at once\n      or writing longer explanations.\n    */\n    console.log('only this runs');\n\n## When to comment\n- **Do** comment the *why* behind non-obvious logic.\n- **Don't** comment every line — clean variable names often say enough.\n- Use multi-line comments to temporarily disable code while debugging.\n\n## Your Task\nOpen the JavaScript panel. Add a single-line comment describing what the starter code does,\nthen disable a group of console.log calls using a multi-line comment, and confirm only the\nun-commented line prints.",
+    "objectives": [
+      "Write a single-line comment using //",
+      "Write a multi-line comment using /* ... */",
+      "Use a comment to temporarily disable multiple lines of code",
+      "Explain in a comment why a piece of code exists"
+    ]
   },
   {
-    title: 'JavaScript Basics - Setup and Console',
-    description: 'Set up a page, run JavaScript, and use the console for quick feedback.',
-    difficulty: 'beginner',
-    category: 'javascript-basics',
-    order: 1,
-    content: `# JavaScript Setup and Console
-
-## Why start here?
-The console is the fastest way to see what your code is doing. You will log values, run small tests, and spot mistakes.
-
-## Example
-\`\`\`javascript
-console.log('Hello, GamiLearn');
-const level = 1;
-console.log('Player level:', level);
-\`\`\`
-
-## Your Task
-Print a short status report that includes your player name, a starting level, and whether tutorials are completed.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Console Warmup</title>\n</head>\n<body>\n  <h1>Open the DevTools console</h1>\n  <p>Use Option+Command+I (Mac) or F12 to open it.</p>\n</body>\n</html>',
-      css: 'body { font-family: Arial, sans-serif; padding: 24px; background: #f4f6fb; }\nh1 { color: #1f2d3d; }',
-      javascript: 'console.log("Ready! Add your code below.");\n// Step 1: Open the console (F12 or Option+Command+I)\n// Step 2: Add variables for player name, level, and tutorials completed\n// Step 3: Use console.log to print a short status report\n',
-    },
-    objectives: [
-      'Open the browser console',
-      'Log strings, numbers, and booleans',
-      'Describe what the output means',
+    "title": "JS Basics 2 – Variables & Data Types",
+    "description": "Declare variables with let and const and learn the five core data types: string, number, boolean, null, and undefined.",
+    "difficulty": "beginner",
+    "category": "javascript-basics",
+    "moduleType": "vanilla",
+    "order": 2,
+    "estimatedMinutes": 15,
+    "tags": [
+      "variables",
+      "let",
+      "const",
+      "data-types",
+      "typeof"
     ],
-    steps: [
-      { title: 'Open the browser console.', instruction: 'Open the in-app Console panel below the editor (or use Option+Command+I on Mac / F12 on Windows). Confirm you can see the Console tab.', concept: 'The console is where JavaScript output and errors appear.', verifyType: 'checkConsole', expectedConsole: null },
-      { title: 'Add a variable for player name.', instruction: 'In the JavaScript panel, declare a variable for the player name (e.g. const playerName = "YourName";) and use console.log to print it.', concept: 'Variables store values; console.log displays them in the console.', verifyType: 'code', expectedConsole: null },
-      { title: 'Add a starting level and tutorials-completed flag.', instruction: 'Add a variable for starting level (number) and one for whether tutorials are completed (boolean true or false). Log both.', concept: 'Numbers and booleans are core data types in JavaScript.', verifyType: 'code', expectedConsole: null },
-      { title: 'Print a short status report.', instruction: 'Use console.log to print a single status line that includes player name, level, and tutorials completed (e.g. "Player X | Level 1 | Tutorials: true").', concept: 'Combining values in a log helps you inspect game state at a glance.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Use console.log for quick feedback',
-      'Strings use quotes, booleans are true/false',
-      'Keep logs short and clear',
-    ],
+    "content": "# Variables & Data Types\n\n## Declaring variables\nUse `const` for values that never change, `let` for values that do. Avoid `var`.\n\n    const MAX_HEALTH = 100;   // never reassign\n    let playerName = 'Nova';  // will change later\n    let score = 0;\n    let isAlive = true;\n    let lastEnemy = null;     // intentionally empty\n    let powerUp;              // undefined until assigned\n\n## The five primitive types\n\n| Type      | Example              | typeof result |\n|-----------|----------------------|---------------|\n| String    | 'hello'              | \"string\"      |\n| Number    | 42, 3.14             | \"number\"      |\n| Boolean   | true / false         | \"boolean\"     |\n| Null      | null                 | \"object\" (quirk!) |\n| Undefined | undefined            | \"undefined\"   |\n\n## Inspecting types\n`typeof` returns what kind of value a variable holds:\n\n    console.log(typeof score);       // \"number\"\n    console.log(typeof playerName);  // \"string\"\n    console.log(typeof isAlive);     // \"boolean\"\n\n## Your Task\nDeclare variables for a player profile: name, score, health, isAlive, current power-up\n(none yet), and rank (not set yet). Log each value and its type with typeof.",
+    "objectives": [
+      "Declare variables using const and let",
+      "Store a string, number, boolean, null, and undefined value",
+      "Use typeof to inspect each variable",
+      "Understand when to use const versus let"
+    ]
   },
   {
-    title: 'JavaScript Basics - Variables and Types',
-    description: 'Declare variables with let and const, and track core data types.',
-    difficulty: 'beginner',
-    category: 'javascript-basics',
-    order: 2,
-    content: `# Variables and Types
-
-## Core idea
-Variables store state for your game. Use \`const\` when a value should not change, and \`let\` when it should.
-
-## Example
-\`\`\`javascript
-const maxHealth = 100;
-let currentHealth = 90;
-let playerName = 'Sky';
-\`\`\`
-
-## Your Task
-Track a player name, score, and a flag for tutorial completion. Log the types using \`typeof\`.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Variables</title>\n</head>\n<body>\n  <h1>Variables and Types</h1>\n  <p>Check the console for output.</p>\n</body>\n</html>',
-      css: 'body { font-family: Arial, sans-serif; padding: 24px; background: #eef2f7; color: #1b2a41; }',
-      javascript: 'console.log("Ready! Declare variables and log with typeof.");\n// Declare: player name (string), score (number), tutorial complete (boolean)\n// Use const for values that do not change, let for ones that do\n// Log each variable and its type using typeof\n',
-    },
-    objectives: [
-      'Use let and const',
-      'Store strings, numbers, and booleans',
-      'Use typeof to inspect data',
+    "title": "JS Basics 3 – Strings & Template Literals",
+    "description": "Build and format text with string methods and template literals — essential for displaying game feedback and UI messages.",
+    "difficulty": "beginner",
+    "category": "javascript-basics",
+    "moduleType": "vanilla",
+    "order": 3,
+    "estimatedMinutes": 15,
+    "tags": [
+      "strings",
+      "template-literals",
+      "string-methods"
     ],
-    steps: [
-      { title: 'Declare a player name with const.', instruction: 'Declare a constant variable for the player name (string). Use const because the name does not change during the exercise.', concept: 'const is for values that should not be reassigned.', verifyType: 'code', expectedConsole: null },
-      { title: 'Declare score and tutorial-complete with let.', instruction: 'Declare a score (number) and a boolean for tutorial completion using let. Give them initial values.', concept: 'let allows reassignment; use it for values that may change.', verifyType: 'code', expectedConsole: null },
-      { title: 'Log each variable and its type.', instruction: 'Use console.log to print each variable (player name, score, tutorial complete). Then use typeof in console.log to print the type of each (e.g. console.log(typeof score)).', concept: 'typeof returns a string describing the data type.', verifyType: 'code', expectedConsole: null },
-      { title: 'Verify output in the console.', instruction: 'Click Run and check the console. You should see the three values and their types: string, number, and boolean.', concept: 'Inspecting types helps you catch bugs and understand data.', verifyType: 'checkConsole', expectedConsole: null },
-    ],
-    hints: [
-      'Choose const when the value should stay fixed',
-      'Numbers can be integers or decimals',
-      'typeof returns a string like "string" or "number"',
-    ],
+    "content": "# Strings & Template Literals\n\n## String basics\nStrings hold text. Single quotes, double quotes, and backticks all work.\nBackticks enable **template literals** — the modern way to embed values in text.\n\n    const name = 'Nova';\n    const level = 5;\n\n    // Old concatenation\n    console.log('Player ' + name + ' is level ' + level);\n\n    // Modern template literal (backticks, ${} for expressions)\n    console.log(`Player ${name} is level ${level}`);\n\n## Expressions inside ${}\nAny JavaScript expression works inside ${}:\n\n    const hp = 75, maxHp = 100;\n    console.log(`HP: ${hp}/${maxHp} (${Math.round(hp/maxHp*100)}%)`);\n    // HP: 75/100 (75%)\n\n## Useful string methods\n\n    const tag = '  hero  ';\n    tag.trim()           // 'hero'\n    'Nova'.toUpperCase() // 'NOVA'\n    'Nova'.length        // 4\n    'sword'.includes('or')  // true\n    'a,b,c'.split(',')   // ['a','b','c']\n    'ab'.repeat(3)       // 'ababab'\n\n## Strings are immutable\nMethods always return a new string — they never change the original.\n\n## Your Task\nBuild a formatted player status string like:\n\"NOVA | Level 5 | HP 75/100 (75%)\"\nusing template literals and at least two string methods.",
+    "objectives": [
+      "Use template literals to embed variables in strings",
+      "Embed a JavaScript expression (not just a variable) inside ${}",
+      "Apply at least two string methods (e.g. toUpperCase, trim, includes)",
+      "Log the formatted result to the console"
+    ]
   },
   {
-    title: 'JavaScript Basics - Strings and Templates',
-    description: 'Combine text with template literals and practice string methods.',
-    difficulty: 'beginner',
-    category: 'javascript-basics',
-    order: 3,
-    content: `# Strings and Template Literals
-
-## Template literals
-Backticks let you embed values: \`\${value}\`.
-
-## Example
-\`\`\`javascript
-const name = 'Nova';
-const level = 2;
-console.log(\`Player \${name} is level \${level}\`);
-\`\`\`
-
-## Your Task
-Build a status line like: "Nova | Level 2 | Health 90/100" using a template literal and a couple of string methods.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Strings</title>\n</head>\n<body>\n  <h1>String Workshop</h1>\n  <p>Open the console for output.</p>\n</body>\n</html>',
-      css: 'body { font-family: Arial, sans-serif; padding: 24px; background: #f7f9fb; color: #1b2a41; }',
-      javascript: 'console.log("Ready! Build a status string with template literals.");\n// Create variables: name, level, health, maxHealth\n// Build a status string using a template literal (backticks)\n// Use a string method (e.g. toUpperCase) and log the result\n',
-    },
-    objectives: [
-      'Create template literals',
-      'Use string methods like toUpperCase()',
-      'Embed variables in strings',
+    "title": "JS Basics 4 – Functions & Arrow Functions",
+    "description": "Group reusable logic into named functions, understand parameters and return values, and compare function declarations with arrow functions.",
+    "difficulty": "beginner",
+    "category": "javascript-basics",
+    "moduleType": "vanilla",
+    "order": 4,
+    "estimatedMinutes": 20,
+    "tags": [
+      "functions",
+      "arrow-functions",
+      "return",
+      "parameters",
+      "default-params"
     ],
-    steps: [
-      { title: 'Create variables for name, level, health, and maxHealth.', instruction: 'Declare variables for player name (string), level (number), health (number), and maxHealth (number). Give them sample values.', concept: 'Variables hold the data you will embed in strings.', verifyType: 'code', expectedConsole: null },
-      { title: 'Build a status line with a template literal.', instruction: 'Use backticks to create a template literal that builds a status string like "Name | Level X | Health Y/Z". Use ${variableName} to embed each value.', concept: 'Template literals (backticks) let you embed expressions with ${}.', verifyType: 'code', expectedConsole: null },
-      { title: 'Log the status string.', instruction: 'Use console.log to print the status string you built. Run and confirm it appears in the console.', concept: 'Logging helps you verify the formatted output.', verifyType: 'code', expectedConsole: null },
-      { title: 'Use a string method and log the result.', instruction: 'Call a string method (e.g. toUpperCase() or trim()) on your status string and log the result. Compare with the original.', concept: 'String methods return new strings; they do not change the original.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Template literals use backticks, not quotes',
-      'Call methods with parentheses, for example text.trim()',
-      'Include separators like | for readability',
-    ],
+    "content": "# Functions & Arrow Functions\n\n## Why functions?\nFunctions let you name a block of logic and call it anytime without rewriting it.\nIn a game, almost every action — move, attack, spawn — is a function.\n\n## Function declaration\n\n    function addScore(current, points) {\n      return current + points;\n    }\n    console.log(addScore(50, 10)); // 60\n\n## Arrow function\nThe shorter modern syntax — ideal for small, focused operations:\n\n    const takeDamage = (health, damage) => Math.max(0, health - damage);\n    console.log(takeDamage(80, 30)); // 50\n    console.log(takeDamage(20, 30)); // 0\n\n## Parameters vs arguments\n- **Parameters** — names in the definition (health, damage).\n- **Arguments** — actual values passed when calling (80, 30).\n\n## Default parameters\n\n    function greet(name = 'Player') {\n      return `Welcome, ${name}!`;\n    }\n    console.log(greet());        // Welcome, Player!\n    console.log(greet('Nova'));  // Welcome, Nova!\n\n## Returning an object\n\n    const resetPlayer = () => ({\n      name: 'Player', health: 100, score: 0, level: 1\n    });\n\n## Your Task\nWrite four functions: addScore, takeDamage (health never below 0), healPlayer\n(health never above 100), and resetPlayer (returns a fresh player object).\nCall each and log the results.",
+    "objectives": [
+      "Write a function using function declaration syntax",
+      "Write a function using arrow function syntax",
+      "Use Math.max / Math.min to clamp a value",
+      "Return an object from a function",
+      "Use a default parameter value"
+    ]
   },
   {
-    title: 'JavaScript Basics - Functions and Scope',
-    description: 'Write reusable functions and understand local versus global scope.',
-    difficulty: 'beginner',
-    category: 'javascript-basics',
-    order: 4,
-    content: `# Functions and Scope
-
-## Why functions?
-Functions group steps into a named action. Scope controls what variables they can see.
-
-## Example
-\`\`\`javascript
-function heal(amount, current, max) {
-  const next = Math.min(current + amount, max);
-  return next;
-}
-\`\`\`
-
-## Your Task
-Create three functions: addScore, takeDamage, and resetPlayer. Each should return updated values without relying on globals.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Functions</title>\n</head>\n<body>\n  <h1>Functions and Scope</h1>\n  <p>Inspect console output.</p>\n</body>\n</html>',
-      css: 'body { font-family: Arial, sans-serif; padding: 24px; background: #e8f4ff; color: #0f172a; }',
-      javascript: 'console.log("Ready! Define addScore, takeDamage, resetPlayer and log results.");\n// Define addScore(score, amount) that returns the new score\n// Define takeDamage(health, amount) that returns new health (use Math.max(0, ...))\n// Define resetPlayer() that returns an object { score: 0, health: 100, level: 1 }\n// Call them and log the results\n',
-    },
-    objectives: [
-      'Declare and call functions',
-      'Return values instead of mutating globals',
-      'Use Math.min/Math.max for bounds',
+    "title": "JS Basics 5 – Control Flow",
+    "description": "Branch your program with if/else, ternary expressions, and switch statements to make decisions based on game state.",
+    "difficulty": "beginner",
+    "category": "javascript-basics",
+    "moduleType": "vanilla",
+    "order": 5,
+    "estimatedMinutes": 15,
+    "tags": [
+      "if-else",
+      "switch",
+      "ternary",
+      "conditionals",
+      "logical-operators"
     ],
-    steps: [
-      { title: 'Define addScore(score, amount).', instruction: 'Write a function addScore that takes score and amount as parameters and returns the new score (score + amount). Do not use global variables.', concept: 'Functions receive data via parameters and return results.', verifyType: 'code', expectedConsole: null },
-      { title: 'Define takeDamage(health, amount).', instruction: 'Write a function takeDamage that takes health and amount and returns the new health. Use Math.max(0, health - amount) so health never goes below zero.', concept: 'Math.max helps clamp values to a minimum.', verifyType: 'code', expectedConsole: null },
-      { title: 'Define resetPlayer().', instruction: 'Write a function resetPlayer that takes no parameters and returns an object { score: 0, health: 100, level: 1 }.', concept: 'Functions can return objects to reset or represent state.', verifyType: 'code', expectedConsole: null },
-      { title: 'Call the functions and log the results.', instruction: 'Call addScore, takeDamage, and resetPlayer with sample values and use console.log to print each return value. Verify the outputs in the console.', concept: 'Calling functions and logging results confirms they work correctly.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Pass needed data as parameters',
-      'Return new values instead of modifying outer variables',
-      'Keep functions focused on one job',
-    ],
+    "content": "# Control Flow\n\n## if / else if / else\n\n    function getStatus(health) {\n      if (health > 70)       return 'Healthy';\n      else if (health > 30)  return 'Wounded';\n      else                   return 'Critical';\n    }\n\n## Ternary expression\nA compact one-liner for simple yes/no decisions:\n\n    const label = health > 50 ? 'alive' : 'dead';\n\n## switch statement\nIdeal when checking one variable against many fixed values:\n\n    switch (difficulty) {\n      case 'easy':   enemySpeed = 2; break;\n      case 'medium': enemySpeed = 4; break;\n      case 'hard':   enemySpeed = 7; break;\n      default:       enemySpeed = 4;\n    }\n\n## Logical operators\n\n    if (isAlive && score > 100) { /* AND: both true */ }\n    if (isInvincible || health > 0) { /* OR: one true */ }\n    if (!isGameOver) { /* NOT */ }\n\n## Short-circuit evaluation\n\n    const name = playerName || 'Anonymous';  // fallback default\n    const level = player && player.level;    // safe property access\n\n## Your Task\nWrite a chooseAction(health, distance, stamina) function that returns:\n'flee' when health < 20, 'attack' when distance < 50 and stamina > 30,\nor 'defend' otherwise. Test at least four different scenarios.",
+    "objectives": [
+      "Write an if/else if/else chain with at least three branches",
+      "Use a ternary expression for a simple binary decision",
+      "Use a switch statement to handle multiple fixed cases",
+      "Combine conditions with && and || operators"
+    ]
   },
   {
-    title: 'JavaScript Basics - Control Flow',
-    description: 'Use conditionals to branch game logic.',
-    difficulty: 'beginner',
-    category: 'javascript-basics',
-    order: 5,
-    content: `# Control Flow
-
-## Decisions
-if/else blocks choose what happens next based on conditions.
-
-## Example
-\`\`\`javascript
-const stamina = 40;
-if (stamina > 50) {
-  console.log('Sprint allowed');
-} else {
-  console.log('Catch your breath');
-}
-\`\`\`
-
-## Your Task
-Implement a chooseAction function that returns "attack", "defend", or "flee" based on player health and enemy distance.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Control Flow</title>\n</head>\n<body>\n  <h1>Control Flow</h1>\n  <p>Review console output.</p>\n</body>\n</html>',
-      css: 'body { font-family: Arial, sans-serif; padding: 24px; background: #f3f4f6; color: #111827; }',
-      javascript: 'console.log("Ready! Implement chooseAction(health, distance).");\n// Implement chooseAction(health, distance)\n// Return "flee" if health < 20, "attack" if distance > 20, otherwise "defend"\n// Log results for a few different inputs\n',
-    },
-    objectives: [
-      'Use if/else to branch logic',
-      'Return different outcomes based on conditions',
-      'Keep conditions readable',
+    "title": "JS Basics 6 – Loops & Iteration",
+    "description": "Repeat actions with for, while, and array-iteration methods — the tools every game uses to process enemies, bullets, and inventory.",
+    "difficulty": "beginner",
+    "category": "javascript-basics",
+    "moduleType": "vanilla",
+    "order": 6,
+    "estimatedMinutes": 20,
+    "tags": [
+      "for-loop",
+      "while",
+      "forEach",
+      "map",
+      "filter"
     ],
-    steps: [
-      { title: 'Implement chooseAction(health, distance).', instruction: 'Create a function chooseAction(health, distance) that returns "flee" if health < 20, "attack" if distance > 20, otherwise "defend". Use if/else.', concept: 'Conditionals let you branch logic based on values.', verifyType: 'code', expectedConsole: null },
-      { title: 'Return "flee" when health is low.', instruction: 'At the start of chooseAction, check if health < 20 and return "flee" if true. This is the highest-priority case.', concept: 'Checking the most critical condition first keeps logic clear.', verifyType: 'code', expectedConsole: null },
-      { title: 'Return "attack" or "defend" based on distance.', instruction: 'If health is not low, check distance > 20 and return "attack"; otherwise return "defend".', concept: 'Order of conditions determines which branch runs.', verifyType: 'code', expectedConsole: null },
-      { title: 'Log results for different inputs.', instruction: 'Call chooseAction with several different (health, distance) pairs (e.g. low health, high distance, low distance) and log each result. Verify in the console.', concept: 'Testing with different inputs confirms all branches work.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Order conditions from most specific to most general',
-      'Return early when a decision is made',
-      'Use descriptive variable names',
-    ],
+    "content": "# Loops & Iteration\n\n## The classic for loop\nBest when you need the index or a known number of repetitions:\n\n    const enemies = ['Slime', 'Orc', 'Dragon'];\n    for (let i = 0; i < enemies.length; i++) {\n      console.log(`Enemy ${i}: ${enemies[i]}`);\n    }\n\n## for...of loop\nCleaner when you only need the value:\n\n    for (const enemy of enemies) {\n      console.log(enemy);\n    }\n\n## while loop\nRuns as long as a condition is true:\n\n    let countdown = 3;\n    while (countdown > 0) {\n      console.log(countdown);\n      countdown--;\n    }\n    console.log('Go!');\n\n## Array iteration methods\n\n    const scores = [45, 90, 30, 80, 55];\n\n    // forEach — run code for each item\n    scores.forEach((s, i) => console.log(`Round ${i+1}: ${s}`));\n\n    // map — transform into a new array\n    const doubled = scores.map(s => s * 2);\n\n    // filter — keep only items passing a test\n    const passing = scores.filter(s => s >= 60);\n\n    // find — first match or undefined\n    const firstHigh = scores.find(s => s >= 80);\n\n## Your Task\nGiven an array of player objects { name, score, alive }, use a loop to print\neach player's name and score, filter out eliminated players, find the top scorer,\nand double everyone's score with map.",
+    "objectives": [
+      "Use a for loop with an index variable",
+      "Use a for...of loop to iterate values",
+      "Use a while loop with a decrementing counter",
+      "Use forEach, map, and filter on an array"
+    ]
   },
   {
-    title: 'JavaScript Basics - Arrays and Loops',
-    description: 'Manage collections of items with arrays, and iterate with loops.',
-    difficulty: 'beginner',
-    category: 'javascript-basics',
-    order: 6,
-    content: `# Arrays and Loops
-
-## Why arrays?
-Games track inventory, enemies, projectiles, and more. Arrays hold ordered lists.
-
-## Example
-\`\`\`javascript
-const inventory = ['sword', 'shield'];
-for (let i = 0; i < inventory.length; i++) {
-  console.log(inventory[i]);
-}
-\`\`\`
-
-## Your Task
-Create an inventory array, add items with push, remove one with pop, and print each item with its index.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Arrays</title>\n</head>\n<body>\n  <h1>Inventory</h1>\n  <div id="inventory"></div>\n  <button onclick="addItem()">Add Item</button>\n  <button onclick="useItem()">Use Last Item</button>\n</body>\n</html>',
-      css: '#inventory { padding: 12px; margin: 16px 0; background: #e5e7eb; border-radius: 8px; font-family: Arial, sans-serif; }\nbutton { margin-right: 8px; padding: 10px 16px; }',
-      javascript: 'console.log("Ready! Add inventory with push/pop and render.");\nconst inventory = [];\n// Add addItem() using push; add useItem() using pop\n// Add render() that loops over inventory and updates #inventory\n// Call render() after each change\n',
-    },
-    objectives: [
-      'Create and update arrays',
-      'Iterate with for loops',
-      'Render array contents to the page',
+    "title": "JS Basics 7 – Arrays & Array Methods",
+    "description": "Master arrays as dynamic lists — add, remove, search, sort, and transform items using the full set of array methods.",
+    "difficulty": "beginner",
+    "category": "javascript-basics",
+    "moduleType": "vanilla",
+    "order": 7,
+    "estimatedMinutes": 20,
+    "tags": [
+      "arrays",
+      "push",
+      "pop",
+      "splice",
+      "sort",
+      "reduce",
+      "spread"
     ],
-    steps: [
-      { title: 'Create an inventory array and add items with push.', instruction: 'Declare const inventory = []. Implement addItem() so it pushes a new item (e.g. a string like "potion") into inventory and calls render().', concept: 'Arrays hold ordered lists; push adds to the end.', verifyType: 'code', expectedConsole: null },
-      { title: 'Remove an item with pop in useItem().', instruction: 'Implement useItem() so it pops the last item from inventory (if any) and calls render().', concept: 'pop removes and returns the last element.', verifyType: 'code', expectedConsole: null },
-      { title: 'Implement render() with a for loop.', instruction: 'Write render() that loops over inventory (for let i = 0; i < inventory.length; i++) and builds a string or HTML showing each item with its index. Update the #inventory element.', concept: 'for loops let you iterate over array indices.', verifyType: 'code', expectedConsole: null },
-      { title: 'Call render on load and after each change.', instruction: 'Call render() when the page loads and at the end of addItem() and useItem(). Click the buttons and confirm the list updates.', concept: 'Re-rendering after each change keeps the UI in sync with data.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Use push to add and pop to remove the last item',
-      'Loop until i < array.length',
-      'Re-render after each change',
-    ],
+    "content": "# Arrays & Array Methods\n\n## Creating arrays\n\n    const inventory = ['sword', 'shield', 'potion'];\n    const scores = [];            // start empty\n    const grid = [[0,0],[0,0]];   // 2D array\n\n## Adding and removing\n\n    inventory.push('bow');         // add to end\n    const last = inventory.pop();  // remove from end → 'bow'\n    inventory.unshift('key');      // add to start\n    inventory.shift();             // remove from start\n\n    // splice(index, deleteCount, ...items)\n    inventory.splice(1, 0, 'map'); // insert at index 1\n    inventory.splice(2, 1);        // delete 1 item at index 2\n\n## Searching\n\n    inventory.includes('potion');             // true/false\n    inventory.indexOf('sword');               // first index or -1\n    inventory.findIndex(i => i === 'sword');  // predicate version\n\n## Transforming\n\n    const nums = [3, 1, 4, 1, 5, 9];\n    nums.sort((a, b) => a - b);  // ascending: [1,1,3,4,5,9]\n\n    // reduce — collapse to a single value\n    const total = nums.reduce((sum, n) => sum + n, 0); // 23\n\n## Copying arrays (important!)\nArrays are reference types — assigning does NOT copy:\n\n    const a = [1, 2, 3];\n    const b = a;      // same array\n    const c = [...a]; // independent copy (spread)\n\n## Your Task\nBuild an inventory system: start with some items, add new ones, remove one with splice,\nsort alphabetically, find a specific item's index, and count items with reduce.\nRender the list into a div on the page.",
+    "objectives": [
+      "Add and remove items with push, pop, and splice",
+      "Search the array with includes and findIndex",
+      "Sort the array with a comparator function",
+      "Use reduce to calculate a total",
+      "Copy an array correctly with spread syntax"
+    ]
   },
   {
-    title: 'JavaScript Basics - Objects and Methods',
-    description: 'Bundle related data and behavior inside objects.',
-    difficulty: 'beginner',
-    category: 'javascript-basics',
-    order: 7,
-    content: `# Objects and Methods
-
-## Why objects?
-They model entities like players or enemies with properties and actions.
-
-## Example
-\`\`\`javascript
-const player = {
-  name: 'Ranger',
-  level: 3,
-  attack() {
-    return 'Ranger attacks';
+    "title": "JS Basics 8 – Objects & Classes",
+    "description": "Model game entities with object literals, access and mutate properties, and use classes to create reusable blueprints with methods.",
+    "difficulty": "intermediate",
+    "category": "javascript-basics",
+    "moduleType": "vanilla",
+    "order": 8,
+    "estimatedMinutes": 25,
+    "tags": [
+      "objects",
+      "classes",
+      "constructor",
+      "methods",
+      "destructuring",
+      "spread"
+    ],
+    "content": "# Objects & Classes\n\n## Object literals\nKey-value pairs wrapped in {}. Values can be any type, including functions (methods):\n\n    const player = {\n      name: 'Nova',\n      health: 100,\n      score: 0,\n      greet() {\n        return `I am ${this.name}`;\n      },\n    };\n    console.log(player.greet()); // I am Nova\n    player.score += 50;\n\n## Destructuring\nPull values out without repetitive obj.prop:\n\n    const { name, health } = player;              // object destructuring\n    const [first, second] = ['sword', 'shield'];  // array destructuring\n\n## Spread & merge\n\n    const updated = { ...player, score: 200 }; // copy and override\n\n## Classes — reusable blueprints\n\n    class Enemy {\n      constructor(type, hp, speed) {\n        this.type  = type;\n        this.hp    = hp;\n        this.speed = speed;\n        this.alive = true;\n      }\n\n      takeDamage(amount) {\n        this.hp = Math.max(0, this.hp - amount);\n        if (this.hp === 0) this.alive = false;\n        return this; // enable chaining\n      }\n\n      describe() {\n        return `${this.type}: ${this.hp}hp (${this.alive ? 'alive' : 'dead'})`;\n      }\n    }\n\n    const orc = new Enemy('Orc', 80, 3);\n    orc.takeDamage(50).takeDamage(40);\n    console.log(orc.describe()); // Orc: 0hp (dead)\n\n## Your Task\nCreate an Enemy class with type, hp, and speed. Add takeDamage(n), heal(n), and\ndescribe() methods. Spawn three different enemies, damage them with a loop, and\nlog a final status report.",
+    "objectives": [
+      "Create an object literal with properties and a method",
+      "Define a class with a constructor and multiple methods",
+      "Instantiate a class with new and call its methods",
+      "Use destructuring to extract object properties",
+      "Use spread syntax to copy and update an object"
+    ]
+  },
+  {
+    "title": "Game Dev 1 – Canvas Setup & Drawing",
+    "description": "Get a 2D rendering context from an HTML canvas and draw filled and stroked rectangles and circles to lay the groundwork for game graphics.",
+    "difficulty": "beginner",
+    "category": "game-development",
+    "moduleType": "vanilla",
+    "order": 1,
+    "estimatedMinutes": 20,
+    "tags": [
+      "canvas",
+      "2d-context",
+      "fillRect",
+      "arc",
+      "colors"
+    ],
+    "content": "# Canvas Setup & Drawing\n\n## Why canvas?\nThe `<canvas>` element is a blank pixel surface you control entirely with JavaScript —\nperfect for games where every frame needs to be drawn from scratch.\n\n## Getting the context\n\n    const canvas = document.getElementById('gameCanvas');\n    const ctx = canvas.getContext('2d'); // always '2d' for 2D games\n\n## Rectangles\n\n    ctx.fillStyle = '#4ade80';\n    ctx.fillRect(x, y, width, height);  // filled rectangle\n\n    ctx.strokeStyle = '#ffffff';\n    ctx.lineWidth = 2;\n    ctx.strokeRect(x, y, width, height); // outlined rectangle\n\n    ctx.clearRect(0, 0, canvas.width, canvas.height); // erase area\n\n## Circles\n\n    ctx.beginPath();\n    ctx.arc(cx, cy, radius, 0, Math.PI * 2); // full circle\n    ctx.fillStyle = '#f472b6';\n    ctx.fill();\n\n## Colors\nAccepts any CSS color: 'red', '#ff0000', 'rgb(255,0,0)', 'rgba(255,0,0,0.5)'.\n\n## Coordinate system\nOrigin (0, 0) is the **top-left** corner.\nX increases to the right. Y increases **downward**.\n\n## Your Task\nDraw a simple scene on the canvas: a colored background, a player\n(rectangle body + circle head), and a ground line.\nUse at least three different fill colors.",
+    "objectives": [
+      "Get a 2D context from a canvas element",
+      "Draw a filled rectangle with fillRect",
+      "Draw a filled circle using arc and fill",
+      "Use strokeRect to draw an outline",
+      "Use clearRect to erase part of the canvas"
+    ]
+  },
+  {
+    "title": "Game Dev 2 – Paths, Text & Transforms",
+    "description": "Draw custom polygon shapes with paths, write text on the canvas, and apply translate/rotate transforms using save and restore.",
+    "difficulty": "beginner",
+    "category": "game-development",
+    "moduleType": "vanilla",
+    "order": 2,
+    "estimatedMinutes": 20,
+    "tags": [
+      "canvas",
+      "paths",
+      "text",
+      "translate",
+      "rotate",
+      "save-restore"
+    ],
+    "content": "# Paths, Text & Transforms\n\n## Custom paths\n\n    ctx.beginPath();\n    ctx.moveTo(100, 50);   // lift pen to start\n    ctx.lineTo(200, 150);  // draw line\n    ctx.lineTo(50,  150);  // another line\n    ctx.closePath();       // connect back to start (triangle)\n    ctx.fillStyle = '#facc15';\n    ctx.fill();\n\n## Text\n\n    ctx.font = 'bold 24px Arial';\n    ctx.fillStyle = '#ffffff';\n    ctx.textAlign = 'center'; // 'left' | 'center' | 'right'\n    ctx.fillText('Score: 100', canvas.width / 2, 40);\n\n## Transforms\nAlways wrap transforms in save/restore to avoid affecting other drawing:\n\n    ctx.save();\n    ctx.translate(canvas.width / 2, canvas.height / 2); // move origin\n    ctx.rotate(angle);           // rotate in radians\n    ctx.fillRect(-25, -25, 50, 50); // centered on new origin\n    ctx.restore();               // pop back to previous state\n\n## Radians\n2π radians = 360°.  Convert: degrees × Math.PI / 180.\n\n## globalAlpha\n\n    ctx.globalAlpha = 0.5;  // 50% transparent for next draws\n    ctx.fillRect(0, 0, 100, 100);\n    ctx.globalAlpha = 1.0;  // always reset after use\n\n## Your Task\nDraw a rotated star or triangle at the canvas center using paths.\nAdd a score label with fillText. Use save/restore correctly.",
+    "objectives": [
+      "Draw a custom polygon using moveTo and lineTo",
+      "Close a path and fill it with a color",
+      "Display text on the canvas with fillText",
+      "Use save and restore to isolate a transform",
+      "Rotate a shape around a point using translate and rotate"
+    ]
+  },
+  {
+    "title": "Game Dev 3 – The Game Loop",
+    "description": "Build the heartbeat of every game: a requestAnimationFrame loop that separates update logic from drawing and runs at 60 fps with delta time.",
+    "difficulty": "intermediate",
+    "category": "game-development",
+    "moduleType": "vanilla",
+    "order": 3,
+    "estimatedMinutes": 25,
+    "tags": [
+      "game-loop",
+      "requestAnimationFrame",
+      "delta-time",
+      "animation",
+      "update-draw"
+    ],
+    "content": "# The Game Loop\n\n## What is a game loop?\nA game loop runs continuously — every frame it updates the game state (positions,\nphysics, logic) and then redraws the screen.\n\n## requestAnimationFrame\nThe browser calls your function right before painting the next frame — ~60 times/sec:\n\n    function gameLoop() {\n      update();\n      draw();\n      requestAnimationFrame(gameLoop);\n    }\n    requestAnimationFrame(gameLoop); // kick off\n\n## Delta time — frame-rate independent movement\nA frame can take 16ms or 32ms depending on the device. Multiply speeds by delta time\nso movement is consistent regardless of frame rate:\n\n    let lastTime = 0;\n\n    function gameLoop(timestamp) {\n      const delta = timestamp - lastTime; // ms since last frame\n      lastTime = timestamp;\n      update(delta);\n      draw();\n      requestAnimationFrame(gameLoop);\n    }\n\n    function update(delta) {\n      const dt = delta / 1000; // convert to seconds\n      player.x += player.speedX * dt; // pixels/sec × sec = pixels\n    }\n\n## The clear-draw pattern\nAlways clear the canvas before drawing — otherwise frames accumulate:\n\n    function draw() {\n      ctx.clearRect(0, 0, canvas.width, canvas.height);\n      // draw background, entities, then UI\n    }\n\n## Your Task\nCreate a bouncing ball that moves diagonally and reverses direction when it\nhits any canvas edge. The game loop must call update(delta) and draw() every frame.",
+    "objectives": [
+      "Create a game loop using requestAnimationFrame",
+      "Separate update and draw into two functions",
+      "Calculate delta time between frames",
+      "Multiply velocity by delta time for frame-rate independent movement",
+      "Clear the canvas each frame before drawing",
+      "Reverse direction when an object hits the canvas boundary"
+    ]
+  },
+  {
+    "title": "Game Dev 4 – Player & Keyboard Controls",
+    "description": "Track keyboard state in real time and move a player smoothly across the canvas using arrow keys and WASD with boundary clamping.",
+    "difficulty": "intermediate",
+    "category": "game-development",
+    "moduleType": "vanilla",
+    "order": 4,
+    "estimatedMinutes": 25,
+    "tags": [
+      "keyboard",
+      "input",
+      "player-movement",
+      "keydown",
+      "keyup",
+      "clamp"
+    ],
+    "content": "# Player & Keyboard Controls\n\n## The key-state map pattern\nStore pressed keys in an object. Check the map every frame inside update() —\nthis allows smooth diagonal movement with no jitter:\n\n    const keys = {};\n\n    window.addEventListener('keydown', (e) => {\n      keys[e.code] = true;\n      e.preventDefault(); // prevent page scrolling on arrow keys\n    });\n\n    window.addEventListener('keyup', (e) => {\n      keys[e.code] = false;\n    });\n\n## Using key state in update()\n\n    const SPEED = 200; // pixels per second\n\n    function update(delta) {\n      const dt = delta / 1000;\n\n      if (keys['ArrowLeft']  || keys['KeyA']) player.x -= SPEED * dt;\n      if (keys['ArrowRight'] || keys['KeyD']) player.x += SPEED * dt;\n      if (keys['ArrowUp']    || keys['KeyW']) player.y -= SPEED * dt;\n      if (keys['ArrowDown']  || keys['KeyS']) player.y += SPEED * dt;\n\n      // Clamp — keep player fully inside canvas\n      player.x = Math.max(0, Math.min(canvas.width  - player.w, player.x));\n      player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));\n    }\n\n## e.code vs e.key\n- e.code — physical key position: 'KeyA', 'ArrowLeft', 'Space' (layout-independent)\n- e.key  — character produced: 'a', 'ArrowLeft', ' '\n\nPrefer e.code for game controls.\n\n## Your Task\nAdd a player rectangle that moves smoothly via WASD or arrow keys at a fixed\npixels-per-second speed. It must stay fully inside the canvas.\nDisplay the live x/y position with fillText.",
+    "objectives": [
+      "Set up keydown and keyup listeners that track key state in an object",
+      "Use e.code to identify keys independently of keyboard layout",
+      "Move a player using delta-time scaled velocity",
+      "Support WASD and arrow keys simultaneously",
+      "Clamp the player position to stay inside the canvas"
+    ]
+  },
+  {
+    "title": "Game Dev 5 – Collision Detection",
+    "description": "Implement AABB rectangle-vs-rectangle and circle-vs-circle collision detection to make objects interact and respond in your game.",
+    "difficulty": "intermediate",
+    "category": "game-development",
+    "moduleType": "vanilla",
+    "order": 5,
+    "estimatedMinutes": 25,
+    "tags": [
+      "collision",
+      "AABB",
+      "circle",
+      "rectangle",
+      "physics",
+      "overlap"
+    ],
+    "content": "# Collision Detection\n\n## AABB — Axis-Aligned Bounding Box\nTwo rectangles overlap when neither is completely outside the other on any axis:\n\n    function rectOverlap(a, b) {\n      // a, b have properties: x, y, w, h\n      return a.x < b.x + b.w &&\n             a.x + a.w > b.x &&\n             a.y < b.y + b.h &&\n             a.y + a.h > b.y;\n    }\n\n## Circle vs. circle\nTwo circles overlap when the distance between centres is less than the sum of radii:\n\n    function circlesOverlap(a, b) {\n      // a, b have: x, y, radius (centre point)\n      const dx = b.x - a.x;\n      const dy = b.y - a.y;\n      const dist = Math.sqrt(dx * dx + dy * dy);\n      return dist < a.radius + b.radius;\n    }\n\n## Faster: skip the sqrt\nCompare squared distances to avoid the expensive square root:\n\n    const distSq   = dx*dx + dy*dy;\n    const minDist  = a.radius + b.radius;\n    return distSq < minDist * minDist;\n\n## Detecting every frame\n\n    function update(delta) {\n      // move player and coin ...\n      if (rectOverlap(player, coin)) {\n        score++;\n        coin.x = Math.random() * (canvas.width  - coin.w);\n        coin.y = Math.random() * (canvas.height - coin.h);\n      }\n    }\n\n## Your Task\nBuild a collector game: a player (arrow-key rectangle) chases randomly placed coin\ncircles. On overlap, increment score and move the coin to a new random position.\nDisplay score with fillText.",
+    "objectives": [
+      "Implement AABB rectangle collision detection",
+      "Implement circle-vs-circle collision using distance",
+      "Optimise circle collision with squared distance comparison",
+      "Detect collision each frame inside update()",
+      "Respond to a collision by updating score and repositioning the item"
+    ]
+  },
+  {
+    "title": "Game Dev 6 – Game States & Screens",
+    "description": "Use a state machine to manage MENU, PLAYING, PAUSED, and GAME_OVER screens — the structural foundation of every polished game.",
+    "difficulty": "intermediate",
+    "category": "game-development",
+    "moduleType": "vanilla",
+    "order": 6,
+    "estimatedMinutes": 30,
+    "tags": [
+      "game-states",
+      "state-machine",
+      "menu",
+      "pause",
+      "game-over"
+    ],
+    "content": "# Game States & Screens\n\n## Why a state machine?\nWithout states, the game loop becomes a tangle of nested ifs.\nA single string representing the current state keeps logic clean and maintainable.\n\n## Four core states\n\n| State     | Player sees                        |\n|-----------|------------------------------------|\n| 'menu'    | Title screen, \"Press Enter to start\" |\n| 'playing' | Active gameplay                    |\n| 'paused'  | Frozen game, \"Press P to resume\"   |\n| 'gameover'| End screen, score, \"Press R to restart\" |\n\n## State machine skeleton\n\n    let state = 'menu';\n\n    function update(delta) {\n      if (state === 'playing') {\n        movePlayer(delta);\n        moveEnemies(delta);\n        checkCollisions();\n      }\n    }\n\n    function draw() {\n      ctx.clearRect(0, 0, canvas.width, canvas.height);\n      if      (state === 'menu')     drawMenu();\n      else if (state === 'playing')  drawGame();\n      else if (state === 'paused')   { drawGame(); drawPauseOverlay(); }\n      else if (state === 'gameover') drawGameOver();\n    }\n\n## Transitions via keyboard\n\n    window.addEventListener('keydown', (e) => {\n      if (e.code === 'Enter' && state === 'menu')     { resetGame(); state = 'playing'; }\n      if (e.code === 'KeyP'  && state === 'playing')  state = 'paused';\n      if (e.code === 'KeyP'  && state === 'paused')   state = 'playing';\n      if (e.code === 'KeyR'  && state === 'gameover') state = 'menu';\n    });\n\n## Semi-transparent overlay\n\n    function drawPauseOverlay() {\n      ctx.fillStyle = 'rgba(0,0,0,0.5)';\n      ctx.fillRect(0, 0, canvas.width, canvas.height);\n      ctx.fillStyle = '#fff';\n      ctx.font = 'bold 36px Arial';\n      ctx.textAlign = 'center';\n      ctx.fillText('PAUSED', canvas.width/2, canvas.height/2);\n    }\n\n## Your Task\nBuild a game shell with all four states: menu loads first, Enter starts a moving dot,\nP toggles pause, and the game-over screen appears after a 10-second timer.\nEach screen must show an instructional prompt.",
+    "objectives": [
+      "Represent game state with a single string variable",
+      "Run update logic only in the playing state",
+      "Draw a different screen per state",
+      "Transition between states via keyboard input",
+      "Draw a semi-transparent overlay for the pause screen"
+    ]
+  },
+  {
+    "title": "Game Dev 7 – Score, Lives & HUD",
+    "description": "Draw an always-visible heads-up display showing score, lives, a countdown timer, and a colour-changing health bar directly on the canvas.",
+    "difficulty": "intermediate",
+    "category": "game-development",
+    "moduleType": "vanilla",
+    "order": 7,
+    "estimatedMinutes": 25,
+    "tags": [
+      "HUD",
+      "score",
+      "lives",
+      "health-bar",
+      "timer",
+      "canvas-text"
+    ],
+    "content": "# Score, Lives & HUD\n\n## What is a HUD?\nA Heads-Up Display shows gameplay info on top of everything else — drawn last every frame.\n\n## Drawing text helper\n\n    function drawText(text, x, y, { size=18, color='#fff', align='left' } = {}) {\n      ctx.font = `${size}px Arial`;\n      ctx.fillStyle = color;\n      ctx.textAlign = align;\n      ctx.fillText(text, x, y);\n    }\n\n## Score, lives and timer\n\n    function drawHUD() {\n      drawText(`Score: ${score}`, 16, 30, { size: 20 });\n\n      // Lives as heart icons\n      for (let i = 0; i < lives; i++) {\n        drawText('♥', canvas.width - 24 - i * 28, 30, { color: '#f87171' });\n      }\n\n      // Timer — turns red below 5 seconds\n      const secs = Math.ceil(timeLeft);\n      drawText(`${secs}s`, canvas.width / 2, 30, {\n        align: 'center',\n        color: secs < 5 ? '#ef4444' : '#fff',\n      });\n    }\n\n## Health bar — two stacked rectangles\n\n    function drawHealthBar(x, y, maxW, h, current, max) {\n      const pct   = Math.max(0, current / max);\n      const color = pct > 0.5 ? '#4ade80' : pct > 0.25 ? '#facc15' : '#ef4444';\n\n      ctx.fillStyle = '#1e293b';           // dark background\n      ctx.fillRect(x, y, maxW, h);\n\n      ctx.fillStyle = color;               // filled portion\n      ctx.fillRect(x, y, maxW * pct, h);\n\n      ctx.strokeStyle = '#ffffff44';\n      ctx.strokeRect(x, y, maxW, h);       // subtle border\n    }\n\n## Countdown timer in update()\n\n    function update(delta) {\n      timeLeft -= delta / 1000;\n      if (timeLeft <= 0) { timeLeft = 0; state = 'gameover'; }\n    }\n\n## Your Task\nAdd a full HUD showing: score (top-left), heart icons for each life (top-right),\na countdown timer (top-centre, turns red below 5s), and a health bar (bottom-left)\nthat shifts from green to yellow to red.",
+    "objectives": [
+      "Draw score text on the canvas every frame",
+      "Render life icons using a loop",
+      "Show a countdown timer that changes colour when low",
+      "Draw a two-layer health bar that changes colour based on percentage",
+      "Draw the HUD on top of all other elements"
+    ]
+  },
+  {
+    "title": "Game Dev 8 – Enemy Spawning & Wave AI",
+    "description": "Spawn enemies in escalating waves, give them a simple chase AI, and manage the lifecycle of dynamic game objects in an array.",
+    "difficulty": "intermediate",
+    "category": "game-development",
+    "moduleType": "vanilla",
+    "order": 8,
+    "estimatedMinutes": 30,
+    "tags": [
+      "enemies",
+      "spawning",
+      "waves",
+      "chase-AI",
+      "object-lifecycle"
+    ],
+    "content": "# Enemy Spawning & Wave AI\n\n## Managing a dynamic list\n\n    let enemies = [];\n\n    function update(delta) {\n      enemies.forEach(e => e.update(delta));\n      enemies = enemies.filter(e => e.alive); // remove dead\n    }\n\n    function draw() {\n      enemies.forEach(e => e.draw(ctx));\n    }\n\n## Enemy class with chase AI\n\n    class Enemy {\n      constructor(x, y, speed, hp) {\n        this.x = x; this.y = y;\n        this.w = 30; this.h = 30;\n        this.speed = speed;\n        this.hp = hp;\n        this.alive = true;\n      }\n\n      update(delta) {\n        // Normalised direction toward the player\n        const dx   = player.x - this.x;\n        const dy   = player.y - this.y;\n        const dist = Math.sqrt(dx*dx + dy*dy) || 1;\n        const dt   = delta / 1000;\n        this.x += (dx / dist) * this.speed * dt;\n        this.y += (dy / dist) * this.speed * dt;\n      }\n\n      hit(damage) {\n        this.hp -= damage;\n        if (this.hp <= 0) this.alive = false;\n      }\n\n      draw(ctx) {\n        ctx.fillStyle = '#ef4444';\n        ctx.fillRect(this.x, this.y, this.w, this.h);\n      }\n    }\n\n## Wave spawning\n\n    let waveTimer = 0, wave = 1;\n    const WAVE_INTERVAL = 8; // seconds\n\n    function spawnWave(waveNum) {\n      const count = 2 + waveNum * 2;\n      const speed = 60 + waveNum * 15;\n      for (let i = 0; i < count; i++) {\n        // Spawn off-screen on a random edge\n        const side = Math.floor(Math.random() * 4);\n        let x = 0, y = 0;\n        if (side === 0) { x = Math.random() * canvas.width; y = -30; }\n        if (side === 1) { x = canvas.width + 30; y = Math.random() * canvas.height; }\n        if (side === 2) { x = Math.random() * canvas.width; y = canvas.height + 30; }\n        if (side === 3) { x = -30; y = Math.random() * canvas.height; }\n        enemies.push(new Enemy(x, y, speed, waveNum * 20));\n      }\n    }\n\n## Your Task\nBuild a wave survival game: spawn increasingly difficult waves every 8 seconds,\nenemies chase the player, clicking an enemy damages it.\nShow current wave number and enemy count in the HUD.",
+    "objectives": [
+      "Store enemies in an array and update/draw them in a loop each frame",
+      "Remove dead enemies using filter after each update",
+      "Implement chase AI using normalised direction vectors",
+      "Spawn waves off-screen with increasing count and speed",
+      "Display wave number and enemy count in the HUD"
+    ]
+  },
+  {
+    "title": "Game Dev 9 – Particle Systems",
+    "description": "Build a lightweight particle system for explosions, trails, and visual feedback using canvas drawing primitives and globalAlpha.",
+    "difficulty": "advanced",
+    "category": "game-development",
+    "moduleType": "vanilla",
+    "order": 9,
+    "estimatedMinutes": 30,
+    "tags": [
+      "particles",
+      "explosion",
+      "effects",
+      "globalAlpha",
+      "lifecycle"
+    ],
+    "content": "# Particle Systems\n\n## What is a particle?\nA tiny, short-lived visual element — a spark, smoke puff, or dust grain.\nHundreds together create explosions, fire, and magic effects.\n\n## Particle class\n\n    class Particle {\n      constructor(x, y, color) {\n        this.x     = x;\n        this.y     = y;\n        this.vx    = (Math.random() - 0.5) * 300; // px/s\n        this.vy    = (Math.random() - 0.5) * 300;\n        this.life  = 1.0;   // 0→1, starts full\n        this.decay = 0.8 + Math.random() * 0.8; // life per second\n        this.size  = 4 + Math.random() * 4;\n        this.color = color || '#facc15';\n      }\n\n      update(delta) {\n        const dt = delta / 1000;\n        this.x  += this.vx * dt;\n        this.y  += this.vy * dt;\n        this.vy += 200 * dt;   // gravity\n        this.life -= this.decay * dt;\n      }\n\n      draw(ctx) {\n        if (this.life <= 0) return;\n        ctx.save();\n        ctx.globalAlpha = Math.max(0, this.life);\n        ctx.fillStyle   = this.color;\n        ctx.beginPath();\n        ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);\n        ctx.fill();\n        ctx.restore();\n      }\n\n      isDead() { return this.life <= 0; }\n    }\n\n## Emitting particles\n\n    let particles = [];\n\n    function explode(x, y, count = 30, color = '#facc15') {\n      for (let i = 0; i < count; i++) {\n        particles.push(new Particle(x, y, color));\n      }\n    }\n\n    function update(delta) {\n      particles.forEach(p => p.update(delta));\n      particles = particles.filter(p => !p.isDead());\n    }\n\n## Performance tip\nKeep particle count below ~500 at a time to maintain 60fps.\n\n## Your Task\nMake clicking anywhere on the canvas trigger a colour explosion at that point.\nAdd a right-click continuous emitter (trail effect).\nShow live particle count in the HUD.",
+    "objectives": [
+      "Create a Particle class with position, velocity, life, and decay",
+      "Apply gravity by incrementing vertical velocity each frame",
+      "Use globalAlpha to fade particles as their life decreases",
+      "Remove dead particles with filter each frame",
+      "Trigger a burst of particles on a canvas click event"
+    ]
+  },
+  {
+    "title": "Game Dev 10 – Web Audio & Sound Effects",
+    "description": "Generate jump, collect, hurt, and win sounds programmatically using the Web Audio API — no audio files needed.",
+    "difficulty": "intermediate",
+    "category": "game-development",
+    "moduleType": "vanilla",
+    "order": 10,
+    "estimatedMinutes": 25,
+    "tags": [
+      "audio",
+      "Web-Audio-API",
+      "oscillator",
+      "sound-effects",
+      "gain"
+    ],
+    "content": "# Web Audio & Sound Effects\n\n## Why Web Audio API?\nThe built-in AudioContext generates sounds in code — no MP3s, no loading delays,\nand complete control over pitch, duration, and waveform shape.\n\n## Key concepts\n\n| Node            | Role                                  |\n|-----------------|---------------------------------------|\n| AudioContext    | The audio engine — create once        |\n| OscillatorNode  | Generates a periodic waveform (tone)  |\n| GainNode        | Controls volume                       |\n| destination     | Final output (speakers)               |\n\nSignal chain: Oscillator → GainNode → destination\n\n## A reusable playTone helper\n\n    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();\n\n    function playTone({ frequency = 440, type = 'sine', duration = 0.15, volume = 0.3 } = {}) {\n      const osc  = audioCtx.createOscillator();\n      const gain = audioCtx.createGain();\n\n      osc.connect(gain);\n      gain.connect(audioCtx.destination);\n\n      osc.type           = type;  // 'sine' | 'square' | 'sawtooth' | 'triangle'\n      osc.frequency.value = frequency;\n      gain.gain.setValueAtTime(volume, audioCtx.currentTime);\n      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);\n\n      osc.start(audioCtx.currentTime);\n      osc.stop(audioCtx.currentTime + duration);\n    }\n\n## Sound recipes\n\n    const sfx = {\n      jump:    () => playTone({ frequency: 440, type: 'square',   duration: 0.1  }),\n      collect: () => playTone({ frequency: 880, type: 'sine',     duration: 0.15 }),\n      hurt:    () => playTone({ frequency: 180, type: 'sawtooth', duration: 0.25 }),\n      win:     () => {\n        playTone({ frequency: 523, duration: 0.1 });\n        setTimeout(() => playTone({ frequency: 659, duration: 0.1 }), 120);\n        setTimeout(() => playTone({ frequency: 784, duration: 0.3 }), 240);\n      },\n    };\n\n## IMPORTANT — browser audio policy\nBrowsers block audio until the user interacts. Resume the context on first click:\n\n    document.addEventListener('click', () => {\n      if (audioCtx.state === 'suspended') audioCtx.resume();\n    }, { once: true });\n\n## Your Task\nCreate four buttons (Jump, Collect, Hurt, Win) each wired to a distinct sound.\nThe Win sound must play a sequence of at least three notes.\nDisplay the name of the currently playing sound in the UI.",
+    "objectives": [
+      "Create an AudioContext and resume it on user interaction",
+      "Build an Oscillator → GainNode → destination signal chain",
+      "Use exponentialRampToValueAtTime for a natural fade-out",
+      "Create at least four distinct sound effects with different frequencies and wave types",
+      "Build a multi-note sequence using setTimeout"
+    ]
+  },
+  {
+    "title": "React 1 – Components & JSX",
+    "description": "Write your first React functional components, understand JSX syntax rules, and pass data between parent and children using props.",
+    "difficulty": "beginner",
+    "category": "react-game-dev",
+    "moduleType": "react",
+    "order": 1,
+    "estimatedMinutes": 20,
+    "tags": [
+      "react",
+      "components",
+      "JSX",
+      "props",
+      "functional-components"
+    ],
+    "content": "# React Components & JSX\n\n## What is React?\nReact builds UIs from small, reusable pieces called **components**.\nEach component is a JavaScript function that returns JSX —\nHTML-like syntax that compiles to React.createElement calls.\n\n## Your first component\n\n    function Greeting({ name }) {\n      return <h1>Hello, {name}!</h1>;\n    }\n\n- Function name starts with a capital letter (required).\n- { name } is destructured from the **props** object.\n- {} inside JSX evaluates any JavaScript expression.\n\n## Composing a parent from children\n\n    function PlayerCard({ name, score, level }) {\n      return (\n        <div className=\"card\">\n          <h2>{name}</h2>\n          <p>Score: {score}</p>\n          <p>Level: {level}</p>\n        </div>\n      );\n    }\n\n    function App() {\n      return (\n        <div>\n          <PlayerCard name=\"Nova\"  score={1200} level={5} />\n          <PlayerCard name=\"Blaze\" score={800}  level={3} />\n        </div>\n      );\n    }\n\n## JSX rules\n1. Every element must be closed: <br /> not <br>.\n2. Only one root element per return — wrap extras in <></>.\n3. Use className not class.\n4. Inline styles use an object: style={{ color: 'red' }}.\n\n## Props are read-only\nData flows down — a component must never modify its props.\n\n## Your Task\nBuild an App with a ScoreBoard component that receives an array of player objects\nas props and renders a styled card for each: name, score, and rank.",
+    "objectives": [
+      "Create a functional component that accepts and renders props",
+      "Compose a parent component from multiple child components",
+      "Render a list of items by mapping an array to JSX",
+      "Apply inline styles and className in JSX",
+      "Follow JSX syntax rules (closing tags, single root, className)"
+    ]
+  },
+  {
+    "title": "React 2 – State, Events & Re-rendering",
+    "description": "Add interactivity using useState, handle click and input events, and understand what causes a React component to re-render.",
+    "difficulty": "beginner",
+    "category": "react-game-dev",
+    "moduleType": "react",
+    "order": 2,
+    "estimatedMinutes": 20,
+    "tags": [
+      "useState",
+      "events",
+      "re-render",
+      "controlled-input",
+      "conditional-rendering"
+    ],
+    "content": "# State, Events & Re-rendering\n\n## Why state?\nProps are read-only data from outside. **State** is data the component owns and can change.\nWhen state changes, React re-renders the component automatically.\n\n## useState hook\n\n    import { useState } from 'react';\n\n    function Counter() {\n      const [count, setCount] = useState(0); // [value, setter]\n\n      return (\n        <div>\n          <p>Count: {count}</p>\n          <button onClick={() => setCount(count + 1)}>+1</button>\n          <button onClick={() => setCount(0)}>Reset</button>\n        </div>\n      );\n    }\n\n## State update rules\n- NEVER mutate state directly — always use the setter.\n- Updater function form is safer when updates batch:\n  setCount(prev => prev + 1)\n\n## Controlled inputs\n\n    const [name, setName] = useState('');\n\n    <input\n      value={name}\n      onChange={(e) => setName(e.target.value)}\n      placeholder=\"Player name\"\n    />\n\n## Conditional rendering\n\n    {isGameOver && <p>Game Over!</p>}\n    {score > 100 ? <span>High scorer!</span> : <span>Keep going</span>}\n\n## Multiple state variables\n\n    const [score, setScore]     = useState(0);\n    const [lives, setLives]     = useState(3);\n    const [running, setRunning] = useState(false);\n\n## Your Task\nBuild a clicker game: a big button adds points, a penalty button removes a life,\na toggle controls a 2x bonus multiplier.\nShow score, lives, and multiplier. Display \"Game Over\" when lives reach 0.",
+    "objectives": [
+      "Declare state with useState and destructure value and setter",
+      "Update state in an onClick handler",
+      "Use a controlled input bound to state",
+      "Use the updater function form (prev => prev + 1)",
+      "Conditionally render an element based on state"
+    ]
+  },
+  {
+    "title": "React 3 – useEffect & the Game Loop",
+    "description": "Run side effects with useEffect, animate a canvas inside React using requestAnimationFrame, and manage cleanup to prevent memory leaks.",
+    "difficulty": "intermediate",
+    "category": "react-game-dev",
+    "moduleType": "react",
+    "order": 3,
+    "estimatedMinutes": 30,
+    "tags": [
+      "useEffect",
+      "useRef",
+      "requestAnimationFrame",
+      "game-loop",
+      "cleanup"
+    ],
+    "content": "# useEffect & the Game Loop\n\n## What is a side effect?\nAnything outside React's render — timers, event listeners, canvas drawing, subscriptions.\nReact handles these with useEffect.\n\n## useEffect basics\n\n    useEffect(() => {\n      // runs once on mount (empty dep array)\n    }, []);\n\n    useEffect(() => {\n      // runs every time score changes\n    }, [score]);\n\n## useRef — mutable box that survives re-renders\n\n    const canvasRef  = useRef(null);     // DOM element reference\n    const animId     = useRef(null);     // store animation frame ID\n    const playerRef  = useRef({ x: 50, y: 200, speed: 150 });\n\n## Canvas game loop inside React\n\n    import { useEffect, useRef } from 'react';\n\n    function GameCanvas() {\n      const canvasRef = useRef(null);\n      const stateRef  = useRef({ x: 50, y: 200, vx: 150 });\n      const animRef   = useRef(null);\n\n      useEffect(() => {\n        const canvas = canvasRef.current;\n        const ctx    = canvas.getContext('2d');\n        let lastTime = 0;\n\n        function loop(ts) {\n          const dt  = (ts - lastTime) / 1000;\n          lastTime  = ts;\n          const s   = stateRef.current;\n          s.x      += s.vx * dt;\n          if (s.x > canvas.width || s.x < 0) s.vx *= -1;\n\n          ctx.clearRect(0, 0, canvas.width, canvas.height);\n          ctx.fillStyle = '#4ade80';\n          ctx.fillRect(s.x, s.y, 30, 30);\n\n          animRef.current = requestAnimationFrame(loop);\n        }\n\n        animRef.current = requestAnimationFrame(loop);\n        return () => cancelAnimationFrame(animRef.current); // cleanup!\n      }, []);\n\n      return <canvas ref={canvasRef} width={600} height={400} />;\n    }\n\n## Why store physics in useRef, not useState?\nuseState triggers a re-render on every change — 60 re-renders/second is too expensive.\nGame physics live in useRef; only UI values (score, lives) use useState.\n\n## Your Task\nAnimate a bouncing ball that bounces off all four canvas edges.\nAdd a React score display (useState) that increments on each wall bounce.\nInclude a Pause/Resume button that stops and restarts the loop.",
+    "objectives": [
+      "Use useEffect with an empty dependency array to run code once on mount",
+      "Store a DOM reference with useRef",
+      "Run a requestAnimationFrame loop inside useEffect",
+      "Return a cleanup function from useEffect to cancel the animation",
+      "Store fast-changing game physics in useRef to avoid excessive re-renders"
+    ]
+  },
+  {
+    "title": "React 4 – Build a Complete React Game",
+    "description": "Combine components, state, refs, and effects into a fully playable game with keyboard controls, lives, a score counter, and a game-over screen.",
+    "difficulty": "intermediate",
+    "category": "react-game-dev",
+    "moduleType": "react",
+    "order": 4,
+    "estimatedMinutes": 35,
+    "tags": [
+      "react",
+      "complete-game",
+      "useCallback",
+      "keyboard",
+      "game-states",
+      "architecture"
+    ],
+    "content": "# Complete React Game\n\n## Architecture overview\nSplit a React game into clearly responsible pieces:\n\n    App\n     ├─ GameCanvas  — canvas rendering (refs + requestAnimationFrame)\n     ├─ HUD         — score, lives (pure React useState)\n     └─ Overlay     — menu / pause / game-over (conditional render)\n\n## useCallback for stable event listeners\nWithout useCallback, a new function reference is created every render,\ncausing the useEffect to re-run and re-attach listeners:\n\n    const handleKeyDown = useCallback((e) => {\n      keysRef.current[e.code] = true;\n    }, []); // stable — same function every render\n\n    useEffect(() => {\n      window.addEventListener('keydown', handleKeyDown);\n      window.addEventListener('keyup',   handleKeyUp);\n      return () => {\n        window.removeEventListener('keydown', handleKeyDown);\n        window.removeEventListener('keyup',   handleKeyUp);\n      };\n    }, [handleKeyDown, handleKeyUp]);\n\n## Bridging the game loop to React UI\nGame loop runs in a ref; HUD updates via setState but only when the value changes:\n\n    const scoreRef     = useRef(0);\n    const [uiScore, setUiScore] = useState(0);\n\n    // Inside the game loop, after picking up a coin:\n    scoreRef.current  += 10;\n    setUiScore(scoreRef.current); // triggers HUD re-render only\n\n## Game state as a string\n\n    const [gameState, setGameState] = useState('menu');\n    // 'menu' | 'playing' | 'paused' | 'gameover'\n\n## What to build\nA dodge game: coloured blocks fall from the top, the player (left/right arrow keys)\nmoves left and right to avoid them. Each block dodged adds to score.\nBeing hit loses a life. Three lives total. Game over shows score and a restart button.\n\n## Your Task\nImplement the full game using the architecture above.\nThe HUD must be a separate styled React component (not drawn on canvas).\nAll event listeners must be cleaned up when the component unmounts.",
+    "objectives": [
+      "Separate canvas rendering from React UI into distinct components",
+      "Use useCallback to create stable event handler references",
+      "Bridge game loop state (useRef) to UI state (useState) efficiently",
+      "Implement a full state machine: menu, playing, paused, gameover",
+      "Clean up all event listeners and animation frames on unmount"
+    ]
+  },
+  {
+    "title": "Multiplayer 1 – Simulating Real-Time with Events",
+    "description": "Understand WebSocket and Socket.IO patterns, then simulate a client-side event bus that mimics multi-player messaging — no server required.",
+    "difficulty": "intermediate",
+    "category": "multiplayer",
+    "moduleType": "vanilla",
+    "order": 1,
+    "estimatedMinutes": 25,
+    "tags": [
+      "multiplayer",
+      "events",
+      "simulation",
+      "socket-io",
+      "event-bus"
+    ],
+    "content": "# Simulating Real-Time with Events\n\n## How real multiplayer works\nPlayers communicate through a server (Node.js + Socket.IO):\n\n    Player A  -emit('move', data)->  Server  -broadcast->  Player B\n\nIn this editor we cannot run a real server, but we can simulate the same patterns\nclient-side using a message bus — so you understand the model before using real sockets.\n\n## Key concepts: emit and on\n\n    // Real Socket.IO:\n    socket.emit('playerMove', { x: 100, y: 200 });\n    socket.on('playerMove', (data) => updateOtherPlayer(data));\n\n## Client-side message bus (simulation)\n\n    const bus = {\n      listeners: {},\n      on(event, fn) {\n        if (!this.listeners[event]) this.listeners[event] = [];\n        this.listeners[event].push(fn);\n      },\n      emit(event, data) {\n        (this.listeners[event] || []).forEach(fn => fn(data));\n      },\n    };\n\n## Simulating two players\n\n    // Player 1 sends a move\n    bus.emit('playerMove', { playerId: 'p1', x: 150, y: 200 });\n\n    // \"Server\" handler re-broadcasts to all listeners\n    bus.on('playerMove', (data) => {\n      players[data.playerId] = { x: data.x, y: data.y };\n      redrawPlayers();\n    });\n\n## Events to simulate\n\n| Event        | Direction                |\n|--------------|--------------------------|\n| playerJoin   | client → server → all    |\n| playerLeave  | client → server → all    |\n| playerMove   | client → server → others |\n| chatMessage  | client → server → all    |\n| gameReady    | server → all             |\n\n## Real-world best practices\n- Send **inputs** (key presses), not positions — the server computes authoritative state.\n- Always handle disconnect — remove the player and broadcast playerLeave.\n- Never trust client-provided positions in a real game (prevents cheating).\n\n## Your Task\nBuild a simulated 2-player lobby using the message bus.\nTwo buttons (Join as P1, Join as P2) trigger playerJoin.\nA Leave button triggers playerLeave.\nWhen both are joined, broadcast gameReady and show both avatars on a mini canvas.",
+    "objectives": [
+      "Understand the emit/on event model used by Socket.IO",
+      "Build a client-side message bus that mimics socket events",
+      "Simulate player join, leave, and move events",
+      "Handle a game-ready condition when all players are connected",
+      "Update a shared canvas view when the game state changes"
+    ]
+  },
+  {
+    "title": "Multiplayer 2 – Turn-Based Game Logic",
+    "description": "Build a complete 2-player Noughts and Crosses game: turn management, move validation, win detection, score tracking across rounds, and rematch.",
+    "difficulty": "intermediate",
+    "category": "multiplayer",
+    "moduleType": "vanilla",
+    "order": 2,
+    "estimatedMinutes": 30,
+    "tags": [
+      "turn-based",
+      "noughts-and-crosses",
+      "win-detection",
+      "rematch",
+      "score-tracking"
+    ],
+    "content": "# Turn-Based Game Logic\n\n## Core concepts\n\n| Concept         | Responsibility                               |\n|-----------------|----------------------------------------------|\n| Turn lock       | Only the active player can make a move       |\n| Move validation | Is the cell empty? Is it my turn?            |\n| Win detection   | Check all lines after every move             |\n| Draw detection  | Board full, no winner                        |\n| Score tracking  | Persist across multiple rounds               |\n| Rematch         | Reset board, alternate who goes first        |\n\n## State structure\n\n    let game = {\n      board:         Array(9).fill(null),  // null | 'X' | 'O'\n      currentPlayer: 'X',\n      phase:         'playing',            // 'playing' | 'won' | 'draw'\n      winner:        null,\n      scores:        { X: 0, O: 0, draws: 0 },\n      round:         1,\n      firstPlayer:   'X',\n    };\n\n## Making a move\n\n    function makeMove(index) {\n      const { board, currentPlayer, phase } = game;\n      if (phase !== 'playing')  return; // game already over\n      if (board[index] !== null) return; // cell taken\n\n      board[index] = currentPlayer;\n      const winner = detectWinner(board);\n\n      if (winner) {\n        game.phase = 'won';\n        game.winner = winner;\n        game.scores[winner]++;\n      } else if (board.every(c => c !== null)) {\n        game.phase = 'draw';\n        game.scores.draws++;\n      } else {\n        game.currentPlayer = currentPlayer === 'X' ? 'O' : 'X';\n      }\n      render();\n    }\n\n## Win detection\n\n    const WIN_LINES = [\n      [0,1,2],[3,4,5],[6,7,8], // rows\n      [0,3,6],[1,4,7],[2,5,8], // columns\n      [0,4,8],[2,4,6],          // diagonals\n    ];\n\n    function detectWinner(board) {\n      for (const [a,b,c] of WIN_LINES) {\n        if (board[a] && board[a] === board[b] && board[a] === board[c]) {\n          return board[a];\n        }\n      }\n      return null;\n    }\n\n## Rematch (alternate who starts)\n\n    function rematch() {\n      game.firstPlayer   = game.firstPlayer === 'X' ? 'O' : 'X';\n      game.board         = Array(9).fill(null);\n      game.currentPlayer = game.firstPlayer;\n      game.phase         = 'playing';\n      game.winner        = null;\n      game.round++;\n      render();\n    }\n\n## Your Task\nBuild a fully playable Noughts and Crosses game. Render the grid as DOM buttons,\nhighlight the winning line, show whose turn it is, track scores across multiple rounds,\nand alternate who starts on each rematch.",
+    "objectives": [
+      "Represent board state as an array and render it to DOM buttons",
+      "Validate a move: reject if cell taken or game is over",
+      "Detect a winner by checking all eight win lines",
+      "Detect a draw when the board is full with no winner",
+      "Track cumulative scores across multiple rounds",
+      "Alternate the starting player on each rematch"
+    ]
   }
-};
-\`\`\`
-
-## Your Task
-Create a character object with properties for name, level, and health, plus methods levelUp and describe that return strings.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Objects</title>\n</head>\n<body>\n  <h1>Character Sheet</h1>\n  <div id="character"></div>\n  <button onclick="levelUp()">Level Up</button>\n</body>\n</html>',
-      css: 'body { font-family: Arial, sans-serif; background: #0f172a; color: #f8fafc; padding: 24px; }\nbutton { margin-top: 12px; padding: 10px 16px; }',
-      javascript: 'console.log("Ready! Create character object with levelUp and describe.");\n// Create a character object with name, level, health\n// Add levelUp() method that increases level and health\n// Add describe() method that returns a summary string\n// Add render() and levelUp() functions to update the page\n',
-    },
-    objectives: [
-      'Define objects with properties and methods',
-      'Use this to reference object data',
-      'Return formatted strings from methods',
-    ],
-    steps: [
-      { title: 'Create a character object with name, level, and health.', instruction: 'Declare an object (e.g. const character = { ... }) with properties name, level, and health. Give them initial values.', concept: 'Objects bundle related data as properties.', verifyType: 'code', expectedConsole: null },
-      { title: 'Add a levelUp() method.', instruction: 'Add a method levelUp() to the character object that increases level and health (e.g. this.level++; this.health += 10) and returns a string like "Level up!".', concept: 'Methods are functions on objects; this refers to the object.', verifyType: 'code', expectedConsole: null },
-      { title: 'Add a describe() method.', instruction: 'Add a method describe() that returns a summary string using template literals (e.g. "${this.name} | Level ${this.level} | HP ${this.health}").', concept: 'Methods can return formatted strings from object data.', verifyType: 'code', expectedConsole: null },
-      { title: 'Wire levelUp() and render() to the page.', instruction: 'Implement a render() function that updates #character with the result of describe(). Call render() on load and from a levelUp() function that calls character.levelUp() and then render().', concept: 'Updating the DOM after state changes keeps the UI in sync.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Methods are functions defined inside objects',
-      'Use template literals to format the summary',
-      'Update the DOM after state changes',
-    ],
-  },
-  {
-    title: 'JavaScript Basics - DOM and Events',
-    description: 'Read and update the DOM, and react to user actions.',
-    difficulty: 'beginner',
-    category: 'javascript-basics',
-    order: 8,
-    content: `# DOM and Events
-
-## Interactivity
-The DOM is the live page. You can select elements, change them, and listen for events like clicks.
-
-## Example
-\`\`\`javascript
-document.getElementById('start').addEventListener('click', () => {
-  console.log('Start pressed');
-});
-\`\`\`
-
-## Your Task
-Create a start button that toggles between "Start" and "Pause", updating a status line each time it is clicked.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>DOM and Events</title>\n</head>\n<body>\n  <h1>DOM Practice</h1>\n  <button id="start">Start</button>\n  <p id="status">Game is stopped.</p>\n</body>\n</html>',
-      css: 'body { font-family: Arial, sans-serif; padding: 24px; background: #f8fafc; color: #0f172a; }\nbutton { padding: 10px 16px; margin-bottom: 12px; }',
-      javascript: 'console.log("Ready! Wire button and status with getElementById and click.");\n// Get the button and status elements with getElementById\n// Use a variable to track running state\n// Add a click listener that toggles running and updates button and status textContent\n',
-    },
-    objectives: [
-      'Select DOM elements with getElementById',
-      'Attach click event listeners',
-      'Update textContent based on state',
-    ],
-    steps: [
-      { title: 'Get the button and status elements.', instruction: 'Use document.getElementById to get the element with id "start" and the element with id "status". Store them in variables.', concept: 'getElementById returns the first element with that id.', verifyType: 'code', expectedConsole: null },
-      { title: 'Add a variable to track running state.', instruction: 'Declare a variable (e.g. let isRunning = false) to track whether the game is running or paused.', concept: 'State variables drive what the UI shows.', verifyType: 'code', expectedConsole: null },
-      { title: 'Attach a click listener to the button.', instruction: 'Call button.addEventListener("click", ...). In the handler, toggle isRunning, then update the button textContent to "Pause" or "Start" and the status textContent to "Game is running." or "Game is stopped."', concept: 'Event listeners run your code when the user interacts.', verifyType: 'code', expectedConsole: null },
-      { title: 'Verify the toggle works.', instruction: 'Click the button several times. Confirm it switches between Start/Pause and the status line updates accordingly.', concept: 'Updating textContent changes the visible text without affecting HTML structure.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Track state in a boolean',
-      'Update both the button and the status text',
-      'Use textContent instead of innerHTML for plain text',
-    ],
-  },
-  {
-    title: 'JavaScript Basics - Debugging and Console Tools',
-    description: 'Use console methods and breakpoints to diagnose issues.',
-    difficulty: 'beginner',
-    category: 'javascript-basics',
-    order: 9,
-    content: `# Debugging
-
-## Console helpers
-console.warn highlights warnings, and console.table prints arrays or objects in a readable grid.
-
-## Example
-\`\`\`javascript
-const enemies = [\n  { name: 'Slime', hp: 10 },\n  { name: 'Orc', hp: 30 }\n];\nconsole.table(enemies);
-\`\`\`
-
-## Your Task
-Create a small array of player stats and print them with console.table. Set a breakpoint in your browser to step through a function that adjusts hit points.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Debugging</title>\n</head>\n<body>\n  <h1>Debugging Playground</h1>\n  <p>Use DevTools to pause in the adjustHealth function.</p>\n</body>\n</html>',
-      css: 'body { font-family: Arial, sans-serif; padding: 24px; background: #eef2f7; color: #0f172a; }',
-      javascript: 'console.log("Ready! Use console.table and set a breakpoint in adjustHealth.");\n// Create a small array of player objects (name, hp)\n// Use console.table to display them\n// Write adjustHealth(list, name, change) and set a breakpoint inside it\n// Call it and use console.table again to see changes\n',
-    },
-    objectives: [
-      'Use console.warn and console.table',
-      'Set a breakpoint and step through code',
-      'Inspect how data changes over time',
-    ],
-    steps: [
-      { title: 'Create a small array of player stats.', instruction: 'Create an array of objects, each with name and hp (e.g. [{ name: "Hero", hp: 100 }, { name: "Mage", hp: 80 }]). Log it with console.table.', concept: 'console.table displays arrays and objects in a readable grid.', verifyType: 'code', expectedConsole: null },
-      { title: 'Write adjustHealth(list, name, change).', instruction: 'Implement adjustHealth(list, name, change) that finds the player in list by name, adds change to their hp, and returns the updated list (or same list).', concept: 'Functions that modify data are good places to set breakpoints.', verifyType: 'code', expectedConsole: null },
-      { title: 'Set a breakpoint inside adjustHealth.', instruction: 'Open DevTools, find the line inside adjustHealth where you update hp, and set a breakpoint (click line number or right-click).', concept: 'Breakpoints pause execution so you can inspect state.', verifyType: 'code', expectedConsole: null },
-      { title: 'Call adjustHealth and step through.', instruction: 'Call adjustHealth with your list, a player name, and a change value. When execution pauses, step through (F10) and watch the Scope panel. Then call console.table again on the list.', concept: 'Stepping through code shows how data changes step by step.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Right-click the line number to toggle a breakpoint',
-      'Refresh the page after adding a breakpoint',
-      'Check the Scope panel to see variable values',
-    ],
-  },
-  {
-    title: 'Canvas Drawing Basics',
-    description: 'Learn to draw shapes on HTML Canvas as the foundation of game graphics.',
-    difficulty: 'beginner',
-    category: 'game-development',
-    order: 1,
-    content: `# HTML Canvas - Drawing Basics
-
-## Introduction
-The HTML canvas is your digital drawing surface. You will draw rectangles and circles to form a simple character.
-
-## Example
-\`\`\`javascript
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-ctx.fillStyle = 'blue';
-ctx.fillRect(50, 50, 100, 100);
-\`\`\`
-
-## Your Task
-Draw a simple game character using basic shapes (rectangles and circles).`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Canvas Drawing</title>\n</head>\n<body>\n  <canvas id="gameCanvas" width="800" height="600"></canvas>\n</body>\n</html>',
-      css: 'body { margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #34495e; }\ncanvas { border: 3px solid #2c3e50; background: white; }',
-      javascript: 'console.log("Ready! Draw shapes on the canvas.");\nconst canvas = document.getElementById("gameCanvas");\nconst ctx = canvas.getContext("2d");\n// Draw rectangles with fillRect; set fillStyle for color\n// Draw a circle with beginPath, arc(x, y, radius, 0, Math.PI*2), fill\n',
-    },
-    objectives: [
-      'Get a 2D canvas context',
-      'Draw rectangles and circles',
-      'Change fillStyle to set colors',
-    ],
-    steps: [
-      { title: 'Get the canvas and 2D context.', instruction: 'Use document.getElementById("gameCanvas") to get the canvas. Call canvas.getContext("2d") and store the result in a variable (e.g. ctx).', concept: 'The 2D context provides drawing methods for the canvas.', verifyType: 'code', expectedConsole: null },
-      { title: 'Draw a rectangle with fillRect.', instruction: 'Set ctx.fillStyle to a color (e.g. "blue"). Call ctx.fillRect(x, y, width, height) to draw a rectangle (e.g. body of a character).', concept: 'fillStyle sets the fill color; fillRect draws a filled rectangle.', verifyType: 'code', expectedConsole: null },
-      { title: 'Draw a circle with arc and fill.', instruction: 'Set fillStyle for the circle. Call ctx.beginPath(), then ctx.arc(x, y, radius, 0, Math.PI * 2), then ctx.fill() to draw a full circle (e.g. head).', concept: 'arc draws part of a circle; Math.PI * 2 is a full circle in radians.', verifyType: 'code', expectedConsole: null },
-      { title: 'Combine shapes into a simple character.', instruction: 'Draw at least two shapes (e.g. rectangle body and circle head) with different colors and positions so they form a simple character. Run and confirm they appear on the canvas.', concept: 'Combining basic shapes builds game graphics.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'ctx.fillRect(x, y, width, height) draws rectangles',
-      'ctx.arc uses radians; use Math.PI * 2 for a full circle',
-      'Call beginPath before drawing arcs',
-    ],
-  },
-  {
-    title: 'Game Loop and Animation',
-    description: 'Create smooth animations using requestAnimationFrame - the heart of every game.',
-    difficulty: 'intermediate',
-    category: 'game-development',
-    order: 2,
-    content: `# Game Loop and Animation
-
-## The Game Loop
-Every game needs a loop that runs continuously, updating game state and drawing graphics.
-
-\`\`\`javascript
-function gameLoop() {
-  // Update game state
-  updateGame();
-  
-  // Draw graphics
-  drawGame();
-  
-  // Loop continues
-  requestAnimationFrame(gameLoop);
-}
-
-gameLoop();
-\`\`\`
-
-## Your Task
-Create a moving character that animates across the screen.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Game Animation</title>\n</head>\n<body>\n  <canvas id="gameCanvas" width="800" height="600"></canvas>\n</body>\n</html>',
-      css: 'body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #1a1a2e; }\ncanvas { border: 2px solid #16213e; background: #0f3460; }',
-      javascript: 'console.log("Ready! Add game loop with update and draw.");\nconst canvas = document.getElementById("gameCanvas");\nconst ctx = canvas.getContext("2d");\nlet playerX = 50;\nlet playerY = 250;\nlet speed = 2;\n// Add update() to change playerX/playerY\n// Add draw() to clearRect then fillRect the player\n// Add gameLoop() that calls update, draw, then requestAnimationFrame(gameLoop)\n// Start with gameLoop();\n',
-    },
-    objectives: [
-      'Create a game loop with requestAnimationFrame',
-      'Update game state (position, velocity)',
-      'Clear and redraw canvas each frame',
-      'Implement basic movement',
-    ],
-    steps: [
-      { title: 'Implement update() to change position.', instruction: 'Write an update() function that changes playerX and playerY (e.g. playerX += speed). This will move the character each frame.', concept: 'Updating position each frame creates movement.', verifyType: 'code', expectedConsole: null },
-      { title: 'Implement draw() to clear and draw the player.', instruction: 'Write draw() that calls ctx.clearRect(0, 0, canvas.width, canvas.height), then draws the player (e.g. fillRect) at playerX, playerY.', concept: 'Clearing and redrawing each frame creates smooth animation.', verifyType: 'code', expectedConsole: null },
-      { title: 'Create gameLoop() with requestAnimationFrame.', instruction: 'Write gameLoop() that calls update(), then draw(), then requestAnimationFrame(gameLoop). At the end of your script, call gameLoop() once to start.', concept: 'requestAnimationFrame runs the loop at the display refresh rate.', verifyType: 'code', expectedConsole: null },
-      { title: 'Run and verify the character moves.', instruction: 'Run the code. The character should move across the screen continuously. If it does not, check that gameLoop() is called and update() changes playerX/playerY.', concept: 'The game loop ties update and draw together.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'requestAnimationFrame runs at 60 FPS',
-      'clearRect() clears the canvas for the next frame',
-      'Change position values to create movement',
-    ],
-  },
-  {
-    title: 'Keyboard Input and Controls',
-    description: 'Make your game interactive by handling keyboard input for player controls.',
-    difficulty: 'intermediate',
-    category: 'game-development',
-    order: 3,
-    content: `# Keyboard Controls
-
-## Handling Input
-Games need to respond to player input. Let's add keyboard controls!
-
-\`\`\`javascript
-const keys = {};
-
-window.addEventListener('keydown', (e) => {
-  keys[e.key] = true;
-});
-
-window.addEventListener('keyup', (e) => {
-  keys[e.key] = false;
-});
-
-// Check if key is pressed
-if (keys['ArrowRight']) {
-  playerX += speed;
-}
-\`\`\`
-
-## Your Task
-Create a character that moves in all directions with arrow keys.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Keyboard Controls</title>\n</head>\n<body>\n  <canvas id="gameCanvas" width="800" height="600"></canvas>\n  <div style="color: white; text-align: center; margin-top: 10px;">Use Arrow Keys to Move</div>\n</body>\n</html>',
-      css: 'body { margin: 0; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #2c3e50; }\ncanvas { border: 3px solid #34495e; background: #ecf0f1; }',
-      javascript: 'console.log("Ready! Use arrow keys to move.");\nconst canvas = document.getElementById("gameCanvas");\nconst ctx = canvas.getContext("2d");\nlet playerX = 375;\nlet playerY = 275;\nconst speed = 5;\nconst keys = {};\n// Add keydown listener: keys[e.key] = true\n// Add keyup listener: keys[e.key] = false\n// In update(), move playerX/playerY based on keys["ArrowUp"] etc.\n// Keep player in bounds with Math.max/Math.min\n// Keep your draw() and gameLoop() from the previous step\n',
-    },
-    objectives: [
-      'Set up keyboard event listeners',
-      'Track which keys are pressed',
-      'Move player based on input',
-      'Keep player within canvas bounds',
-    ],
-    steps: [
-      { title: 'Add keydown and keyup listeners.', instruction: 'Add window.addEventListener("keydown", (e) => { keys[e.key] = true; }) and window.addEventListener("keyup", (e) => { keys[e.key] = false; }). The keys object is already declared.', concept: 'Tracking key state lets you move while a key is held.', verifyType: 'code', expectedConsole: null },
-      { title: 'Move player in update() based on keys.', instruction: 'In update(), check keys["ArrowUp"], keys["ArrowDown"], keys["ArrowLeft"], keys["ArrowRight"] and add or subtract speed from playerY or playerX accordingly.', concept: 'Checking key state each frame produces responsive movement.', verifyType: 'code', expectedConsole: null },
-      { title: 'Keep player within canvas bounds.', instruction: 'In update(), after changing playerX and playerY, clamp them with Math.max(0, Math.min(canvas.width - playerSize, playerX)) and similar for playerY so the player cannot leave the canvas.', concept: 'Clamping keeps values within a range.', verifyType: 'code', expectedConsole: null },
-      { title: 'Run and test movement.', instruction: 'Run the game and press the arrow keys. The character should move in all directions and stop at the canvas edges.', concept: 'Event listeners and update() together create interactive controls.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Use an object to track multiple keys at once',
-      'keydown fires when a key is pressed',
-      'keyup fires when a key is released',
-      'Math.max and Math.min help with boundary checking',
-    ],
-  },
-  {
-    title: 'Collision Detection',
-    description: 'Detect when game objects collide - essential for interactive gameplay.',
-    difficulty: 'intermediate',
-    category: 'game-development',
-    order: 4,
-    content: `# Collision Detection
-
-## Detecting Collisions
-Games need to know when objects touch or overlap. This is called collision detection.
-
-\`\`\`javascript
-function checkCollision(rect1, rect2) {
-  return rect1.x < rect2.x + rect2.width &&
-         rect1.x + rect1.width > rect2.x &&
-         rect1.y < rect2.y + rect2.height &&
-         rect1.y + rect1.height > rect2.y;
-}
-\`\`\`
-
-## Your Task
-Create a game where the player collects items that appear on screen.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Collision Detection</title>\n</head>\n<body>\n  <canvas id="gameCanvas" width="800" height="600"></canvas>\n  <div id="score" style="color: white; text-align: center; margin-top: 10px; font-size: 24px;">Score: 0</div>\n</body>\n</html>',
-      css: 'body { margin: 0; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #16213e; }\ncanvas { border: 3px solid #0f3460; background: #1a1a2e; }',
-      javascript: 'console.log("Ready! Collect the coin and check collision.");\nconst canvas = document.getElementById("gameCanvas");\nconst ctx = canvas.getContext("2d");\nconst player = { x: 375, y: 275, width: 50, height: 50 };\nconst coin = { x: 100, y: 100, width: 30, height: 30 };\nlet score = 0;\n// Implement checkCollision(rect1, rect2) for overlapping rectangles\n// In update(), if checkCollision(player, coin): add score, move coin to random position, update #score\n// Draw player and coin in draw()\n',
-    },
-    objectives: [
-      'Implement rectangle collision detection',
-      'Detect when player touches collectible',
-      'Update score on collision',
-      'Respawn collectibles at random positions',
-    ],
-    steps: [
-      { title: 'Implement checkCollision(rect1, rect2).', instruction: 'Write checkCollision(rect1, rect2) that returns true when two rectangles overlap. Use: rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && same for y/height.', concept: 'Rectangles overlap when they overlap on both X and Y axes.', verifyType: 'code', expectedConsole: null },
-      { title: 'Check collision in update() and update score.', instruction: 'In update(), if checkCollision(player, coin) is true, increment score, move the coin to a random position (e.g. Math.random() * (canvas.width - coin.width)), and update the #score element.', concept: 'Collision detection drives game logic like scoring.', verifyType: 'code', expectedConsole: null },
-      { title: 'Draw the player and coin in draw().', instruction: 'In draw(), after clearing the canvas, draw the player and coin rectangles (e.g. fillRect) at their current positions. Use different colors.', concept: 'Drawing both objects makes the game visible.', verifyType: 'code', expectedConsole: null },
-      { title: 'Run and collect the coin.', instruction: 'Run the game, move the player to touch the coin, and confirm the score increases and the coin respawns elsewhere.', concept: 'End-to-end testing confirms collision and respawn work.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Collision occurs when rectangles overlap on both X and Y axes',
-      'Math.random() creates random positions',
-      'Update DOM elements to show score changes',
-    ],
-  },
-  {
-    title: 'Sprite Animation',
-    description: 'Bring characters to life with sprite sheet animation.',
-    difficulty: 'advanced',
-    category: 'game-development',
-    order: 5,
-    content: `# Sprite Animation
-
-## Animating Characters
-Professional games use sprite sheets - images with multiple frames. Let's animate them!
-
-\`\`\`javascript
-const sprite = {
-  frame: 0,
-  frameCount: 4,
-  frameWidth: 64,
-  update: function() {
-    this.frame = (this.frame + 1) % this.frameCount;
-  }
-};
-\`\`\`
-
-## Your Task
-Create a walking animation that cycles through different poses.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Sprite Animation</title>\n</head>\n<body>\n  <canvas id="gameCanvas" width="800" height="600"></canvas>\n  <div style="color: white; text-align: center; margin-top: 10px;">Press Arrow Keys to Move</div>\n</body>\n</html>',
-      css: 'body { margin: 0; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #1a1a1a; }\ncanvas { border: 3px solid #333; background: #2a2a2a; }',
-      javascript: 'console.log("Ready! Animate with sprite frames.");\nconst canvas = document.getElementById("gameCanvas");\nconst ctx = canvas.getContext("2d");\nconst player = { x: 375, y: 275, width: 50, height: 50, frame: 0, frameCount: 4, frameDelay: 0, speed: 3 };\nconst keys = {};\n// Add key listeners; in update() advance frame only when moving (use modulo for frame)\n// In draw() use player.frame to pick color or draw different poses\n',
-    },
-    objectives: [
-      'Implement frame-based animation',
-      'Control animation speed with delays',
-      'Switch between idle and moving states',
-      'Create smooth sprite transitions',
-    ],
-    steps: [
-      { title: 'Advance frame only when moving.', instruction: 'In update(), only change player.frame when the character is moving (e.g. when any arrow key is pressed). Use player.frame = (player.frame + 1) % player.frameCount to cycle frames.', concept: 'Frame index cycles with modulo; advancing only when moving saves CPU.', verifyType: 'code', expectedConsole: null },
-      { title: 'Add frame delay to control speed.', instruction: 'Use player.frameDelay (or similar) to only advance frame every N updates (e.g. if (++frameDelay >= 4) { frameDelay = 0; player.frame = ... }).', concept: 'Delaying frame advances slows the animation to a readable speed.', verifyType: 'code', expectedConsole: null },
-      { title: 'Draw different poses by frame.', instruction: 'In draw(), use player.frame to choose what to draw (e.g. different colors or shapes for each frame, or offset in a sprite sheet). Draw the player at player.x, player.y.', concept: 'Different frames show different poses; cycling creates animation.', verifyType: 'code', expectedConsole: null },
-      { title: 'Run and verify animation.', instruction: 'Run the game, move with arrow keys, and confirm the character animates (visual change) while moving and can stay idle when not moving.', concept: 'State (moving vs idle) and frame index together create sprite animation.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Use modulo (%) to cycle through frames',
-      'Add a delay counter to control animation speed',
-      'Only animate when the character is moving',
-    ],
-  },
-  {
-    title: 'Sound Effects and Music',
-    description: 'Add audio to your game for an immersive experience.',
-    difficulty: 'intermediate',
-    category: 'game-development',
-    order: 6,
-    content: `# Game Audio
-
-## Adding Sound
-Sound effects and music make games feel alive! Learn to use the Web Audio API.
-
-\`\`\`javascript
-const audio = new Audio('sound.mp3');
-audio.play();
-
-// Create sound effects programmatically
-const audioContext = new AudioContext();
-\`\`\`
-
-## Your Task
-Create a simple game with sound effects using oscillators.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Game Audio</title>\n</head>\n<body>\n  <h1>Audio Demo</h1>\n  <button id="jumpBtn">Jump Sound</button>\n  <button id="collectBtn">Collect Sound</button>\n  <button id="hurtBtn">Hurt Sound</button>\n  <button id="winBtn">Win Fanfare</button>\n</body>\n</html>',
-      css: 'body { font-family: Arial, sans-serif; padding: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; }\nbutton { margin: 10px; padding: 20px 40px; font-size: 20px; cursor: pointer; background: rgba(255,255,255,0.2); color: white; border: 2px solid white; border-radius: 12px; }\nbutton:hover { background: rgba(255,255,255,0.3); }',
-      javascript: 'console.log("Ready! Wire buttons to sound effects.");\nconst audioContext = new (window.AudioContext || window.webkitAudioContext)();\n// Create playSound(frequency, duration, type): oscillator + gainNode, connect, start/stop\n// Add jumpSound, collectSound, hurtSound, winSound and wire buttons with addEventListener\n',
-    },
-    objectives: [
-      'Use Web Audio API',
-      'Create oscillators for sound effects',
-      'Control volume with gain nodes',
-      'Create sound sequences',
-    ],
-    steps: [
-      { title: 'Create playSound(frequency, duration, type).', instruction: 'Implement playSound(frequency, duration, type) using the AudioContext: create an oscillator, set frequency and type, connect to a gain node, connect gain to destination, start and stop the oscillator after duration ms.', concept: 'Oscillators generate waveforms; gain nodes control volume.', verifyType: 'code', expectedConsole: null },
-      { title: 'Wire Jump button to a sound.', instruction: 'Get the jumpBtn element and add a click listener that calls playSound with a frequency (e.g. 440) and short duration for a jump sound.', concept: 'Event listeners trigger sound effects on user action.', verifyType: 'code', expectedConsole: null },
-      { title: 'Wire Collect, Hurt, and Win buttons.', instruction: 'Add click listeners to collectBtn, hurtBtn, and winBtn. Call playSound with different frequencies and durations (e.g. collect: higher pitch, hurt: lower, win: sequence or longer).', concept: 'Different parameters create distinct sound effects.', verifyType: 'code', expectedConsole: null },
-      { title: 'Test each button.', instruction: 'Run the page and click each button. Confirm you hear distinct sounds for jump, collect, hurt, and win.', concept: 'Web Audio API runs in the browser without external files.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'AudioContext is the main audio interface',
-      'Oscillators generate tones',
-      'Different frequencies create different pitches',
-      'Chain sounds with setTimeout for melodies',
-    ],
-  },
-  {
-    title: 'Local Storage and High Scores',
-    description: 'Save game data and create a high score system.',
-    difficulty: 'intermediate',
-    category: 'game-development',
-    order: 7,
-    content: `# Saving Game Data
-
-## Local Storage
-Keep player progress between sessions using browser storage.
-
-\`\`\`javascript
-// Save data
-localStorage.setItem('highScore', 1000);
-
-// Load data
-const score = localStorage.getItem('highScore');
-\`\`\`
-
-## Your Task
-Build a high score system that persists data.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>High Scores</title>\n</head>\n<body>\n  <h1>High Score System</h1>\n  <div id="gameArea">\n    <p>Current Score: <span id="score">0</span></p>\n    <p>High Score: <span id="highScore">0</span></p>\n    <button onclick="addPoints()">Earn Points</button>\n    <button onclick="resetGame()">Reset Game</button>\n  </div>\n  <div id="leaderboard">\n    <h2>Leaderboard</h2>\n    <ol id="topScores"></ol>\n  </div>\n</body>\n</html>',
-      css: 'body { font-family: Arial, sans-serif; padding: 40px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; text-align: center; }\n#gameArea { background: rgba(0,0,0,0.2); padding: 30px; border-radius: 16px; margin: 20px auto; max-width: 400px; }\n#gameArea p { font-size: 24px; margin: 15px 0; }\nbutton { margin: 10px; padding: 12px 24px; font-size: 16px; cursor: pointer; background: rgba(255,255,255,0.3); color: white; border: 2px solid white; border-radius: 8px; }\n#leaderboard { background: rgba(0,0,0,0.2); padding: 20px; border-radius: 16px; margin: 20px auto; max-width: 400px; }\n#topScores { text-align: left; font-size: 18px; }',
-      javascript: 'console.log("Ready! Build high score and leaderboard with localStorage.");\nlet currentScore = 0;\n// loadHighScore: localStorage.getItem("highScore") then parseInt\n// saveHighScore(score): localStorage.setItem("highScore", score)\n// addPoints(): add random points, update #score, if new high save and update #highScore\n// resetGame(): push currentScore to leaderboard (JSON.parse/stringify), clear current, displayLeaderboard()\n// On load: set #highScore from loadHighScore(), call displayLeaderboard()\n',
-    },
-    objectives: [
-      'Use localStorage to save data',
-      'Load saved data on page load',
-      'Store complex data with JSON',
-      'Create a leaderboard system',
-    ],
-    steps: [
-      { title: 'Implement loadHighScore() and saveHighScore(score).', instruction: 'Write loadHighScore() that returns parseInt(localStorage.getItem("highScore") || 0). Write saveHighScore(score) that calls localStorage.setItem("highScore", score).', concept: 'localStorage persists key-value strings across sessions.', verifyType: 'code', expectedConsole: null },
-      { title: 'Load high score and display on page load.', instruction: 'On load, call loadHighScore(), set #highScore textContent to it, and call displayLeaderboard() if you have one.', concept: 'Loading on startup restores the player\'s progress.', verifyType: 'code', expectedConsole: null },
-      { title: 'Update score and high score in addPoints().', instruction: 'In addPoints(), add random points to currentScore, update #score. If currentScore > highScore, call saveHighScore(currentScore) and update #highScore.', concept: 'Comparing and saving ensures the high score persists.', verifyType: 'code', expectedConsole: null },
-      { title: 'Implement resetGame() and leaderboard.', instruction: 'In resetGame(), push currentScore to a leaderboard array (load with JSON.parse(localStorage.getItem("leaderboard")||"[]"), push, save with JSON.stringify). Clear current score and call displayLeaderboard() to show the list.', concept: 'JSON lets you store and load arrays/objects in localStorage.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'localStorage only stores strings',
-      'Use JSON.stringify() to save objects',
-      'Use JSON.parse() to load objects',
-      'Always check if data exists before loading',
-    ],
-  },
-  {
-    title: 'Particle Effects',
-    description: 'Create stunning visual effects with particle systems.',
-    difficulty: 'advanced',
-    category: 'game-development',
-    order: 8,
-    content: `# Particle Systems
-
-## Visual Effects
-Particles create explosions, magic spells, smoke, and other cool effects!
-
-\`\`\`javascript
-class Particle {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-    this.vx = (Math.random() - 0.5) * 4;
-    this.vy = (Math.random() - 0.5) * 4;
-    this.life = 1.0;
-  }
-}
-\`\`\`
-
-## Your Task
-Create an explosion effect when clicking on the canvas.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Particle Effects</title>\n</head>\n<body>\n  <canvas id="gameCanvas" width="800" height="600"></canvas>\n  <div style="color: white; text-align: center; margin-top: 10px;">Click anywhere to create particles!</div>\n</body>\n</html>',
-      css: 'body { margin: 0; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #0a0a0a; }\ncanvas { border: 2px solid #333; background: #1a1a1a; cursor: crosshair; }',
-      javascript: 'console.log("Ready! Click the canvas to spawn particles.");\nconst canvas = document.getElementById("gameCanvas");\nconst ctx = canvas.getContext("2d");\nconst particles = [];\n// Add class Particle with x, y, vx, vy, life; update() moves and decreases life; draw() with globalAlpha; isDead()\n// On canvas click, push many new Particle(x, y) into particles\n// In gameLoop: update each, remove dead ones, draw all\n',
-    },
-    objectives: [
-      'Create particle class with physics',
-      'Manage particle lifecycle',
-      'Apply gravity and fade effects',
-      'Optimize by removing dead particles',
-    ],
-    steps: [
-      { title: 'Add Particle class with update and draw.', instruction: 'Create a Particle class with x, y, vx, vy, life. In update(), add vx to x, vy to y, and decrease life. In draw(ctx), set globalAlpha to life and draw a small shape (e.g. circle). Add isDead() that returns life <= 0.', concept: 'Particles have position, velocity, and lifetime.', verifyType: 'code', expectedConsole: null },
-      { title: 'Spawn particles on canvas click.', instruction: 'Add a click listener on the canvas. On click, get the click position (relative to canvas) and push several new Particle(x, y) into the particles array (use random vx, vy and life = 1).', concept: 'Spawning many particles at once creates an explosion effect.', verifyType: 'code', expectedConsole: null },
-      { title: 'Update and remove dead particles in the loop.', instruction: 'In your game loop, loop over particles: call update() on each, remove particles where isDead() is true, then call draw() on each remaining particle.', concept: 'Removing dead particles keeps the array small and avoids leaks.', verifyType: 'code', expectedConsole: null },
-      { title: 'Run and click to see the effect.', instruction: 'Run the game and click on the canvas. You should see a burst of particles that move and fade out.', concept: 'Particle systems combine spawning, physics, and rendering.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Each particle needs position and velocity',
-      'Use life value for fading',
-      'Remove particles when life reaches 0',
-      'Random values create natural-looking effects',
-    ],
-  },
-  {
-    title: 'Enemy AI and Pathfinding',
-    description: 'Create intelligent enemies that chase the player.',
-    difficulty: 'advanced',
-    category: 'game-development',
-    order: 9,
-    content: `# Enemy AI
-
-## Creating Smart Enemies
-Make enemies that follow, patrol, and react to the player!
-
-\`\`\`javascript
-function moveTowards(enemy, target) {
-  const dx = target.x - enemy.x;
-  const dy = target.y - enemy.y;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-  
-  enemy.x += (dx / distance) * enemy.speed;
-  enemy.y += (dy / distance) * enemy.speed;
-}
-\`\`\`
-
-## Your Task
-Create enemies that chase the player when nearby.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Enemy AI</title>\n</head>\n<body>\n  <canvas id="gameCanvas" width="800" height="600"></canvas>\n  <div style="color: white; text-align: center; margin-top: 10px;">Avoid the enemies! Use Arrow Keys</div>\n</body>\n</html>',
-      css: 'body { margin: 0; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #1a0033; }\ncanvas { border: 3px solid #330066; background: #0d001a; }',
-      javascript: 'console.log("Ready! Enemies chase when you are in range.");\nconst canvas = document.getElementById("gameCanvas");\nconst ctx = canvas.getContext("2d");\nconst player = { x: 400, y: 300, size: 25, speed: 4 };\n// Add Enemy class: x, y, size, speed, detectionRange; update() uses distance = sqrt(dx*dx+dy*dy)\n// If distance < detectionRange move towards player (normalize: dx/distance * speed); else patrol\n// Add key listeners, update/draw/gameLoop; draw enemies and player\n',
-    },
-    objectives: [
-      'Calculate distance between objects',
-      'Implement chase behavior',
-      'Create patrol patterns',
-      'Switch between AI states',
-    ],
-    steps: [
-      { title: 'Add Enemy class with position and detectionRange.', instruction: 'Create an Enemy class (or factory) with x, y, size, speed, and detectionRange. In update(), compute distance to player: dx = player.x - enemy.x, dy = player.y - enemy.y, distance = Math.sqrt(dx*dx + dy*dy).', concept: 'Distance formula finds how far the player is from the enemy.', verifyType: 'code', expectedConsole: null },
-      { title: 'Move towards player when in range.', instruction: 'If distance < detectionRange and distance > 0, normalize: enemy.x += (dx/distance)*enemy.speed, enemy.y += (dy/distance)*enemy.speed. Otherwise (e.g. patrol) move in a simple pattern.', concept: 'Normalizing (dx, dy) by distance gives consistent chase speed.', verifyType: 'code', expectedConsole: null },
-      { title: 'Add key listeners and draw player and enemies.', instruction: 'Add keydown/keyup for movement, update player position in update(). In draw(), draw the player and all enemies. Keep your game loop (update, draw, requestAnimationFrame).', concept: 'Integrating input, AI, and rendering completes the demo.', verifyType: 'code', expectedConsole: null },
-      { title: 'Run and verify chase behavior.', instruction: 'Run the game. Move the player near an enemy; the enemy should chase. Move away and it should stop or patrol. Confirm boundaries so nothing goes off-screen if desired.', concept: 'Detection range and movement logic create simple AI.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Use distance formula: sqrt(dx^2 + dy^2)',
-      'Normalize direction vectors for consistent speed',
-      'State machines help organize AI behavior',
-      'Detection ranges make AI feel more realistic',
-    ],
-  },
-  {
-    title: 'Mobile Touch Controls',
-    description: 'Make your game playable on mobile devices with touch input.',
-    difficulty: 'intermediate',
-    category: 'game-development',
-    order: 10,
-    content: `# Touch Controls
-
-## Mobile-Friendly Games
-Add touch controls so players can enjoy your game on phones and tablets!
-
-\`\`\`javascript
-canvas.addEventListener('touchstart', (e) => {
-  const touch = e.touches[0];
-  const x = touch.clientX;
-  const y = touch.clientY;
-});
-\`\`\`
-
-## Your Task
-Create a game with virtual joystick controls for mobile.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Touch Controls</title>\n  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n</head>\n<body>\n  <canvas id="gameCanvas" width="800" height="600"></canvas>\n</body>\n</html>',
-      css: 'body { margin: 0; padding: 0; overflow: hidden; background: #111; touch-action: none; }\ncanvas { display: block; margin: 0 auto; background: #222; max-width: 100%; height: auto; }',
-      javascript: 'console.log("Ready! Use touch or mouse as joystick.");\nconst canvas = document.getElementById("gameCanvas");\nconst ctx = canvas.getContext("2d");\nconst player = { x: 400, y: 300, size: 25, vx: 0, vy: 0 };\nconst joystick = { active: false, startX: 0, startY: 0, currentX: 0, currentY: 0 };\n// touchstart: e.preventDefault(), get e.touches[0], set joystick active and start/current\n// touchmove: update currentX/Y; touchend: active=false, vx=vy=0\n// mousedown/mousemove/mouseup for desktop\n// In update(): dx = currentX - startX, dy = currentY - startY; normalize and set player.vx/vy; move player, clamp bounds\n',
-    },
-    objectives: [
-      'Handle touch events',
-      'Create virtual joystick',
-      'Calculate touch direction and magnitude',
-      'Support both mobile and desktop',
-    ],
-    steps: [
-      { title: 'Handle touchstart and set joystick active.', instruction: 'Add canvas.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.touches[0]; joystick.active = true; joystick.startX = t.clientX; joystick.startY = t.clientY; joystick.currentX = t.clientX; joystick.currentY = t.clientY; }).', concept: 'Touch events provide clientX/clientY for the touch point.', verifyType: 'code', expectedConsole: null },
-      { title: 'Handle touchmove and touchend.', instruction: 'In touchmove, update joystick.currentX and currentY from e.touches[0]. In touchend, set joystick.active = false and player.vx = 0, player.vy = 0.', concept: 'Tracking current position gives direction; touchend resets movement.', verifyType: 'code', expectedConsole: null },
-      { title: 'Compute velocity from joystick in update().', instruction: 'In update(), if joystick.active, set dx = currentX - startX, dy = currentY - startY, distance = Math.sqrt(dx*dx+dy*dy). If distance > 0, normalize and set player.vx, player.vy (scale by speed). Move player and clamp to canvas.', concept: 'Direction from start to current gives movement; normalizing sets speed.', verifyType: 'code', expectedConsole: null },
-      { title: 'Add mouse events for desktop.', instruction: 'Add mousedown, mousemove, mouseup on the canvas that set joystick active and current position from e.clientX/clientY (and reset on mouseup). This lets you test on desktop.', concept: 'Mouse events mirror touch for a single pointer.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Prevent default to avoid scrolling',
-      'Use e.touches[0] for first touch point',
-      'Calculate distance for joystick strength',
-      'Add mouse events for desktop testing',
-    ],
-  },
-  // ========== MULTIPLAYER MODULES ==========
-  {
-    title: 'Multiplayer Basics - Introduction to Socket.IO',
-    description:
-      'Learn the fundamentals of real-time communication with Socket.IO for multiplayer games.',
-    difficulty: 'intermediate',
-    category: 'multiplayer',
-    order: 1,
-    content: `# Introduction to Socket.IO
-
-## Why Socket.IO for Multiplayer?
-Socket.IO enables real-time, bidirectional communication between clients and servers - perfect for multiplayer games!
-
-## Basic Concepts
-- **WebSockets**: Persistent connection for instant messaging
-- **Events**: Send/receive named messages
-- **Rooms**: Group players together
-- **Broadcasting**: Send to multiple clients at once
-
-## Example Client Code
-\`\`\`javascript
-const socket = io('http://localhost:3001');
-
-socket.on('connect', () => {
-  console.log('Connected to server!');
-});
-
-socket.emit('playerJoin', { name: 'Player1' });
-
-socket.on('gameState', (state) => {
-  updateGame(state);
-});
-\`\`\`
-
-## Your Task
-Set up a basic Socket.IO connection that logs when players connect and disconnect.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Socket.IO Basics</title>\n  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>\n</head>\n<body>\n  <div id="status">Connecting...</div>\n  <div id="logs"></div>\n</body>\n</html>',
-      css: `body {
-  font-family: Arial, sans-serif;
-  padding: 24px;
-  background: #1a1a2e;
-  color: #eee;
-}
-#status {
-  font-size: 24px;
-  padding: 16px;
-  background: #16213e;
-  border-radius: 8px;
-  margin-bottom: 16px;
-}
-#status.connected {
-  color: #4ade80;
-}
-#logs {
-  background: #0f0f23;
-  padding: 16px;
-  border-radius: 8px;
-  font-family: monospace;
-  min-height: 200px;
-}`,
-      javascript: 'console.log("Ready! Set up Socket.IO connect and disconnect.");\nfunction log(msg) {\n  const el = document.getElementById("logs");\n  if (el) {\n    const d = document.createElement("div");\n    d.textContent = "[" + new Date().toLocaleTimeString() + "] " + msg;\n    el.appendChild(d);\n  }\n}\n// Simulate or use io(): socket.on("connect", ...) to set #status and log; socket.on("disconnect", ...) to log\n// socket.emit("playerJoin", { name: "Player1" })\nlog("Attempting to connect...");',
-    },
-    objectives: [
-      'Understand WebSocket basics',
-      'Connect to a Socket.IO server',
-      'Send and receive events',
-      'Handle connection states',
-    ],
-    steps: [
-      { title: 'Connect to the Socket.IO server.', instruction: 'Use io() (or the provided server URL) to create a socket connection. Store the socket in a variable (e.g. const socket = io("http://localhost:3001")).', concept: 'Socket.IO establishes a real-time bidirectional connection.', verifyType: 'code', expectedConsole: null },
-      { title: 'Handle the connect event.', instruction: 'Call socket.on("connect", () => { ... }). In the handler, set #status textContent to "Connected" (or similar), add a class if needed, and call log("Connected to server!").', concept: 'The connect event fires when the connection is established.', verifyType: 'code', expectedConsole: null },
-      { title: 'Handle the disconnect event.', instruction: 'Call socket.on("disconnect", () => { ... }). In the handler, log("Disconnected") and update #status to show disconnected state.', concept: 'Handling disconnect keeps the UI accurate when the connection drops.', verifyType: 'code', expectedConsole: null },
-      { title: 'Emit playerJoin and verify in console.', instruction: 'After connecting, emit a playerJoin event: socket.emit("playerJoin", { name: "Player1" }). Run the app and check the console/logs for connect and disconnect messages.', concept: 'emit sends events to the server; the server can respond with other events.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Socket.IO uses events like emit() and on()',
-      'Always handle disconnect events gracefully',
-      'Use meaningful event names like "playerJoin"',
-      'Log events for debugging',
-    ],
-  },
-  {
-    title: 'Multiplayer - Game State Synchronization',
-    description: 'Learn how to synchronize game state between multiple players.',
-    difficulty: 'intermediate',
-    category: 'multiplayer',
-    order: 2,
-    content: `# Game State Synchronization
-
-## The Challenge
-In multiplayer games, all players need to see the same game state. But network latency exists!
-
-## Strategies
-1. **Authoritative Server**: Server is the source of truth
-2. **Client Prediction**: Predict locally, correct from server
-3. **State Interpolation**: Smooth between state updates
-
-## Example
-\`\`\`javascript
-// Server sends state updates
-socket.on('gameState', (state) => {
-  gameState.players = state.players;
-  gameState.ball = state.ball;
-  gameState.scores = state.scores;
-});
-
-// Client sends inputs
-socket.emit('playerInput', {
-  playerId: myId,
-  input: { up: true, down: false }
-});
-\`\`\`
-
-## Your Task
-Create a game that syncs player positions between clients using state updates.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>State Sync</title>\n</head>\n<body>\n  <canvas id="gameCanvas" width="600" height="400"></canvas>\n  <div id="info">Players: <span id="playerCount">0</span></div>\n</body>\n</html>',
-      css: 'body { margin: 0; padding: 20px; background: #1a1a2e; color: #eee; font-family: Arial, sans-serif; }\ncanvas { border: 2px solid #667eea; border-radius: 8px; display: block; margin-bottom: 16px; }\n#info { font-size: 16px; color: #a0aec0; }',
-      javascript: 'console.log("Ready! Sync game state between players.");\nconst canvas = document.getElementById("gameCanvas");\nconst ctx = canvas.getContext("2d");\nlet gameState = { players: {} };\nlet myId = "player1";\n// Add key listeners; receiveServerState() updates gameState from socket.on("gameState")\n// sendInput() emits playerInput or applies locally; draw() renders all players from gameState\n',
-    },
-    objectives: [
-      'Understand authoritative server model',
-      'Sync player positions',
-      'Handle input and state separately',
-      'Update UI from game state',
-    ],
-    steps: [
-      { title: 'Listen for gameState from the server.', instruction: 'Add socket.on("gameState", (state) => { ... }). In the handler, set gameState.players = state.players (or merge state into gameState). This is your receiveServerState logic.', concept: 'The server is the source of truth; clients apply state updates.', verifyType: 'code', expectedConsole: null },
-      { title: 'Send player input, not position.', instruction: 'In your input handler (e.g. keydown), instead of updating local position directly, call sendInput() which emits "playerInput" with { playerId: myId, input: { up: true, down: false } } or similar.', concept: 'Sending inputs lets the server validate and compute new state.', verifyType: 'code', expectedConsole: null },
-      { title: 'Update UI from gameState in draw().', instruction: 'In draw(), clear the canvas and loop over gameState.players. For each player, draw them at their x, y from state. Include the local player so everyone sees the same positions.', concept: 'Rendering from shared state keeps all clients in sync visually.', verifyType: 'code', expectedConsole: null },
-      { title: 'Run and verify sync.', instruction: 'If you have a server, run two clients and move in one; the other should see the updated position. Otherwise confirm gameState updates when you receive gameState and draw() uses it.', concept: 'State sync depends on receiving updates and rendering from them.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Server should validate all movements',
-      'Send inputs, not positions',
-      'Interpolate between state updates for smoothness',
-      'Keep game state serializable (no functions)',
-    ],
-  },
-  {
-    title: 'Multiplayer - Turn-Based Game Logic',
-    description: 'Implement turn-based gameplay mechanics for multiplayer games.',
-    difficulty: 'intermediate',
-    category: 'multiplayer',
-    order: 3,
-    content: `# Turn-Based Multiplayer
-
-## Turn Management
-In turn-based games, players take actions one at a time. The server manages whose turn it is.
-
-## Key Concepts
-- **Current Turn**: Track which player can act
-- **Turn Timer**: Optional countdown for action
-- **Turn Validation**: Server validates moves
-- **Turn Events**: Notify all players of changes
-
-## Example
-\`\`\`javascript
-// Server determines turn
-let currentTurn = 'player1';
-
-socket.on('makeMove', (move, playerId) => {
-  if (playerId !== currentTurn) {
-    socket.emit('error', 'Not your turn!');
-    return;
-  }
-  
-  if (isValidMove(move)) {
-    applyMove(move);
-    currentTurn = getNextPlayer();
-    io.emit('gameState', gameState);
-    io.emit('turnChange', currentTurn);
-  }
-});
-\`\`\`
-
-## Your Task
-Build a simple turn-based game where players alternate making moves.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Turn-Based Game</title>\n</head>\n<body>\n  <div id="game">\n    <div id="turn-indicator">Player 1\'s Turn</div>\n    <div id="board"></div>\n    <div id="scores">\n      <div>Player 1: <span id="p1score">0</span></div>\n      <div>Player 2: <span id="p2score">0</span></div>\n    </div>\n  </div>\n</body>\n</html>',
-      css: 'body { font-family: Arial, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; display: flex; justify-content: center; }\n#game { text-align: center; }\n#turn-indicator { font-size: 24px; padding: 16px; margin-bottom: 16px; border-radius: 8px; }\n#turn-indicator.player1 { background: linear-gradient(135deg, #4ade80, #22c55e); color: #000; }\n#turn-indicator.player2 { background: linear-gradient(135deg, #f472b6, #ec4899); color: #000; }\n#board { display: grid; grid-template-columns: repeat(3, 80px); gap: 8px; justify-content: center; margin-bottom: 20px; }\n.cell { width: 80px; height: 80px; background: #16213e; border: 2px solid #667eea; border-radius: 8px; font-size: 36px; cursor: pointer; }\n.cell:hover:not(.taken) { background: #1e3a5f; }\n.cell.taken { cursor: not-allowed; }\n#scores { display: flex; justify-content: center; gap: 40px; font-size: 18px; }',
-      javascript: 'console.log("Ready! Take turns and check for a winner.");\nconst board = document.getElementById("board");\nconst turnIndicator = document.getElementById("turn-indicator");\nlet gameState = { board: Array(9).fill(null), currentTurn: "player1", scores: { player1: 0, player2: 0 }, gameOver: false };\n// Create 9 cell buttons; makeMove(index) validates currentTurn, updates board, checks winner/draw, switches turn\n// checkWinner() uses win lines [0,1,2], [3,4,5], etc.; updateTurnIndicator() and updateScores()\n',
-    },
-    objectives: [
-      'Implement turn management',
-      'Validate player moves',
-      'Detect win conditions',
-      'Handle game state transitions',
-    ],
-    steps: [
-      { title: 'Create the board and makeMove(index).', instruction: 'Build 9 cell buttons (or divs) for the board. Implement makeMove(index) so it checks if gameState.board[index] is null and gameState.currentTurn matches the current player; if so, set board[index] to current player.', concept: 'Turn-based games only allow moves when it is that player\'s turn.', verifyType: 'code', expectedConsole: null },
-      { title: 'Switch turn and check winner.', instruction: 'After a valid move, call checkWinner() (using win lines [0,1,2], [3,4,5], [6,7,8], etc.). If no winner, set currentTurn to the other player. Update the turn indicator and scores.', concept: 'Win detection and turn switching are core turn-based logic.', verifyType: 'code', expectedConsole: null },
-      { title: 'Update UI from gameState.', instruction: 'Implement updateTurnIndicator() and updateScores() to read from gameState.currentTurn and gameState.scores. Call them after each move and on load.', concept: 'UI should always reflect the current game state.', verifyType: 'code', expectedConsole: null },
-      { title: 'Handle game over and reset.', instruction: 'When checkWinner() returns a winner or the board is full (draw), set gameState.gameOver and show a message. Provide a way to reset the board and currentTurn for a new game.', concept: 'Game end and reset complete the turn-based flow.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Server should track whose turn it is',
-      'Reject moves from wrong player',
-      'Broadcast turn changes to all players',
-      'Add turn timers for competitive play',
-    ],
-  },
-  {
-    title: 'Multiplayer - Room and Lobby System',
-    description: 'Create game rooms and lobbies for players to join matches.',
-    difficulty: 'intermediate',
-    category: 'multiplayer',
-    order: 4,
-    content: `# Room and Lobby System
-
-## Why Rooms?
-Rooms let players group together for matches instead of playing with everyone on the server.
-
-## Features
-- **Create Room**: Player makes a new game room
-- **Join Room**: Enter with room code
-- **Room List**: See available games
-- **Ready System**: Wait for all players
-
-## Example
-\`\`\`javascript
-// Create room
-socket.emit('createRoom', { maxPlayers: 2 });
-
-// Join room
-socket.emit('joinRoom', { roomId: 'ABC123' });
-
-// Toggle ready
-socket.emit('toggleReady');
-
-// Room events
-socket.on('roomUpdate', (room) => {
-  updateLobbyUI(room);
-});
-\`\`\`
-
-## Your Task
-Build a lobby system with room creation and ready-up functionality.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Game Lobby</title>\n</head>\n<body>\n  <div id="lobby">\n    <h1>Game Lobby</h1>\n    <div id="actions">\n      <button onclick="createRoom()">Create Room</button>\n      <input type="text" id="roomCode" placeholder="Room code...">\n      <button onclick="joinRoom()">Join Room</button>\n    </div>\n    <div id="room-view" style="display:none">\n      <h2>Room: <span id="room-id"></span></h2>\n      <div id="players"></div>\n      <button onclick="toggleReady()">Ready Up!</button>\n      <button onclick="leaveRoom()">Leave</button>\n      <div id="countdown"></div>\n    </div>\n    <div id="rooms-list">\n      <h3>Available Rooms</h3>\n      <div id="rooms"></div>\n    </div>\n  </div>\n</body>\n</html>',
-      css: 'body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #eee; min-height: 100vh; padding: 20px; }\n#lobby { max-width: 600px; margin: 0 auto; }\n#actions { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }\nbutton { padding: 12px 24px; background: linear-gradient(135deg, #667eea, #764ba2); border: none; border-radius: 8px; color: white; font-size: 16px; cursor: pointer; }\ninput { padding: 12px; border: 2px solid #667eea; border-radius: 8px; background: #16213e; color: white; flex: 1; }\n#room-view { background: #16213e; padding: 20px; border-radius: 12px; margin-bottom: 20px; }\n.player-slot { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #1a1a2e; border-radius: 8px; margin-bottom: 8px; }\n.player-slot.ready { border: 2px solid #4ade80; }\n#rooms-list { background: #16213e; padding: 20px; border-radius: 12px; }\n.room-item { display: flex; justify-content: space-between; padding: 12px; background: #1a1a2e; border-radius: 8px; margin-bottom: 8px; }\n#countdown { font-size: 48px; text-align: center; color: #4ade80; margin-top: 20px; }',
-      javascript: 'console.log("Ready! Create or join a room and ready up.");\nlet currentRoom = null;\nlet myId = "player_" + Math.random().toString(36).substr(2, 4);\nlet rooms = {};\n// createRoom(): generate roomId, rooms[roomId] = { id, host: myId, players: [{ id: myId, name: "You", ready: false }], maxPlayers: 2 }; showRoomView(); updateRoomsList()\n// joinRoom(): get roomCode, if rooms[code] and not full push player, set currentRoom, showRoomView\n// leaveRoom(), toggleReady(), checkAllReady(), startCountdown(), showRoomView(), updateRoomsList()\n',
-    },
-    objectives: [
-      'Create and join game rooms',
-      'Implement player ready system',
-      'Display room status',
-      'Handle room lifecycle',
-    ],
-    steps: [
-      { title: 'Implement createRoom().', instruction: 'In createRoom(), generate a unique roomId (e.g. random string), create rooms[roomId] with id, host: myId, players: [{ id: myId, name: "You", ready: false }], maxPlayers: 2. Set currentRoom = roomId, showRoomView(), updateRoomsList().', concept: 'Rooms group players; the creator is the host.', verifyType: 'code', expectedConsole: null },
-      { title: 'Implement joinRoom().', instruction: 'Get the room code from #roomCode. If rooms[code] exists and players.length < maxPlayers, push the current player into rooms[code].players, set currentRoom = code, showRoomView(). Otherwise show an error.', concept: 'Joining requires a valid room and space available.', verifyType: 'code', expectedConsole: null },
-      { title: 'Implement toggleReady() and showRoomView().', instruction: 'In toggleReady(), find yourself in current room players and flip ready. In showRoomView(), display room id and list of players with their ready status; show/hide #room-view and #rooms-list as needed.', concept: 'Ready state and room view let players see who is in and ready.', verifyType: 'code', expectedConsole: null },
-      { title: 'Implement leaveRoom() and checkAllReady().', instruction: 'leaveRoom() removes you from the room, clears currentRoom, hides room view. checkAllReady() returns true if every player in the room has ready === true; use it to start a countdown or game when all are ready.', concept: 'Room lifecycle includes join, ready, start, and leave.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Generate unique room codes',
-      'Limit players per room',
-      'Start game when all ready',
-      'Clean up empty rooms',
-    ],
-  },
-  {
-    title: 'Multiplayer - Win Detection and Game End',
-    description: 'Implement win conditions and game end logic for multiplayer games.',
-    difficulty: 'intermediate',
-    category: 'multiplayer',
-    order: 5,
-    content: `# Win Detection and Game End
-
-## Handling Game Completion
-Every multiplayer game needs clear win/lose/draw conditions and proper game end handling.
-
-## Key Concepts
-- **Win Conditions**: Rules that determine victory
-- **Score Tracking**: Persistent points across rounds
-- **Game End Events**: Notify all players of results
-- **Rematch System**: Option to play again
-
-## Example
-\`\`\`javascript
-function checkGameEnd() {
-  const winner = checkWinCondition();
-  
-  if (winner) {
-    io.to(roomId).emit('gameEnd', {
-      winner: winner,
-      scores: gameState.scores,
-      reason: 'victory'
-    });
-  }
-}
-
-socket.on('rematchRequest', () => {
-  resetGame();
-  io.to(roomId).emit('rematchAccepted');
-});
-\`\`\`
-
-## Your Task
-Create a game with proper win detection, result display, and rematch functionality.`,
-    starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Win Detection</title>\n</head>\n<body>\n  <div id="game">\n    <div id="header">\n      <div class="score p1">P1: <span id="p1score">0</span></div>\n      <div id="round">Round <span id="roundNum">1</span></div>\n      <div class="score p2">P2: <span id="p2score">0</span></div>\n    </div>\n    <canvas id="canvas" width="600" height="400"></canvas>\n    <div id="controls">Press SPACE to start round</div>\n  </div>\n  <div id="modal" style="display:none">\n    <div id="modal-content">\n      <h2 id="modal-title">Game Over!</h2>\n      <p id="modal-message"></p>\n      <button onclick="rematch()">Rematch</button>\n      <button onclick="newGame()">New Game</button>\n    </div>\n  </div>\n</body>\n</html>',
-      css: 'body { margin: 0; padding: 20px; background: #1a1a2e; color: #eee; font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; }\n#header { display: flex; justify-content: space-between; width: 600px; margin-bottom: 10px; }\n.score { font-size: 24px; font-weight: bold; }\n.score.p1 { color: #4ade80; }\n.score.p2 { color: #f472b6; }\n#round { font-size: 18px; color: #a0aec0; }\ncanvas { border: 2px solid #667eea; border-radius: 8px; margin-bottom: 10px; }\n#controls { color: #a0aec0; }\n#modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; }\n#modal-content { background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 40px; border-radius: 16px; text-align: center; border: 2px solid #667eea; }\n#modal-content h2 { font-size: 36px; margin-bottom: 10px; }\n#modal-content button { padding: 12px 24px; margin: 10px; background: linear-gradient(135deg, #667eea, #764ba2); border: none; border-radius: 8px; color: white; font-size: 16px; cursor: pointer; }\n.winner-p1 h2 { color: #4ade80; }\n.winner-p2 h2 { color: #f472b6; }',
-      javascript: 'console.log("Ready! Win detection, modal, and rematch.");\nconst canvas = document.getElementById("canvas");\nconst ctx = canvas.getContext("2d");\nconst WIN_SCORE = 3;\nlet gameState = { ball: { x: 300, y: 200, vx: 0, vy: 0, radius: 10 }, paddles: { p1: { y: 180, height: 60, score: 0 }, p2: { y: 180, height: 60, score: 0 } }, round: 1, running: false, winner: null };\nlet keys = { w: false, s: false, up: false, down: false };\n// Key listeners; startRound() on Space; checkWin() after each score; scorePoint(player) updates scores and calls showGameEnd if checkWin()\n// showGameEnd(result): set modal title/message, display modal; rematch(): reset scores and round, hide modal\n',
-    },
-    objectives: [
-      'Implement win conditions',
-      'Track and display scores',
-      'Show game end modal',
-      'Implement rematch functionality',
-    ],
-    steps: [
-      { title: 'Check win condition after each score.', instruction: 'After updating a player\'s score (e.g. in scorePoint(player)), call checkWin(). If a player has reached WIN_SCORE (e.g. 3), set gameState.winner and call showGameEnd(result).', concept: 'Win detection runs after every score change.', verifyType: 'code', expectedConsole: null },
-      { title: 'Implement showGameEnd(result).', instruction: 'In showGameEnd(result), set #modal-title and #modal-message from result (e.g. "Player 1 wins!" or "Game Over"). Show #modal (e.g. style.display = "flex"). Optionally add a CSS class for winner styling.', concept: 'A modal clearly communicates the game result.', verifyType: 'code', expectedConsole: null },
-      { title: 'Implement rematch().', instruction: 'In rematch(), reset gameState (scores, round, winner, ball position, etc.) to initial values, hide the modal, and optionally emit a rematch event so all clients reset. Update the header and canvas.', concept: 'Rematch resets state so the same players can play again.', verifyType: 'code', expectedConsole: null },
-      { title: 'Implement newGame() and wire buttons.', instruction: 'newGame() can fully reset or leave the room. Ensure the Rematch and New Game buttons call rematch() and newGame(), and that the modal is hidden when starting a new round.', concept: 'Clear buttons for rematch and new game improve UX.', verifyType: 'code', expectedConsole: null },
-    ],
-    hints: [
-      'Check win conditions after each score',
-      'Use modals for end-of-game UI',
-      'Broadcast results to all players',
-      'Reset state cleanly for rematches',
-    ],
-  },
 ];
 
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(async () => {
     console.log('MongoDB connected');
-
-    // Clear existing modules
     await Module.deleteMany({});
     console.log('Cleared existing modules');
-
-    // Insert sample modules
     await Module.insertMany(sampleModules);
-    console.log(`Inserted ${sampleModules.length} sample modules`);
-
-    console.log('Seed completed successfully!');
+    console.log(`Inserted ${sampleModules.length} modules`);
     process.exit(0);
   })
   .catch((err) => {

@@ -14,5 +14,7 @@ router.post("/", auth, requireAdmin, modulesController.create);
 router.put("/:id", auth, requireAdmin, modulesController.update);
 // Delete a module (admin only)
 router.delete("/:id", auth, requireAdmin, modulesController.remove);
+// Force-regenerate AI content for a module (admin only)
+router.post("/:id/regenerate", auth, requireAdmin, modulesController.regenerateContent);
 
 module.exports = router;

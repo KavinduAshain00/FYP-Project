@@ -7,10 +7,13 @@ const OLLAMA_MODEL = 'deepseek-v3.2';
 const OLLAMA_MCQ_MODEL = 'gpt-oss:20b';
 /** Model used for game starter code generation (React game scaffolding) */
 const OLLAMA_CODER_MODEL = 'qwen3-coder:480b';
+/** Model used for generating module steps, hints, and starter code from content */
+const OLLAMA_STEP_MODEL = 'qwen3-coder:480b';
 
 module.exports = {
   OLLAMA_HOST,
   OLLAMA_MODEL,
   OLLAMA_MCQ_MODEL,
   OLLAMA_CODER_MODEL,
+  OLLAMA_STEP_MODEL,
 };

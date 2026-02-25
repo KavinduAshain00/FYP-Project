@@ -4,6 +4,7 @@ const {
   OLLAMA_MODEL,
   OLLAMA_MCQ_MODEL,
   OLLAMA_CODER_MODEL,
+  OLLAMA_STEP_MODEL,
 } = require("../constants/ai");
 
 const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
@@ -220,6 +221,141 @@ Do not repeat the code in full. Use simple language.`;
   }
 }
 
+/**
+ * Generate step-by-step instructions for a module from its content and objectives.
+ * Returns { steps: [{ title, instruction, concept, verifyType, expectedConsole }] }
+ */
+async function generateModuleSteps(moduleTitle, content, objectives, difficulty) {
+  if (!OLLAMA_API_KEY) return { steps: [] };
+  const objList = Array.isArray(objectives) ? objectives.join("\n- ") : (objectives || "Complete the lesson");
+  const prompt = `You are an expert programming instructor. Generate exactly 4 learning steps for a coding module. Each step must be a small, verifiable task the student performs in an online code editor.
+
+MODULE TITLE: ${moduleTitle}
+DIFFICULTY: ${difficulty || "beginner"}
+OBJECTIVES:
+- ${objList}
+
+CONTENT (lesson material the student reads):
+${(content || "").substring(0, 2000)}
+
+Output ONLY valid JSON (no markdown, no preamble):
+{"steps":[{"title":"short action title","instruction":"detailed instruction for the student","concept":"one-sentence concept the step teaches","verifyType":"code","expectedConsole":null}]}
+
+Rules:
+- Exactly 4 steps.
+- verifyType is one of: "code", "checkConsole", "checkComments". Default "code".
+- expectedConsole is null unless verifyType is "checkConsole" (then use { "type": "any" } or { "exactLine": "..." } or { "type": "multipleLines" }).
+- Steps should progress from simple to integrative.
+- instruction should be 1-3 sentences telling the student exactly what to do.
+- concept should be 1 sentence explaining the idea behind the step.`;
+
+  try {
+    const raw = await generateTextWithModel(prompt, { maxTokens: 1200, temperature: 0.3 }, OLLAMA_STEP_MODEL);
+    const trimmed = raw.trim().replace(/^```\w*\n?|```$/g, "").trim();
+    const data = JSON.parse(trimmed);
+    const steps = Array.isArray(data.steps) ? data.steps : [];
+    return {
+      steps: steps.slice(0, 5).filter(
+        (s) => s.title && s.instruction
+      ).map((s) => ({
+        title: s.title,
+        instruction: s.instruction || s.title,
+        concept: s.concept || "",
+        verifyType: ["code", "checkConsole", "checkComments"].includes(s.verifyType) ? s.verifyType : "code",
+        expectedConsole: s.expectedConsole || null,
+      })),
+    };
+  } catch (err) {
+    console.error("Step generation error:", err.message || err);
+    return { steps: [] };
+  }
+}
+
+/**
+ * Generate hints for a module from its content and objectives.
+ * Returns { hints: ["hint1", "hint2", ...] }
+ */
+async function generateModuleHints(moduleTitle, content, objectives) {
+  if (!OLLAMA_API_KEY) return { hints: [] };
+  const objList = Array.isArray(objectives) ? objectives.join(", ") : (objectives || "");
+  const prompt = `You are a programming tutor. Generate 3-4 short, helpful hints for a student working on this module. Each hint should nudge without giving away the answer.
+
+MODULE: ${moduleTitle}
+OBJECTIVES: ${objList}
+CONTENT SUMMARY: ${(content || "").substring(0, 800)}
+
+Output ONLY valid JSON: {"hints":["hint1","hint2","hint3"]}
+Each hint: 1 short sentence. No preamble.`;
+
+  try {
+    const raw = await generateTextWithModel(prompt, { maxTokens: 400, temperature: 0.3 }, OLLAMA_STEP_MODEL);
+    const trimmed = raw.trim().replace(/^```\w*\n?|```$/g, "").trim();
+    const data = JSON.parse(trimmed);
+    return { hints: Array.isArray(data.hints) ? data.hints.slice(0, 5) : [] };
+  } catch (err) {
+    console.error("Hint generation error:", err.message || err);
+    return { hints: [] };
+  }
+}
+
+/**
+ * Generate starter code for a module from its content, objectives, and category.
+ * Returns { starterCode: { html, css, javascript, jsx } }
+ */
+async function generateModuleStarterCode(moduleTitle, content, objectives, category, moduleType) {
+  if (!OLLAMA_API_KEY) throw new Error("OLLAMA_API_KEY not configured");
+  const isReact = moduleType === "react" || ["react-fundamentals", "react-game-dev", "advanced-concepts"].includes(category);
+  const objList = Array.isArray(objectives) ? objectives.join(", ") : (objectives || "");
+
+  const prompt = `You are an expert web developer. Generate starter code for a coding lesson. The student will modify this code to complete the objectives.
+
+MODULE: ${moduleTitle}
+CATEGORY: ${category || "javascript-basics"}
+TYPE: ${isReact ? "React (JSX)" : "Vanilla (HTML/CSS/JS)"}
+OBJECTIVES: ${objList}
+CONTENT SUMMARY: ${(content || "").substring(0, 1200)}
+
+Output ONLY valid JSON with starter code (the code students START with, not the finished solution):
+${isReact
+  ? '{"starterCode":{"html":"","css":"basic styles","javascript":"","jsx":"import React ...starter JSX"}}'
+  : '{"starterCode":{"html":"<!DOCTYPE html>...basic page","css":"basic styles","javascript":"console.log(\\"Ready!\\");\\n// TODO comments guiding the student","jsx":""}}'
+}
+
+Rules:
+- html: a simple HTML page with appropriate elements (canvas, divs, buttons) for the lesson.
+- css: basic styling (body padding, fonts, colors).
+- javascript: a console.log("Ready!") line and TODO comments guiding the student through the objectives. Do NOT include the solution.
+- jsx: only if React module; otherwise empty string.
+- Keep code concise. Add guiding comments like "// Step 1: ..." so the student knows where to write code.
+- The starter code should be INCOMPLETE — the student completes it by following the steps.`;
+
+  try {
+    const raw = await generateTextWithModel(prompt, { maxTokens: 2000, temperature: 0.3 }, OLLAMA_STEP_MODEL);
+    const trimmed = raw.trim().replace(/^```\w*\n?|```$/g, "").trim();
+    const data = JSON.parse(trimmed);
+    const sc = data.starterCode || {};
+    return {
+      starterCode: {
+        html: sc.html || '<!DOCTYPE html>\n<html>\n<head><title>Lesson</title></head>\n<body>\n  <h1>Open the console</h1>\n</body>\n</html>',
+        css: sc.css || 'body { font-family: Arial, sans-serif; padding: 24px; background: #f4f6fb; }',
+        javascript: sc.javascript || 'console.log("Ready! Add your code below.");\n',
+        jsx: sc.jsx || "",
+      },
+    };
+  } catch (err) {
+    console.error("Starter code generation error:", err.message || err);
+    // Return sensible defaults
+    return {
+      starterCode: {
+        html: '<!DOCTYPE html>\n<html>\n<head><title>Lesson</title></head>\n<body>\n  <h1>Open the console</h1>\n</body>\n</html>',
+        css: 'body { font-family: Arial, sans-serif; padding: 24px; background: #f4f6fb; }',
+        javascript: 'console.log("Ready! Add your code below.");\n',
+        jsx: "",
+      },
+    };
+  }
+}
+
 module.exports = {
   generateText,
   generateTextWithModel,
@@ -229,4 +365,7 @@ module.exports = {
   verifyMCQAnswer,
   generateGameStarterCode,
   explainCodeSnippet,
+  generateModuleSteps,
+  generateModuleHints,
+  generateModuleStarterCode,
 };

@@ -1,13 +1,14 @@
 /**
- * Map user learning path to Module categories (Module schema uses different enum for react/advanced).
+ * Map user learning path to Module categories.
  */
 const LEARNING_PATH_TO_CATEGORIES = {
   'javascript-basics': ['javascript-basics'],
-  'game-development': ['game-development'],
-  'react-basics': ['react-fundamentals', 'react-game-dev'],
-  multiplayer: ['multiplayer'],
+  'game-development':  ['game-development'],
+  'react-basics':      ['react-game-dev'],
+  'react-game-dev':    ['react-game-dev'],
+  multiplayer:         ['multiplayer'],
   'advanced-concepts': ['advanced-concepts'],
-  advanced: ['advanced-concepts'],
+  advanced:            ['advanced-concepts'],
 };
 
 /**

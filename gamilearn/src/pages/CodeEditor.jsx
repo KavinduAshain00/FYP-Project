@@ -33,11 +33,14 @@ import { loadEditorDraft, saveEditorDraft } from "../utils/draftStorage";
 
 // Module type configurations (multiplayer uses HTML/CSS/JS only, no React)
 const MODULE_TYPES = {
-  "javascript-basics": { tabs: ["html", "css", "js"], defaultTab: "html" },
-  "game-development": { tabs: ["html", "css", "js"], defaultTab: "js" },
-  "react-basics": { tabs: ["jsx", "css"], defaultTab: "jsx" },
-  multiplayer: { tabs: ["html", "css", "js"], defaultTab: "html" },
-  "advanced-concepts": { tabs: ["jsx", "css", "js"], defaultTab: "jsx" },
+  "javascript-basics":  { tabs: ["html", "css", "js"],       defaultTab: "js" },
+  "game-development":   { tabs: ["html", "css", "js"],       defaultTab: "js" },
+  "react-game-dev":     { tabs: ["jsx", "css"],              defaultTab: "jsx" },
+  "multiplayer":        { tabs: ["html", "css", "js"],       defaultTab: "html" },
+  "advanced-concepts":  { tabs: ["jsx", "css", "js"],        defaultTab: "jsx" },
+  // legacy aliases kept for backwards-compat with existing DB records
+  "react-basics":       { tabs: ["jsx", "css"],              defaultTab: "jsx" },
+  "react-fundamentals": { tabs: ["jsx", "css"],              defaultTab: "jsx" },
 };
 
 const CodeEditor = () => {
@@ -687,6 +690,7 @@ const CodeEditor = () => {
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center gap-4">
         <div className="h-12 w-12 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
         <p className="text-sm text-slate-400">Loading module...</p>
+        <p className="text-xs text-slate-600">Generating steps and starter code with AI if needed</p>
       </div>
     );
   }
