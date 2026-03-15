@@ -69,6 +69,12 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 1,
     },
+    // Role: 'user' | 'admin' (admin can manage users and modules)
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user',
+    },
     // Whether the Game Studio is unlocked for this user
     gameStudioEnabled: {
       type: Boolean,

@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const Achievement = require('../models/Achievement');
-const { isAdminEmail } = require('../utils/admin');
+const { isAdmin } = require('../utils/admin');
 const { XP_PER_LEVEL } = require('../constants/levelRanks');
 
 const POPULATE_OPTS = [
@@ -25,7 +25,7 @@ function toAdminUserView(user) {
     gameStats: user.gameStats || {},
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
-    isAdmin: isAdminEmail(user.email),
+    isAdmin: isAdmin(user),
   };
 }
 
@@ -207,6 +207,157 @@ async function revokeAchievement(req, res) {
   }
 }
 
+/**
+ * POST /api/admin/bootstrap - Set first admin by email (no auth). Only works when there are 0 admins.
+ * Body: { email }. User must exist. If BOOTSTRAP_SECRET is set, body must include { secret }.
+ */
+async function bootstrap(req, res) {
+  try {
+    const count = await User.countDocuments({ role: 'admin' });
+    if (count > 0) {
+      return res.status(403).json({ message: 'Bootstrap only allowed when no admins exist' });
+    }
+    const secret = process.env.BOOTSTRAP_SECRET;
+    if (secret && req.body.secret !== secret) {
+      return res.status(401).json({ message: 'Invalid or missing bootstrap secret' });
+    }
+    const email = (req.body.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ message: 'Valid email required' });
+    }
+    const user = await User.findOneAndUpdate(
+      { email },
+      { role: 'admin' },
+      { new: true }
+    );
+    if (!user) {
+      return res.status(404).json({ message: 'No user found with this email' });
+    }
+    return res.status(201).json({ message: 'First admin set', email });
+  } catch (error) {
+    console.error('Admin bootstrap error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+/**
+ * GET /api/admin/admins - List admin emails (admin only)
+ */
+async function listAdmins(req, res) {
+  try {
+    const admins = await User.find({ role: 'admin' }).select('email').sort({ email: 1 }).lean();
+    return res.json({ admins: admins.map((a) => a.email) });
+  } catch (error) {
+    console.error('Admin list admins error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+/**
+ * POST /api/admin/admins - Set a user as admin by email (admin only). Body: { email }
+ */
+async function addAdmin(req, res) {
+  try {
+    const email = (req.body.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ message: 'Valid email required' });
+    }
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'No user found with this email' });
+    }
+    if (user.role === 'admin') {
+      return res.status(400).json({ message: 'Already an admin' });
+    }
+    user.role = 'admin';
+    await user.save();
+    return res.status(201).json({ message: 'Admin added', email });
+  } catch (error) {
+    console.error('Admin add admin error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+/**
+ * DELETE /api/admin/admins/:email - Revoke admin from a user (admin only). :email is URL-encoded.
+ */
+async function removeAdmin(req, res) {
+  try {
+    const email = decodeURIComponent(req.params.email || '').trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ message: 'Email required' });
+    }
+    const adminsCount = await User.countDocuments({ role: 'admin' });
+    if (adminsCount <= 1) {
+      return res.status(400).json({ message: 'Cannot remove the last admin' });
+    }
+    const user = await User.findOne({ email });
+    if (!user || user.role !== 'admin') {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+    user.role = 'user';
+    await user.save();
+    return res.json({ message: 'Admin removed', email });
+  } catch (error) {
+    console.error('Admin remove admin error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+/**
+ * POST /api/admin/users/:id/grant-admin - Grant admin to a user by user id (admin only)
+ */
+async function grantAdminToUser(req, res) {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (user.role === 'admin') {
+      return res.status(400).json({ message: 'User is already an admin' });
+    }
+    user.role = 'admin';
+    await user.save();
+    const updated = await User.findById(user._id)
+      .select('-password')
+      .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
+      .populate(POPULATE_OPTS[1].path, POPULATE_OPTS[1].select);
+    return res.status(201).json({ message: 'Admin granted', user: toAdminUserView(updated) });
+  } catch (error) {
+    console.error('Admin grant admin to user error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+/**
+ * DELETE /api/admin/users/:id/revoke-admin - Revoke admin from a user by user id (admin only)
+ */
+async function revokeAdminFromUser(req, res) {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (user.role !== 'admin') {
+      return res.status(400).json({ message: 'User is not an admin' });
+    }
+    const adminsCount = await User.countDocuments({ role: 'admin' });
+    if (adminsCount <= 1) {
+      return res.status(400).json({ message: 'Cannot revoke the last admin' });
+    }
+    user.role = 'user';
+    await user.save();
+    const updated = await User.findById(user._id)
+      .select('-password')
+      .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
+      .populate(POPULATE_OPTS[1].path, POPULATE_OPTS[1].select);
+    return res.json({ message: 'Admin revoked', user: toAdminUserView(updated) });
+  } catch (error) {
+    console.error('Admin revoke admin from user error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
 module.exports = {
   listUsers,
   getUserById,
@@ -214,4 +365,10 @@ module.exports = {
   deleteUser,
   grantAchievement,
   revokeAchievement,
+  bootstrap,
+  listAdmins,
+  addAdmin,
+  removeAdmin,
+  grantAdminToUser,
+  revokeAdminFromUser,
 };

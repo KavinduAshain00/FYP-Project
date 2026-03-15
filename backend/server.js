@@ -42,9 +42,38 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const User = require('./models/User');
+
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB connected successfully'))
+  .then(async () => {
+    console.log('MongoDB connected successfully');
+    // One-time migration: copy old Admin collection emails to User.role = 'admin' (if Admin collection exists)
+    try {
+      const legacyCount = await mongoose.connection.db.collection('admins').countDocuments();
+      if (legacyCount > 0) {
+        const legacyAdmins = await mongoose.connection.db.collection('admins').find({}).toArray();
+        for (const doc of legacyAdmins) {
+          const email = (doc && doc.email || '').toString().toLowerCase();
+          if (email) await User.updateOne({ email }, { role: 'admin' });
+        }
+        console.log('[Admin] Migrated', legacyAdmins.length, 'admin(s) to User.role');
+      }
+    } catch (e) {
+      // No legacy admins collection
+    }
+    // Optional bootstrap: set first admin from env when no admins exist
+    const adminCount = await User.countDocuments({ role: 'admin' });
+    if (adminCount === 0 && process.env.ADMIN_BOOTSTRAP_EMAIL) {
+      const email = process.env.ADMIN_BOOTSTRAP_EMAIL.trim().toLowerCase();
+      if (email && email.includes('@')) {
+        const updated = await User.findOneAndUpdate({ email }, { role: 'admin' }, { new: true });
+        if (updated) {
+          console.log('[Admin] Bootstrap: first admin set from ADMIN_BOOTSTRAP_EMAIL');
+        }
+      }
+    }
+  })
   .catch((err) => console.error('MongoDB connection error:', err));
 
 // Routes

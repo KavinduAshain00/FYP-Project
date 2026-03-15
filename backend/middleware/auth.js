@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const { isAdminEmail } = require('../utils/admin');
+const { isAdmin } = require('../utils/admin');
 
 const auth = async (req, res, next) => {
   // Allow preflight requests to pass through without authentication
@@ -34,12 +34,12 @@ const auth = async (req, res, next) => {
   }
 };
 
-/** Use after auth(); returns 403 if the current user's email is not in ADMIN_EMAILS. */
+/** Use after auth(); returns 403 if the current user's role is not admin. */
 const requireAdmin = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Authentication required' });
   }
-  if (!isAdminEmail(req.user.email)) {
+  if (!isAdmin(req.user)) {
     return res.status(403).json({ message: 'Admin access required' });
   }
   return next();

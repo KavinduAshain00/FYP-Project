@@ -17,6 +17,8 @@ import {
   FaAward,
   FaCalendarAlt,
   FaBolt,
+  FaUserPlus,
+  FaUserMinus,
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import { adminAPI, modulesAPI, achievementsAPI } from "../api/api";
@@ -68,6 +70,7 @@ const Admin = () => {
   const [achievementSearch, setAchievementSearch] = useState("");
   const [grantModal, setGrantModal] = useState(null);
   const [grantSaving, setGrantSaving] = useState(false);
+  const [adminActionUserId, setAdminActionUserId] = useState(null);
   const [confirmModal, setConfirmModal] = useState({
     open: false,
     title: "",
@@ -158,6 +161,34 @@ const Admin = () => {
       await loadUsers();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to delete user");
+    }
+  };
+
+  const handleGrantAdmin = async (u) => {
+    if (u.isAdmin) return;
+    setAdminActionUserId(u.id);
+    try {
+      const res = await adminAPI.grantAdmin(u.id);
+      setUsers((prev) => prev.map((x) => (x.id === u.id ? (res.data?.user ? { ...x, ...res.data.user } : { ...x, isAdmin: true }) : x)));
+      toast.success(`${u.name} is now an admin`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to grant admin");
+    } finally {
+      setAdminActionUserId(null);
+    }
+  };
+
+  const handleRevokeAdmin = async (u) => {
+    if (!u.isAdmin || u.id === user?.id) return;
+    setAdminActionUserId(u.id);
+    try {
+      const res = await adminAPI.revokeAdmin(u.id);
+      setUsers((prev) => prev.map((x) => (x.id === u.id ? (res.data?.user ? { ...x, ...res.data.user } : { ...x, isAdmin: false }) : x)));
+      toast.success(`Admin revoked from ${u.name}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to revoke admin");
+    } finally {
+      setAdminActionUserId(null);
     }
   };
 
@@ -733,6 +764,25 @@ const Admin = () => {
                           )}
                         </td>
                         <td className="py-3 px-4 text-right">
+                        {u.isAdmin ? (
+                          <button
+                            onClick={() => handleRevokeAdmin(u)}
+                            disabled={u.id === user?.id || adminActionUserId === u.id}
+                            className="p-2 text-[#706858] hover:text-[#c04848] hover:bg-[#1c2230] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Revoke admin"
+                          >
+                            <FaUserMinus />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleGrantAdmin(u)}
+                            disabled={adminActionUserId === u.id}
+                            className="p-2 text-[#706858] hover:text-[#c8a040] hover:bg-[#1c2230] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Make admin"
+                          >
+                            <FaUserPlus />
+                          </button>
+                        )}
                         <button
                           onClick={() => setGrantModal({ userId: u.id, userName: u.name, achievementId: null })}
                           className="p-2 text-[#706858] hover:text-[#c8a040] hover:bg-[#1c2230] rounded-lg transition-colors"

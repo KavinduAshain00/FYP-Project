@@ -64,6 +64,8 @@ export const adminAPI = {
     api.post(`/admin/users/${userId}/achievements`, { achievementId }),
   revokeAchievement: (userId, achievementId) =>
     api.delete(`/admin/users/${userId}/achievements/${achievementId}`),
+  grantAdmin: (userId) => api.post(`/admin/users/${userId}/grant-admin`),
+  revokeAdmin: (userId) => api.delete(`/admin/users/${userId}/revoke-admin`),
 };
 
 // Achievements API

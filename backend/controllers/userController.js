@@ -6,7 +6,7 @@ const { XP_PER_LEVEL } = require('../constants/levelRanks');
 const achievementService = require('../services/achievementService');
 const { AVATAR_LIST, AVATAR_PRESETS } = require('../constants/avatars');
 const { getPathCategories } = require('../constants/learningPath');
-const { isAdminEmail } = require('../utils/admin');
+const { isAdmin } = require('../utils/admin');
 
 const POPULATE_OPTS = [
   { path: 'completedModules.moduleId', select: 'title category' },
@@ -35,7 +35,7 @@ function toProfileUser(user) {
     gameStudioEnabled: user.gameStudioEnabled || false,
     earnedAchievements: user.earnedAchievements || [],
     gameStats: user.gameStats || {},
-    isAdmin: isAdminEmail(user.email),
+    isAdmin: isAdmin(user),
     aiPreferences: {
       tone: AI_PREFERENCE_KEYS.tone.includes(aiPrefs.tone) ? aiPrefs.tone : 'friendly',
       hintDetail: AI_PREFERENCE_KEYS.hintDetail.includes(aiPrefs.hintDetail) ? aiPrefs.hintDetail : 'moderate',

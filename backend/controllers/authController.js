@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const { generateToken } = require('../utils/jwt');
-const { isAdminEmail } = require('../utils/admin');
+const { isAdmin } = require('../utils/admin');
 const { grantSignupAchievement } = require('../services/achievementService');
 
 /**
@@ -48,7 +48,7 @@ async function signup(req, res) {
       .populate('currentModule', 'title');
 
     const userPayload = savedUser.toObject();
-    userPayload.isAdmin = isAdminEmail(savedUser.email);
+    userPayload.isAdmin = isAdmin(savedUser);
 
     return res.status(201).json({
       message: 'User created successfully',
@@ -91,7 +91,7 @@ async function login(req, res) {
       .populate('currentModule', 'title');
 
     const userPayload = fullUser.toObject();
-    userPayload.isAdmin = isAdminEmail(fullUser.email);
+    userPayload.isAdmin = isAdmin(fullUser);
 
     return res.json({
       message: 'Login successful',
