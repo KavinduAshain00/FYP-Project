@@ -55,7 +55,7 @@ async function explainCode(req, res) {
   }
   try {
     console.log('[Tutor] explainCode', { language: language || 'javascript', codeLen: code?.length });
-    const explanation = await ai.explainCodeSnippet(code.trim(), language || 'javascript');
+    const explanation = await ai.explain({ type: 'code', code: code.trim(), language: language || 'javascript' });
     return res.json({ explanation });
   } catch (err) {
     console.error('[Tutor] explainCode error', err.message || err);
@@ -71,35 +71,16 @@ async function explainError(req, res) {
   }
   try {
     console.log('[Tutor] explainError', { errorLen: errorMessage?.length, hasCodeSnippet: Boolean(codeSnippet) });
-    const explanation = await ai.explainErrorMessage(
-      errorMessage.trim(),
-      codeSnippet && typeof codeSnippet === 'string' ? codeSnippet.trim() : '',
-      language || 'javascript'
-    );
+    const explanation = await ai.explain({
+      type: 'error',
+      errorMessage: errorMessage.trim(),
+      codeSnippet: codeSnippet && typeof codeSnippet === 'string' ? codeSnippet.trim() : '',
+      language: language || 'javascript',
+    });
     return res.json({ explanation });
   } catch (err) {
     console.error('[Tutor] explainError error', err.message || err);
     return res.status(500).json({ error: err.message || 'We couldn\'t explain that error. Please try again.' });
-  }
-}
-
-/** POST /api/tutor/generate-starter-code - Generate React game starter code from planning (qwen3-coder:480b) */
-async function generateGameStarterCode(req, res) {
-  const planning = req.body?.planning || req.body;
-  if (!planning || typeof planning !== 'object') {
-    return res.status(400).json({ error: 'planning (object) is required' });
-  }
-  if (!planning.name && !planning.description) {
-    return res.status(400).json({ error: 'planning must include at least name or description' });
-  }
-  try {
-    console.log('[Tutor] generateGameStarterCode', { name: planning?.name, isMultiplayer: planning?.gameMode === 'multiplayer' });
-    const code = await ai.generateGameStarterCode(planning);
-    console.log('[Tutor] generateGameStarterCode success', { codeLen: code?.length });
-    return res.json({ answer: code });
-  } catch (err) {
-    console.error('[Tutor] generateGameStarterCode error', err.message || err);
-    return res.status(500).json({ error: err.message || 'We couldn\'t generate starter code. Please try again.' });
   }
 }
 
@@ -160,7 +141,7 @@ async function postTutor(req, res) {
         errorMessage: context?.errorMessage || null,
       };
       const prompt = buildPedagogicalPrompt(message, hintContext, hintStyle, confidence, aiPreferences);
-      let answer = await ai.generateText(prompt, { maxTokens: 400, temperature: 0.4 });
+      let answer = await ai.generateTextWithModel(prompt, { maxTokens: 400, temperature: 0.4 });
 
       const verification = await ai.verifyTutorResponse(message, answer);
       if (!verification.ok) {
@@ -179,39 +160,16 @@ async function postTutor(req, res) {
 
     // Other context types
     const promptParts = [];
-    if (context?.type === 'game-planning') {
-      promptParts.push(`You are an expert game design consultant and coding mentor. Help the student plan their game by:
-- Providing clear, actionable game design advice
-- Suggesting implementation strategies for React-based games
-- Explaining game mechanics and how to code them
-- Offering best practices for game development
-Be encouraging and creative while keeping suggestions practical and achievable.`);
-    } else if (context?.type === 'game-development') {
-      promptParts.push(`You are a helpful game development coding assistant in the Game Studio. The student is working on a React-based game.
-- Provide clear, concise code examples when appropriate
-- Explain debugging strategies and suggest improvements
-- Help with game mechanics, state, and React patterns
-- Be friendly and encouraging. Answer in 1-4 short paragraphs; use code blocks when relevant.
-Current file: ${context.currentFile || 'unknown'}
-${context.codeSnippet ? `Relevant code (excerpt):\n\`\`\`\n${String(context.codeSnippet).slice(0, 1200)}\n\`\`\`` : 'No code excerpt provided.'}`);
-    } else if (context?.type === 'multiplayer-game-development') {
-      promptParts.push(`You are a helpful AI coding companion in the Multiplayer Game Studio. The student is building a multiplayer React game (real-time, rooms, networking).
-- Help with multiplayer patterns: sync state, room logic, latency, reconnection
-- Provide clear code examples and debugging tips
-- Suggest best practices for real-time games and React
-- Be friendly and concise. Answer in 1-4 short paragraphs; use code blocks when relevant.
-Current file: ${context.currentFile || 'unknown'}
-${context.codeSnippet ? `Relevant code (excerpt):\n\`\`\`\n${String(context.codeSnippet).slice(0, 1200)}\n\`\`\`` : 'No code excerpt provided.'}`);
-    } else if (context?.type === 'contextual-tip') {
-      promptParts.push(`You are a friendly AI coding companion giving a short, contextual tip in the Game Studio.
-- The student may have errors, unused code, or general game-dev questions
+    if (context?.type === 'contextual-tip') {
+      promptParts.push(`You are a friendly AI coding companion giving a short, contextual tip.
+- The student may have errors, unused code, or general coding questions
 - Keep the tip concise (2-4 paragraphs max), engaging, and practical
 - Use emojis sparingly. Include a brief code example only if it helps
 - End with an encouraging line. Do not repeat the instruction verbatim.`);
     } else if (context?.type === 'code-generation') {
-      promptParts.push(`You are a code generation assistant for React game development.
+      promptParts.push(`You are a code generation assistant for React/JavaScript.
 - Generate clean, well-commented code
-- Use modern React patterns (hooks, functional components)
+- Use modern React patterns (hooks, functional components) when relevant
 - Include helpful console.log statements for debugging
 - Make the code educational and easy to understand`);
     } else {
@@ -233,15 +191,14 @@ ${context.codeSnippet ? `Relevant code (excerpt):\n\`\`\`\n${String(context.code
     promptParts.push(`Question: ${message}`);
 
     const prompt = promptParts.join('\n\n');
-    const isLongForm = ['game-planning', 'code-generation', 'game-development', 'multiplayer-game-development', 'contextual-tip'].includes(context?.type);
+    const isLongForm = ['code-generation', 'contextual-tip'].includes(context?.type);
     let maxTokens = 512;
-    if (context?.type === 'code-generation' || context?.type === 'game-planning') maxTokens = 2048;
+    if (context?.type === 'code-generation') maxTokens = 2048;
     else if (isLongForm) maxTokens = 1024;
-    let answer = await ai.generateText(prompt, { maxTokens, temperature: 0.3 });
+    let answer = await ai.generateTextWithModel(prompt, { maxTokens, temperature: 0.3 });
 
-    // Skip verification for game studio and long-form: verifier often rejects valid companion/tip responses
-    const skipVerification = context?.type === 'game-planning' || context?.type === 'code-generation' ||
-      context?.type === 'game-development' || context?.type === 'multiplayer-game-development' || context?.type === 'contextual-tip';
+    // Skip verification for long-form: verifier often rejects valid companion/tip responses
+    const skipVerification = context?.type === 'code-generation' || context?.type === 'contextual-tip';
     if (!skipVerification) {
       const verification = await ai.verifyTutorResponse(message, answer);
       if (!verification.ok) {
@@ -562,5 +519,4 @@ module.exports = {
   verifyMCQ,
   explainCode,
   explainError,
-  generateGameStarterCode,
 };

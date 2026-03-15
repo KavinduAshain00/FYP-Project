@@ -8,9 +8,7 @@ import {
   FaBookOpen,
   FaChevronRight,
   FaCode,
-  FaCompass,
   FaDoorOpen,
-  FaGamepad,
   FaLayerGroup,
   FaLock,
   FaMapMarkerAlt,
@@ -23,35 +21,21 @@ import {
 } from "react-icons/fa";
 import { GameLayout } from "../components/layout/GameLayout";
 import LoadingScreen from "../components/ui/LoadingScreen";
+import { toModuleId } from "../utils/ids";
 
 const Dashboard = () => {
-  const [modules, setModules] = useState([]);
-  const [profile, setProfile] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
-  const [achievements, setAchievements] = useState([]);
-  const [ongoingGames, setOngoingGames] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await userAPI.getDashboard();
-        const data = res.data;
-        setModules(data.modules || []);
-        setProfile(data.user || null);
-        setAchievements(data.achievements || []);
+        setDashboardData(res.data || null);
         setLoading(false);
-        try {
-          const saved = localStorage.getItem("savedGameProjects");
-          if (saved) {
-            const list = JSON.parse(saved);
-            setOngoingGames(Array.isArray(list) ? list : []);
-          }
-        } catch {
-          setOngoingGames([]);
-        }
         if (searchParams.get("message") === "start-basics") {
           toast.info(
             "Welcome! We've prepared JavaScript basics modules for you to start with.",
@@ -75,26 +59,18 @@ const Dashboard = () => {
     }
   };
 
-  const completedModuleIds = useMemo(() => {
-    if (!profile?.completedModules) return [];
-    return profile.completedModules
-      .map((m) => {
-        if (m.moduleId && typeof m.moduleId === "object" && m.moduleId._id)
-          return m.moduleId._id.toString();
-        if (m.moduleId) return m.moduleId.toString();
-        return null;
-      })
-      .filter(Boolean);
-  }, [profile]);
+  const profile = dashboardData?.user ?? null;
+  const modules = useMemo(() => dashboardData?.modules ?? [], [dashboardData?.modules]);
+  const achievements = useMemo(() => dashboardData?.achievements ?? [], [dashboardData?.achievements]);
+  const completedModuleIds = useMemo(
+    () => (dashboardData?.completedModuleIds ?? []).map((id) => (id && id.toString()) || id),
+    [dashboardData?.completedModuleIds],
+  );
 
-  const levelInfo = profile?.levelInfo || user?.levelInfo || null;
-  const completionPercentage =
-    modules.length > 0
-      ? Math.round((completedModuleIds.length / modules.length) * 100)
-      : 0;
+  const levelInfo = profile?.levelInfo ?? user?.levelInfo ?? null;
+  const completionPercentage = dashboardData?.completionPercentage ?? (modules.length > 0 ? Math.round((completedModuleIds.length / modules.length) * 100) : 0);
   const experienceRank = levelInfo?.rank || { name: "Apprentice" };
-  const totalPoints =
-    levelInfo?.totalPoints ?? profile?.totalPoints ?? user?.totalPoints ?? 0;
+  const totalPoints = levelInfo?.totalPoints ?? profile?.totalPoints ?? user?.totalPoints ?? 0;
   const level = levelInfo?.level ?? profile?.level ?? user?.level ?? 1;
   const xpToNextLevel = levelInfo?.xpProgress?.xpToNext ?? 200;
   const hasCurrentModule = profile?.currentModule && profile.currentModule._id;
@@ -108,10 +84,8 @@ const Dashboard = () => {
     return [...filtered].sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [modules, profile?.pathCategories]);
 
-  const toId = (id) => (id && typeof id === "object" && id._id ? String(id._id) : String(id));
-
   const nextModule = modulePath.find(
-    (m) => !completedModuleIds.includes(toId(m._id)),
+    (m) => !completedModuleIds.includes(toModuleId(m._id)),
   );
 
   if (loading) {
@@ -139,9 +113,9 @@ const Dashboard = () => {
         <div className="border border-[#252c3a] bg-[#111620] p-6 mb-6 rounded-2xl">
           <div className="flex flex-col sm:flex-row gap-6 items-start">
             <div className="flex items-center gap-4">
-              {user?.avatarUrl ? (
+              {(profile?.avatarUrl || user?.avatarUrl) ? (
                 <img
-                  src={user.avatarUrl}
+                  src={profile?.avatarUrl || user?.avatarUrl}
                   alt="Avatar"
                   className="w-20 h-20 border border-[#2e3648] object-cover rounded-xl"
                 />
@@ -153,13 +127,13 @@ const Dashboard = () => {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h1 className="text-xl font-bold text-[#d8d0c4]">
-                    {user?.name}
+                    {profile?.name ?? user?.name}
                   </h1>
                   <span className="px-2 py-0.5 border border-[#c8a040]/30 bg-[#c8a040]/10 text-xs font-bold text-[#c8a040] rounded-lg">
                     {experienceRank.name.toUpperCase()}
                   </span>
                 </div>
-                <p className="text-[#706858] text-sm">{user?.email}</p>
+                <p className="text-[#706858] text-sm">{profile?.email ?? user?.email}</p>
                 <div className="mt-2 flex items-center justify-between text-xs text-[#585048]">
                   <span>
                     Level {level} → {level + 1}
@@ -307,12 +281,14 @@ const Dashboard = () => {
           <div className="border border-[#252c3a] bg-[#111620] p-4 overflow-x-auto rounded-2xl">
             <div className="flex items-center gap-2 min-w-max pb-2">
               {modulePath.map((module, index) => {
-                const moduleIdStr = toId(module._id);
-                const prevIdStr = modulePath[index - 1] ? toId(modulePath[index - 1]._id) : null;
+                const moduleIdStr = toModuleId(module._id);
+                const prevIdStr = modulePath[index - 1] ? toModuleId(modulePath[index - 1]._id) : null;
                 const isCompleted = completedModuleIds.includes(moduleIdStr);
-                const isCurrent = toId(profile?.currentModule?._id) === moduleIdStr;
-                const isNext = nextModule ? toId(nextModule._id) === moduleIdStr : false;
+                const isCurrent = toModuleId(profile?.currentModule?._id) === moduleIdStr;
+                const isNext = nextModule ? toModuleId(nextModule._id) === moduleIdStr : false;
+                // Beginner path: only first module unlocked; each next unlocks when previous is completed. Advanced: all unlocked.
                 const isLocked =
+                  profile?.learningPath === 'javascript-basics' &&
                   !isCompleted &&
                   !isCurrent &&
                   !isNext &&
@@ -362,93 +338,6 @@ const Dashboard = () => {
               )}
             </div>
           </div>
-        </section>
-
-        {/* Game Studio */}
-        <section className="mb-6">
-          <h2 className="text-lg font-bold text-[#d8d0c4] mb-4 flex items-center gap-2">
-            <FaGamepad className="text-[#b87038]" /> Game Studio
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <button
-              onClick={() =>
-                profile?.gameStudioEnabled
-                  ? navigate("/custom-game")
-                  : toast.info(
-                      "Complete your learning path to unlock Game Studio.",
-                    )
-              }
-              className={`border-2 p-4 flex items-center gap-4 text-left rounded-2xl transition-colors ${
-                profile?.gameStudioEnabled
-                  ? "border-[#2e3648] bg-[#111620] hover:border-[#3a4258]"
-                  : "border-[#252c3a] bg-[#111620]/60 opacity-60"
-              }`}
-            >
-              <div className="w-12 h-12 border border-[#2e3648] bg-[#1c2230] flex items-center justify-center shrink-0 rounded-xl">
-                {profile?.gameStudioEnabled ? (
-                  <FaRocket className="text-[#b87038]" />
-                ) : (
-                  <FaLock className="text-[#585048]" />
-                )}
-              </div>
-              <div>
-                <h3 className="font-bold text-[#d8d0c4]">Create Game</h3>
-                <p className="text-xs text-[#706858]">Build from scratch</p>
-              </div>
-            </button>
-            <button
-              onClick={() =>
-                profile?.gameStudioEnabled
-                  ? navigate("/game-planning", {
-                      state: { fromDashboard: true },
-                    })
-                  : toast.info(
-                      "Complete your learning path to unlock Game Studio.",
-                    )
-              }
-              className={`border-2 p-4 flex items-center gap-4 text-left rounded-2xl transition-colors ${
-                profile?.gameStudioEnabled
-                  ? "border-[#2e3648] bg-[#111620] hover:border-[#3a4258]"
-                  : "border-[#252c3a] bg-[#111620]/60 opacity-60"
-              }`}
-            >
-              <div className="w-12 h-12 border border-[#2e3648] bg-[#1c2230] flex items-center justify-center shrink-0 rounded-xl">
-                {profile?.gameStudioEnabled ? (
-                  <FaCompass className="text-[#8070b0]" />
-                ) : (
-                  <FaLock className="text-[#585048]" />
-                )}
-              </div>
-              <div>
-                <h3 className="font-bold text-[#d8d0c4]">Plan Game</h3>
-                <p className="text-xs text-[#706858]">Game planning</p>
-              </div>
-            </button>
-          </div>
-
-          {profile?.gameStudioEnabled && ongoingGames.length > 0 && (
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold text-[#9a9080] mb-2">Ongoing game creations</h3>
-              <div className="grid sm:grid-cols-2 gap-2">
-                {ongoingGames.slice(0, 6).map((project) => (
-                  <button
-                    key={project.name + (project.timestamp || "")}
-                    onClick={() =>
-                      navigate("/custom-game", {
-                        state: { loadProject: project },
-                      })
-                    }
-                    className="border border-[#252c3a] bg-[#161c28] p-3 text-left rounded-xl hover:border-[#3a4258] hover:bg-[#1c2230] transition-colors"
-                  >
-                    <span className="font-medium text-[#d8d0c4] block truncate">{project.name || "Untitled"}</span>
-                    <span className="text-xs text-[#585048]">
-                      {project.timestamp ? new Date(project.timestamp).toLocaleDateString() : ""} · {Object.keys(project.files || {}).length} files
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </section>
 
         {/* Achievements */}
@@ -518,8 +407,9 @@ const Dashboard = () => {
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {modules.slice(0, 6).map((module) => {
-                const isCompleted = completedModuleIds.includes(module._id);
-                const isCurrent = profile?.currentModule?._id === module._id;
+                const moduleIdStr = toModuleId(module._id);
+                const isCompleted = completedModuleIds.includes(moduleIdStr);
+                const isCurrent = toModuleId(profile?.currentModule?._id) === moduleIdStr;
                 return (
                   <button
                     key={module._id}

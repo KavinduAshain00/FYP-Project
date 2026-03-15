@@ -1,4 +1,5 @@
-import { AnimatePresence, motion } from "framer-motion"; // eslint-disable-line no-unused-vars
+// motion used as motion.div, motion.button etc.
+import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import { useState } from "react";
 import {
   FaBolt,

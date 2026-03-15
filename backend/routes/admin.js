@@ -17,6 +17,7 @@ router.post('/admins', adminController.addAdmin);
 router.delete('/admins/:email', adminController.removeAdmin);
 
 // User management
+router.get('/stats', adminController.getStats);
 router.get('/users', adminController.listUsers);
 router.get('/users/:id', adminController.getUserById);
 router.put('/users/:id', adminController.updateUser);

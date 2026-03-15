@@ -5,7 +5,7 @@ import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { javascript } from "@codemirror/lang-javascript";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
-import { modulesAPI, userAPI, tutorAPI, achievementsAPI } from "../api/api";
+import { modulesAPI, userAPI, tutorAPI, achievementsAPI, invalidateUserCaches } from "../api/api";
 // eslint-disable-next-line no-unused-vars -- motion used in JSX as motion.div, motion.span, motion.aside
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
@@ -117,6 +117,10 @@ const CodeEditor = () => {
   const currentStepIndexRef = useRef(currentStepIndex);
   const runFeedbackTidRef = useRef(null);
   const runFeedbackClearTidRef = useRef(null);
+  /** Tracks codeChanges so handleRunCode can read current value; used to avoid awarding Run points when spamming Run without editing */
+  const codeChangesRef = useRef(0);
+  /** Code change count at time of last Run; Run awards points only when codeChanges > this (i.e. user edited since last run) */
+  const lastRunCodeChangeCountRef = useRef(0);
   useEffect(() => { isLoadingDraftRef.current = isLoadingDraft; }, [isLoadingDraft]);
   useEffect(() => {
     stepsVerifiedRef.current = stepsVerified;
@@ -128,6 +132,7 @@ const CodeEditor = () => {
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
     if (runFeedbackTidRef.current) clearTimeout(runFeedbackTidRef.current);
     if (runFeedbackClearTidRef.current) clearTimeout(runFeedbackClearTidRef.current);
+    if (lastVerifiedStepClearTidRef.current) clearTimeout(lastVerifiedStepClearTidRef.current);
   }, []);
 
   // Explain selection (highlight code → ask for explanation)
@@ -142,10 +147,17 @@ const CodeEditor = () => {
   const [streak, setStreak] = useState(0);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
+  useEffect(() => { codeChangesRef.current = codeChanges; }, [codeChanges]);
+
   // Achievements
   const [achievements, setAchievements] = useState([]);
   const [showAchievements, setShowAchievements] = useState(false);
   const [pointFloater, setPointFloater] = useState(null);
+  /** Step just verified (for celebration animation); cleared after delay */
+  const [lastVerifiedStepIndex, setLastVerifiedStepIndex] = useState(null);
+  /** Points pill pulse when user earns points */
+  const [pointsJustEarned, setPointsJustEarned] = useState(false);
+  const lastVerifiedStepClearTidRef = useRef(null);
 
   // Left panel sections (overview expanded by default so it's clearly visible)
   const [showOverview, setShowOverview] = useState(true);
@@ -164,7 +176,7 @@ const CodeEditor = () => {
   // Unified thread: explain + hint Q&A in one list
   const [companionMessages, setCompanionMessages] = useState([]);
 
-  // Multiplayer: dual preview state (like MultiplayerGameStudio)
+  // Multiplayer: dual preview state
   const [player1PreviewKey, setPlayer1PreviewKey] = useState(0);
   const [player2PreviewKey, setPlayer2PreviewKey] = useState(0);
   const [serverPreviewKey, setServerPreviewKey] = useState(0);
@@ -464,6 +476,7 @@ const CodeEditor = () => {
       .then((res) => {
         const { newlyEarned = [] } = res.data;
         if (newlyEarned.length > 0) {
+          invalidateUserCaches();
           setAchievements((prev) =>
             prev.map((a) =>
               newlyEarned.some((n) => n.id === a.id)
@@ -576,6 +589,14 @@ const CodeEditor = () => {
           return next;
         });
         setPoints((p) => p + 15);
+        setLastVerifiedStepIndex(currentStepIndex);
+        if (lastVerifiedStepClearTidRef.current) clearTimeout(lastVerifiedStepClearTidRef.current);
+        lastVerifiedStepClearTidRef.current = setTimeout(() => {
+          lastVerifiedStepClearTidRef.current = null;
+          if (isMountedRef.current) setLastVerifiedStepIndex(null);
+        }, 2000);
+        setPointsJustEarned(true);
+        setTimeout(() => isMountedRef.current && setPointsJustEarned(false), 600);
         showPointFloater(15);
         toast.success("Step complete!");
         // Open MCQ gate: 1-2 questions before next step (only if step has concept / we want MCQ)
@@ -679,6 +700,9 @@ const CodeEditor = () => {
           setMcqResult(null);
         } else {
           setPoints((p) => p + 10);
+          setPointsJustEarned(true);
+          setTimeout(() => isMountedRef.current && setPointsJustEarned(false), 600);
+          showPointFloater(10);
           toast.success("Quiz passed! You can continue to the next step.");
         }
       } else {
@@ -781,10 +805,16 @@ const CodeEditor = () => {
   <div id="root"></div>
   <script type="text/babel">
     const originalConsole = { ...console };
-    ['log','info','warn','error'].forEach(level => {
+    ['log', 'info', 'warn', 'error'].forEach(level => {
       console[level] = (...args) => {
         originalConsole[level](...args);
-        window.parent.postMessage({ type: 'console', level, message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), timestamp: Date.now() }, '*');
+        const message = args
+          .map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
+          .join(' ');
+        window.parent.postMessage(
+          { type: 'console', level, message, timestamp: Date.now() },
+          '*'
+        );
       };
     });
     try {
@@ -795,7 +825,11 @@ const CodeEditor = () => {
       }
     } catch (e) {
       console.error('Runtime Error:', e.message);
-      document.getElementById('root').innerHTML = '<div style="color:#ff6b6b;padding:20px;font-family:monospace;background:#1a1a2e;border-radius:8px;margin:20px;"><h3>Error</h3><pre style="color:#ffa07a;white-space:pre-wrap;">' + e.message + '</pre></div>';
+      document.getElementById('root').innerHTML =
+        '<div style="color:#ff6b6b;padding:20px;font-family:monospace;background:#1a1a2e;border-radius:8px;margin:20px;">' +
+        '<h3>Error</h3><pre style="color:#ffa07a;white-space:pre-wrap;">' +
+        e.message +
+        '</pre></div>';
     }
   </script>
 </body>
@@ -812,38 +846,52 @@ const CodeEditor = () => {
 <body>
   ${r.html}
   <script>
-    (function() {
-      var originalConsole = { log: console.log, info: console.info, warn: console.warn, error: console.error };
+    (function () {
+      var originalConsole = {
+        log: console.log,
+        info: console.info,
+        warn: console.warn,
+        error: console.error,
+      };
       function sendToParent(level, message) {
         try {
           if (window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'console', level: level, message: message, timestamp: Date.now() }, '*');
+            window.parent.postMessage(
+              { type: 'console', level: level, message: message, timestamp: Date.now() },
+              '*'
+            );
           }
         } catch (err) {}
       }
-      ['log','info','warn','error'].forEach(function(level) {
-        var fn = function() {
+      ['log', 'info', 'warn', 'error'].forEach(function (level) {
+        var fn = function () {
           originalConsole[level].apply(console, arguments);
-          var message = Array.prototype.map.call(arguments, function(a) {
-            return typeof a === 'object' ? JSON.stringify(a) : String(a);
-          }).join(' ');
+          var message = Array.prototype.map
+            .call(arguments, function (a) {
+              return typeof a === 'object' ? JSON.stringify(a) : String(a);
+            })
+            .join(' ');
           sendToParent(level, message);
         };
-        try { console[level] = fn; } catch (e) {}
+        try {
+          console[level] = fn;
+        } catch (e) {}
       });
       window.__capturedConsole = console;
     })();
     function runUserCode() {
       var con = window.__capturedConsole || console;
       try {
-        (function(console) {
+        (function (console) {
           ${r.js}
         })(con);
       } catch (e) {
         con.error('Runtime error: ' + (e && e.message ? e.message : String(e)));
         var errDiv = document.createElement('div');
-        errDiv.style.cssText = 'color:#fc4a1a;padding:20px;font-family:monospace;background:#132f4c;border-radius:8px;margin:20px;';
-        errDiv.innerHTML = '<h3>Error:</h3><pre>' + (e && e.message ? e.message : String(e)) + '</pre>';
+        errDiv.style.cssText =
+          'color:#fc4a1a;padding:20px;font-family:monospace;background:#132f4c;border-radius:8px;margin:20px;';
+        errDiv.innerHTML =
+          '<h3>Error:</h3><pre>' + (e && e.message ? e.message : String(e)) + '</pre>';
         if (document.body) document.body.appendChild(errDiv);
       }
     }
@@ -889,7 +937,6 @@ const CodeEditor = () => {
     codeChangeTimerRef.current = setTimeout(() => {
       codeChangeTimerRef.current = null;
       setCodeChanges((prev) => prev + 1);
-      setPoints((prev) => prev + 2);
     }, 500);
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
     previewTimerRef.current = setTimeout(() => {
@@ -907,6 +954,10 @@ const CodeEditor = () => {
 
   const handleRunCode = () => {
     const hadErrorsBeforeRun = errorCountRef.current > 0;
+    const currentCodeChanges = codeChangesRef.current;
+    const editedSinceLastRun = currentCodeChanges > lastRunCodeChangeCountRef.current;
+    lastRunCodeChangeCountRef.current = currentCodeChanges;
+
     setConsoleLogs([]);
     setShowAllClear(false);
     setPreviewKey((k) => k + 1);
@@ -920,12 +971,18 @@ const CodeEditor = () => {
       setPlayer2PreviewKey((k) => k + 1);
       setServerPreviewKey((k) => k + 1);
     }
-    setPoints((p) => p + 5);
-    setStreak((s) => s + 1);
+    if (editedSinceLastRun) {
+      setPoints((p) => p + 5);
+      setStreak((s) => s + 1);
+      setPointsJustEarned(true);
+      setTimeout(() => isMountedRef.current && setPointsJustEarned(false), 600);
+    }
     const runFeedbackTid = setTimeout(() => {
       if (!isMountedRef.current) return;
-      if (hadErrorsBeforeRun && errorCountRef.current === 0) {
+      if (editedSinceLastRun && hadErrorsBeforeRun && errorCountRef.current === 0) {
         setPoints((p) => p + 10);
+        setPointsJustEarned(true);
+        setTimeout(() => isMountedRef.current && setPointsJustEarned(false), 600);
         showPointFloater(10);
         addFloatingMessage("success", "Errors fixed!", 10);
         setShowAllClear(true);
@@ -946,6 +1003,11 @@ const CodeEditor = () => {
     const jx = module.starterCode?.jsx || module.starterCode?.javascript || "";
     const s = module.starterCode?.serverJs || "";
     codeRefs.current = { html: h, css: c, js: j, jsx: jx, server: s };
+    if (lastVerifiedStepClearTidRef.current) clearTimeout(lastVerifiedStepClearTidRef.current);
+    lastVerifiedStepClearTidRef.current = null;
+    lastRunCodeChangeCountRef.current = 0;
+    setLastVerifiedStepIndex(null);
+    setPointsJustEarned(false);
     setPoints(0);
     setCodeChanges(0);
     setStreak(0);
@@ -1169,20 +1231,25 @@ const CodeEditor = () => {
             {verifiedCount}/{steps.length}
           </span>
           <div className="flex items-center gap-0.5">
-            {steps.map((_, i) => (
-              <div
-                key={i}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  steps.length <= 6 ? "w-8" : "w-5"
-                } ${
-                  stepsVerified[i]
-                    ? "bg-neon-green shadow-glow-green/30"
-                    : i === currentStepIndex
-                      ? "bg-neon-cyan animate-pulse"
-                      : "bg-white/10"
-                }`}
-              />
-            ))}
+            {steps.map((_, i) => {
+              const justVerified = i === lastVerifiedStepIndex;
+              return (
+                <motion.div
+                  key={i}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    steps.length <= 6 ? "w-8" : "w-5"
+                  } ${
+                    stepsVerified[i]
+                      ? "bg-neon-green shadow-glow-green/30"
+                      : i === currentStepIndex
+                        ? "bg-neon-cyan animate-pulse"
+                        : "bg-white/10"
+                  } ${justVerified ? "shadow-[0_0_12px_rgba(74,222,128,0.6)]" : ""}`}
+                  animate={justVerified ? { scale: [1, 1.25, 1] } : {}}
+                  transition={{ duration: 0.4 }}
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -1190,9 +1257,13 @@ const CodeEditor = () => {
         <div className="flex items-center gap-2">
           {/* Gamification pills */}
           <div className="hidden sm:flex items-center gap-1.5">
-            <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-neon-gold/10 border border-neon-gold/20 text-neon-gold text-[11px] font-bold">
+            <motion.span
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-neon-gold/10 border border-neon-gold/20 text-neon-gold text-[11px] font-bold"
+              animate={pointsJustEarned ? { scale: [1, 1.12, 1] } : {}}
+              transition={{ duration: 0.35 }}
+            >
               <FaStar className="text-[9px]" /> {points}
-            </span>
+            </motion.span>
             <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-[11px] font-bold">
               <FaFire className="text-[9px]" /> {streak}
             </span>
@@ -1206,13 +1277,13 @@ const CodeEditor = () => {
             {pointFloater && (
               <motion.span
                 key={pointFloater.id}
-                initial={{ opacity: 1, y: 0 }}
-                animate={{ opacity: 0, y: -30 }}
+                initial={{ opacity: 1, y: 0, scale: 1.1 }}
+                animate={{ opacity: 0, y: -48, scale: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 1.1 }}
-                className="absolute right-48 top-1 text-neon-gold font-bold text-sm pointer-events-none"
+                transition={{ duration: 1.2, ease: "easeOut" }}
+                className="absolute right-48 top-1 flex items-center gap-1 text-neon-gold font-bold text-sm pointer-events-none drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]"
               >
-                +{pointFloater.amount}
+                <FaStar className="text-[10px]" /> +{pointFloater.amount}
               </motion.span>
             )}
           </AnimatePresence>
@@ -1361,20 +1432,21 @@ const CodeEditor = () => {
                 {steps.map((step, i) => {
                   const verified = stepsVerified[i];
                   const isCurrent = i === currentStepIndex;
+                  const justVerified = i === lastVerifiedStepIndex;
                   const locked = i > currentStepIndex && !verified;
                   const failedFeedback = stepFailureFeedback[i];
                   return (
                     <motion.div
                       key={step.id}
-                      className="flex gap-2.5 items-start"
+                      className={`flex gap-2.5 items-start rounded-md transition-colors duration-300 ${justVerified ? "bg-neon-green/15" : ""}`}
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.12 + i * 0.04 }}
                     >
                       {/* Vertical line + circle */}
                       <div className="flex flex-col items-center shrink-0 pt-0.5">
-                        <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all ${
+                        <motion.div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-colors ${
                             verified
                               ? "border-neon-green bg-neon-green/20 text-neon-green"
                               : isCurrent
@@ -1382,10 +1454,12 @@ const CodeEditor = () => {
                                 : failedFeedback
                                   ? "border-red-400 bg-red-500/10 text-red-400"
                                   : "border-white/20 bg-white/5 text-slate-500"
-                          }`}
+                          } ${justVerified ? "shadow-[0_0_10px_rgba(74,222,128,0.5)]" : ""}`}
+                          animate={justVerified ? { scale: [1, 1.35, 1] } : {}}
+                          transition={{ duration: 0.35 }}
                         >
                           {verified ? <FaCheck className="text-[8px]" /> : failedFeedback ? <FaTimes className="text-[8px]" /> : i + 1}
-                        </div>
+                        </motion.div>
                         {i < steps.length - 1 && (
                           <div className={`w-0.5 h-4 mt-1 rounded-full ${verified ? "bg-neon-green/40" : "bg-white/10"}`} />
                         )}

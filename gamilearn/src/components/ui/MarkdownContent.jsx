@@ -40,7 +40,7 @@ const MarkdownContent = ({
             </h3>
           ),
           // Code: inline and block — render as actual code, not raw ```
-          code: ({ node, inline, className: codeClassName, children, ...props }) => {
+          code: ({ inline, children, ...props }) => {
             if (inline) {
               return (
                 <code

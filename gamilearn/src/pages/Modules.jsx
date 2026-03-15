@@ -2,36 +2,60 @@ import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { modulesAPI, userAPI } from "../api/api";
-import { FaCheckCircle, FaPlay, FaFilter } from "react-icons/fa";
+import { FaCheckCircle, FaPlay, FaFilter, FaLock } from "react-icons/fa";
 import { GameLayout } from "../components/layout/GameLayout";
 import LoadingScreen from "../components/ui/LoadingScreen";
+import { toModuleId } from "../utils/ids";
+
+const MODULES_PER_PAGE = 12;
 
 const Modules = () => {
-  const [modules, setModules] = useState([]);
-  const [profile, setProfile] = useState(null);
+  const [gridModules, setGridModules] = useState([]);
+  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: MODULES_PER_PAGE, totalPages: 1 });
+  const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterDifficulty, setFilterDifficulty] = useState("all");
+  const [questPage, setQuestPage] = useState(1);
   const { refreshProfile } = useAuth();
   const navigate = useNavigate();
 
+  // Dashboard once: path modules, profile, nextModule, filter options
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDashboard = async () => {
       try {
-        const [modulesRes, profileRes] = await Promise.all([
-          modulesAPI.getAll("all"),
-          userAPI.getProfile(),
-        ]);
-        setModules(modulesRes.data.modules);
-        setProfile(profileRes.data.user);
-        setLoading(false);
+        const res = await userAPI.getDashboard();
+        setDashboard(res.data);
       } catch (error) {
-        console.error("Error fetching modules:", error);
+        console.error("Error fetching dashboard:", error);
+        setDashboard({ modules: [], user: null, completedModuleIds: [], nextModule: null });
         setLoading(false);
       }
     };
-    fetchData();
+    fetchDashboard();
   }, []);
+
+  // Paginated grid: refetch when page or filters change
+  useEffect(() => {
+    const fetchPage = async () => {
+      if (!dashboard) return;
+      setLoading(true);
+      try {
+        const params = { page: questPage, limit: MODULES_PER_PAGE };
+        if (filterCategory !== "all") params.category = filterCategory;
+        if (filterDifficulty !== "all") params.difficulty = filterDifficulty;
+        const res = await modulesAPI.getAll("all", params);
+        setGridModules(res.data.modules || []);
+        setPagination(res.data.pagination || { total: 0, page: questPage, limit: MODULES_PER_PAGE, totalPages: 1 });
+      } catch (error) {
+        console.error("Error fetching modules:", error);
+        setGridModules([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPage();
+  }, [dashboard, questPage, filterCategory, filterDifficulty]);
 
   const handleStartModule = async (moduleId) => {
     try {
@@ -43,63 +67,53 @@ const Modules = () => {
     }
   };
 
+  const profile = dashboard?.user ?? null;
+  const pathModules = useMemo(() => dashboard?.modules ?? [], [dashboard?.modules]);
   const completedModuleIds = useMemo(() => {
-    if (!profile?.completedModules || !Array.isArray(profile.completedModules))
-      return [];
-    return profile.completedModules
-      .map((m) => {
-        if (m?.moduleId) {
-          if (typeof m.moduleId === "object" && m.moduleId !== null)
-            return m.moduleId._id?.toString() || m.moduleId.toString();
-          return m.moduleId.toString();
-        }
-        if (typeof m === "string") return m;
-        if (m?._id) return m._id.toString();
-        return null;
-      })
-      .filter(Boolean);
-  }, [profile]);
+    if (!dashboard?.completedModuleIds) return [];
+    return dashboard.completedModuleIds.map((id) => (id && id.toString()) || id).filter(Boolean);
+  }, [dashboard?.completedModuleIds]);
 
   const modulePath = useMemo(() => {
-    const pathCategories = profile?.pathCategories;
-    const filtered = pathCategories?.length
-      ? modules.filter((m) => pathCategories.includes(m.category))
-      : modules;
-    return [...filtered].sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [modules, profile?.pathCategories]);
-
-  const toId = (id) => (id && typeof id === "object" && id._id ? String(id._id) : String(id));
+    return [...pathModules].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [pathModules]);
 
   const getModuleImageUrl = (module, width = 400, height = 250) => {
     const seed = (module._id || module.title || "").toString().replace(/\s/g, "");
     return `https://picsum.photos/seed/${seed || "module"}/${width}/${height}`;
   };
 
-  const nextModule = modulePath.find(
-    (m) => !completedModuleIds.includes(toId(m._id)),
-  );
+  const nextModule = dashboard?.nextModule ?? (modulePath.find(
+    (m) => !completedModuleIds.includes(toModuleId(m._id)),
+  ));
+
+  // Beginner path (javascript-basics): lock all modules except the first; unlock next when previous is completed
+  const lockedModuleIds = useMemo(() => {
+    if (profile?.learningPath !== "javascript-basics") return new Set();
+    const pathIds = modulePath.map((m) => toModuleId(m._id));
+    const locked = new Set();
+    for (let i = 1; i < pathIds.length; i++) {
+      if (!completedModuleIds.includes(pathIds[i - 1])) locked.add(pathIds[i]);
+    }
+    return locked;
+  }, [profile?.learningPath, modulePath, completedModuleIds]);
+  const isModuleLocked = (moduleId) => lockedModuleIds.has(toModuleId(moduleId));
 
   const filterOptions = useMemo(() => {
-    const categories = [...new Set(modules.map((m) => m.category).filter(Boolean))].sort();
-    const difficulties = [...new Set(modules.map((m) => m.difficulty).filter(Boolean))].sort();
+    const categories = [...new Set(pathModules.map((m) => m.category).filter(Boolean))].sort();
+    const difficulties = [...new Set(pathModules.map((m) => m.difficulty).filter(Boolean))].sort();
     return { categories, difficulties };
-  }, [modules]);
+  }, [pathModules]);
 
-  const filteredModules = useMemo(() => {
-    return modules.filter((m) => {
-      if (filterCategory !== "all" && m.category !== filterCategory) return false;
-      if (filterDifficulty !== "all" && m.difficulty !== filterDifficulty) return false;
-      return true;
-    });
-  }, [modules, filterCategory, filterDifficulty]);
-
-  const completionPct = modules.length
-    ? Math.round((completedModuleIds.length / modules.length) * 100)
+  const totalQuestPages = Math.max(1, pagination.totalPages || 1);
+  const totalPathModules = pathModules.length;
+  const completionPct = totalPathModules
+    ? Math.round((completedModuleIds.length / totalPathModules) * 100)
     : 0;
   const levelInfo = profile?.levelInfo || null;
   const level = levelInfo?.level ?? profile?.level ?? 1;
 
-  if (loading) {
+  if (loading || !dashboard) {
     return (
       <GameLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
@@ -136,7 +150,7 @@ const Modules = () => {
                 Quests
               </h1>
               <p className="text-[#706858] text-sm mt-0.5">
-                {completedModuleIds.length} of {modules.length} completed
+                {completedModuleIds.length} of {totalPathModules} completed
               </p>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
@@ -178,7 +192,7 @@ const Modules = () => {
             <div className="flex flex-wrap gap-2">
               <select
                 value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
+                onChange={(e) => { setFilterCategory(e.target.value); setQuestPage(1); }}
                 className="px-3 py-2 rounded-xl border border-[#252c3a] bg-[#111620] text-[#d8d0c4] text-sm focus:outline-none focus:ring-2 focus:ring-[#4e9a8e]/30 focus:border-[#4e9a8e]/40 transition-shadow"
               >
                 <option value="all">All categories</option>
@@ -190,7 +204,7 @@ const Modules = () => {
               </select>
               <select
                 value={filterDifficulty}
-                onChange={(e) => setFilterDifficulty(e.target.value)}
+                onChange={(e) => { setFilterDifficulty(e.target.value); setQuestPage(1); }}
                 className="px-3 py-2 rounded-xl border border-[#252c3a] bg-[#111620] text-[#d8d0c4] text-sm focus:outline-none focus:ring-2 focus:ring-[#4e9a8e]/30 focus:border-[#4e9a8e]/40 transition-shadow"
               >
                 <option value="all">All difficulties</option>
@@ -201,12 +215,13 @@ const Modules = () => {
                 ))}
               </select>
               {(filterCategory !== "all" || filterDifficulty !== "all") && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFilterCategory("all");
-                    setFilterDifficulty("all");
-                  }}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterCategory("all");
+                      setFilterDifficulty("all");
+                      setQuestPage(1);
+                    }}
                   className="px-3 py-2 rounded-xl text-sm text-[#9a9080] hover:text-[#d8d0c4] border border-[#2e3648] hover:border-[#3a4258] transition-colors"
                 >
                   Clear
@@ -219,19 +234,22 @@ const Modules = () => {
         {/* Grid */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
-            {filteredModules.map((module) => {
-              const moduleIdStr = toId(module._id);
+            {gridModules.map((module) => {
+              const moduleIdStr = toModuleId(module._id);
               const done = completedModuleIds.includes(moduleIdStr);
-              const isNext = nextModule ? toId(nextModule._id) === moduleIdStr : false;
+              const isNext = nextModule ? toModuleId(nextModule._id) === moduleIdStr : false;
+              const isLocked = isModuleLocked(module._id);
               return (
                 <article
                   key={module._id}
                   className={`group relative overflow-hidden rounded-2xl border bg-[#111620] transition-all duration-300 hover:shadow-lg hover:shadow-black/20 hover:-translate-y-0.5 ${
-                    done
-                      ? "border-[#5c9650]/30"
-                      : isNext
-                        ? "border-[#4e9a8e]/40"
-                        : "border-[#252c3a] hover:border-[#3a4258]"
+                    isLocked
+                      ? "border-[#252c3a] opacity-75"
+                      : done
+                        ? "border-[#5c9650]/30"
+                        : isNext
+                          ? "border-[#4e9a8e]/40"
+                          : "border-[#252c3a] hover:border-[#3a4258]"
                   }`}
                 >
                   <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#1c2230]">
@@ -259,7 +277,12 @@ const Modules = () => {
                         <FaCheckCircle className="text-white w-4 h-4" />
                       </div>
                     )}
-                    {isNext && !done && (
+                    {isLocked && !done && (
+                      <div className="absolute top-3 right-3 rounded-full bg-[#1c2230] border border-[#2e3648] p-1.5" title="Complete the previous quest first">
+                        <FaLock className="text-[#585048] w-4 h-4" />
+                      </div>
+                    )}
+                    {isNext && !done && !isLocked && (
                       <div className="absolute top-3 right-3 rounded-lg bg-[#c8a040] px-2 py-1 text-[10px] font-bold text-[#0d1017] uppercase tracking-wider">
                         Next
                       </div>
@@ -284,6 +307,13 @@ const Modules = () => {
                           Retry
                         </button>
                       </div>
+                    ) : isLocked ? (
+                      <button
+                        disabled
+                        className="w-full px-4 py-2.5 rounded-xl text-sm font-semibold border border-[#252c3a] bg-[#161c28] text-[#585048] cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <FaLock className="text-xs" /> Complete previous quest first
+                      </button>
                     ) : (
                       <button
                         onClick={() => handleStartModule(module._id)}
@@ -302,9 +332,32 @@ const Modules = () => {
             })}
           </div>
 
-          {filteredModules.length === 0 && (
+          {gridModules.length === 0 && !loading && (
             <div className="rounded-2xl border border-[#252c3a] bg-[#111620] py-16 text-center">
               <p className="text-[#706858] text-sm">No quests match your filters.</p>
+            </div>
+          )}
+          {totalQuestPages > 1 && gridModules.length > 0 && (
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setQuestPage((p) => Math.max(1, p - 1))}
+                disabled={questPage <= 1}
+                className="px-4 py-2 rounded-xl border border-[#252c3a] bg-[#161c28] text-[#d8d0c4] text-sm font-medium hover:bg-[#1c2230] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="text-[#9a9080] text-sm">
+                Page {questPage} of {totalQuestPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setQuestPage((p) => Math.min(totalQuestPages, p + 1))}
+                disabled={questPage >= totalQuestPages}
+                className="px-4 py-2 rounded-xl border border-[#252c3a] bg-[#161c28] text-[#d8d0c4] text-sm font-medium hover:bg-[#1c2230] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
             </div>
           )}
         </div>

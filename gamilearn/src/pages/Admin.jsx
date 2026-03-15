@@ -26,15 +26,7 @@ import { GameLayout, PageHeader } from "../components/layout/GameLayout";
 import ConfirmModal from "../components/ui/ConfirmModal";
 import LoadingScreen from "../components/ui/LoadingScreen";
 
-const LEARNING_PATHS = [
-  "none",
-  "javascript-basics",
-  "game-development",
-  "react-basics",
-  "multiplayer",
-  "advanced-concepts",
-  "advanced",
-];
+const LEARNING_PATHS = ["none", "javascript-basics", "advanced"];
 
 const MODULE_CATEGORIES = [
   "javascript-basics",
@@ -66,9 +58,13 @@ const Admin = () => {
   const [userSortOrder, setUserSortOrder] = useState("desc");
   const [userPage, setUserPage] = useState(1);
   const [userPageSize, setUserPageSize] = useState(10);
+  const [userPagination, setUserPagination] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
+  const [stats, setStats] = useState({ totalUsers: 0, totalXp: 0, totalCompleted: 0, avgLevel: 0, recentSignups: [] });
   const [moduleSortBy, setModuleSortBy] = useState("order");
   const [moduleSortOrder, setModuleSortOrder] = useState("asc");
+  const [modulePage, setModulePage] = useState(1);
   const [achievementSearch, setAchievementSearch] = useState("");
+  const MODULE_PAGE_SIZE = 10;
   const [grantModal, setGrantModal] = useState(null);
   const [grantSaving, setGrantSaving] = useState(false);
   const [adminActionUserId, setAdminActionUserId] = useState(null);
@@ -81,12 +77,29 @@ const Admin = () => {
   const initialUserModalRef = useRef(null);
   const initialModuleModalRef = useRef(null);
 
-  const loadUsers = async () => {
+  const loadUsers = async (page = userPage) => {
     try {
-      const res = await adminAPI.getUsers();
+      const res = await adminAPI.getUsers({
+        page,
+        limit: userPageSize,
+        search: userSearch.trim() || undefined,
+        learningPath: userFilterPath || undefined,
+        sortBy: userSortBy,
+        sortOrder: userSortOrder,
+      });
       setUsers(res.data.users || []);
+      if (res.data.pagination) setUserPagination(res.data.pagination);
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to load users");
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const res = await adminAPI.getStats();
+      setStats(res.data || { totalUsers: 0, totalXp: 0, totalCompleted: 0, avgLevel: 0, recentSignups: [] });
+    } catch {
+      setStats({ totalUsers: 0, totalXp: 0, totalCompleted: 0, avgLevel: 0, recentSignups: [] });
     }
   };
 
@@ -111,11 +124,15 @@ const Admin = () => {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      await Promise.all([loadUsers(), loadModules(), loadAchievements()]);
+      await Promise.all([loadStats(), loadModules(), loadAchievements()]);
       setLoading(false);
     };
     load();
   }, []);
+
+  useEffect(() => {
+    loadUsers(userPage);
+  }, [userPage, userSearch, userFilterPath, userSortBy, userSortOrder, userPageSize]);
 
   const handleSaveUser = async () => {
     if (!userModal?.id) return;
@@ -125,7 +142,6 @@ const Admin = () => {
         name: userModal.name,
         email: userModal.email,
         learningPath: userModal.learningPath,
-        gameStudioEnabled: userModal.gameStudioEnabled,
         knowsJavaScript: userModal.knowsJavaScript,
       });
       toast.success("User updated");
@@ -260,7 +276,6 @@ const Admin = () => {
       userModal.name !== a.name ||
       userModal.email !== a.email ||
       userModal.learningPath !== a.learningPath ||
-      userModal.gameStudioEnabled !== a.gameStudioEnabled ||
       userModal.knowsJavaScript !== a.knowsJavaScript
     );
   };
@@ -320,7 +335,6 @@ const Admin = () => {
       name: u.name,
       email: u.email,
       learningPath: u.learningPath || "none",
-      gameStudioEnabled: u.gameStudioEnabled ?? false,
       knowsJavaScript: u.knowsJavaScript ?? false,
     };
     initialUserModalRef.current = { ...data };
@@ -362,65 +376,13 @@ const Admin = () => {
     setModuleModal(data);
   };
 
-  const filteredUsers = useMemo(() => {
-    let list = users;
-    const q = userSearch.trim().toLowerCase();
-    if (q) {
-      list = list.filter(
-        (u) =>
-          (u.name || "").toLowerCase().includes(q) ||
-          (u.email || "").toLowerCase().includes(q)
-      );
-    }
-    if (userFilterPath) {
-      list = list.filter((u) => (u.learningPath || "none") === userFilterPath);
-    }
-    const key = userSortBy;
-    const order = userSortOrder === "asc" ? 1 : -1;
-    list = [...list].sort((a, b) => {
-      let va = a[key];
-      let vb = b[key];
-      if (key === "createdAt") {
-        va = va ? new Date(va).getTime() : 0;
-        vb = vb ? new Date(vb).getTime() : 0;
-      }
-      if (key === "name" || key === "email" || key === "learningPath") {
-        va = (va || "").toLowerCase();
-        vb = (vb || "").toLowerCase();
-        return order * (va < vb ? -1 : va > vb ? 1 : 0);
-      }
-      va = Number(va) || 0;
-      vb = Number(vb) || 0;
-      return order * (va - vb);
-    });
-    return list;
-  }, [users, userSearch, userFilterPath, userSortBy, userSortOrder]);
-
-  const paginatedUsers = useMemo(() => {
-    const start = (userPage - 1) * userPageSize;
-    return filteredUsers.slice(start, start + userPageSize);
-  }, [filteredUsers, userPage, userPageSize]);
-
-  const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / userPageSize));
-
-  const overviewStats = useMemo(() => {
-    const totalXp = users.reduce((acc, u) => acc + (u.totalPoints || 0), 0);
-    const totalCompleted = users.reduce(
-      (acc, u) => acc + (u.completedModules?.length || 0),
-      0
-    );
-    const avgLevel =
-      users.length > 0
-        ? (users.reduce((acc, u) => acc + (u.level || 1), 0) / users.length).toFixed(1)
-        : 0;
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const recentSignups = users
-      .filter((u) => u.createdAt && new Date(u.createdAt) >= weekAgo)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 5);
-    return { totalXp, totalCompleted, avgLevel, recentSignups };
-  }, [users]);
+  const totalUserPages = Math.max(1, userPagination.totalPages || 1);
+  const overviewStats = {
+    totalXp: stats.totalXp ?? 0,
+    totalCompleted: stats.totalCompleted ?? 0,
+    avgLevel: stats.avgLevel ?? 0,
+    recentSignups: stats.recentSignups || [],
+  };
 
   const achievementEarnedCount = useMemo(() => {
     const map = {};
@@ -480,6 +442,12 @@ const Admin = () => {
     return list;
   }, [modules, moduleSearch, moduleFilterCategory, moduleFilterDifficulty, moduleSortBy, moduleSortOrder]);
 
+  const totalModulePages = Math.max(1, Math.ceil(filteredModules.length / MODULE_PAGE_SIZE));
+  const paginatedModulesForAdmin = useMemo(() => {
+    const start = (modulePage - 1) * MODULE_PAGE_SIZE;
+    return filteredModules.slice(start, start + MODULE_PAGE_SIZE);
+  }, [filteredModules, modulePage]);
+
   const handleGrantAchievement = async () => {
     if (!grantModal?.userId || grantModal?.achievementId == null) return;
     setGrantSaving(true);
@@ -495,9 +463,11 @@ const Admin = () => {
     }
   };
 
-  const exportUsersCSV = () => {
+  const exportUsersCSV = async () => {
     const headers = ["Name", "Email", "Level", "XP", "Completed", "Path", "Role"];
-    const rows = filteredUsers.map((u) => [
+    const res = await adminAPI.getUsers({ page: 1, limit: 10000 }).catch(() => ({ data: { users: [] } }));
+    const allUsers = res.data.users || [];
+    const rows = allUsers.map((u) => [
       u.name || "",
       u.email || "",
       u.level ?? 1,
@@ -518,6 +488,7 @@ const Admin = () => {
   };
 
   const toggleUserSort = (key) => {
+    setUserPage(1);
     if (userSortBy === key) setUserSortOrder((o) => (o === "asc" ? "desc" : "asc"));
     else setUserSortBy(key);
   };
@@ -600,7 +571,7 @@ const Admin = () => {
                   </div>
                   <span className="text-[13px] font-medium text-[#706858]">Total users</span>
                 </div>
-                <p className="text-2xl font-semibold text-[#d8d0c4]">{users.length}</p>
+                <p className="text-2xl font-semibold text-[#d8d0c4]">{stats.totalUsers}</p>
               </div>
               <div className="bg-[#111620] border border-[#252c3a] rounded-xl p-6">
                 <div className="flex items-center gap-3 mb-2">
@@ -657,7 +628,7 @@ const Admin = () => {
                 ) : (
                   <ul className="space-y-2">
                     {overviewStats.recentSignups.map((u) => (
-                      <li key={u.id} className="flex items-center justify-between text-[13px]">
+                      <li key={u._id || u.id || u.email} className="flex items-center justify-between text-[13px]">
                         <span className="text-[#d8d0c4]">{u.name}</span>
                         <span className="text-[#706858]">{u.email}</span>
                         <span className="text-[#585048] text-[12px]">
@@ -680,13 +651,13 @@ const Admin = () => {
                     type="text"
                     placeholder="Search by name or email..."
                     value={userSearch}
-                    onChange={(e) => setUserSearch(e.target.value)}
+                    onChange={(e) => { setUserSearch(e.target.value); setUserPage(1); }}
                     className="w-full pl-9 pr-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
                   />
                 </div>
                 <select
                   value={userFilterPath}
-                  onChange={(e) => setUserFilterPath(e.target.value)}
+                  onChange={(e) => { setUserFilterPath(e.target.value); setUserPage(1); }}
                   className="px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
                 >
                   <option value="">All paths</option>
@@ -749,7 +720,7 @@ const Admin = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedUsers.map((u) => (
+                    {users.map((u) => (
                       <tr key={u.id} className="border-b border-[#1c2230] hover:bg-[#161c28]">
                         <td className="py-3 px-4 text-[#d8d0c4]">{u.name}</td>
                         <td className="py-3 px-4 text-[#9a9080]">{u.email}</td>
@@ -818,7 +789,7 @@ const Admin = () => {
             {totalUserPages > 1 && (
               <div className="flex items-center justify-between">
                 <p className="text-[#706858] text-[13px]">
-                  Showing {(userPage - 1) * userPageSize + 1}–{Math.min(userPage * userPageSize, filteredUsers.length)} of {filteredUsers.length}
+                  Showing {(userPage - 1) * userPageSize + 1}–{Math.min(userPage * userPageSize, userPagination.total)} of {userPagination.total}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -905,13 +876,13 @@ const Admin = () => {
                     type="text"
                     placeholder="Search by title, category..."
                     value={moduleSearch}
-                    onChange={(e) => setModuleSearch(e.target.value)}
+                    onChange={(e) => { setModuleSearch(e.target.value); setModulePage(1); }}
                     className="w-full pl-9 pr-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
                   />
                 </div>
                 <select
                   value={moduleFilterCategory}
-                  onChange={(e) => setModuleFilterCategory(e.target.value)}
+                  onChange={(e) => { setModuleFilterCategory(e.target.value); setModulePage(1); }}
                   className="px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
                 >
                   <option value="">All categories</option>
@@ -923,7 +894,7 @@ const Admin = () => {
                 </select>
                 <select
                   value={moduleFilterDifficulty}
-                  onChange={(e) => setModuleFilterDifficulty(e.target.value)}
+                  onChange={(e) => { setModuleFilterDifficulty(e.target.value); setModulePage(1); }}
                   className="px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
                 >
                   <option value="">All difficulties</option>
@@ -972,7 +943,7 @@ const Admin = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredModules.map((m) => (
+                    {paginatedModulesForAdmin.map((m) => (
                       <tr key={m._id} className="border-b border-[#1c2230] hover:bg-[#161c28]">
                         <td className="py-3 px-4 text-[#d8d0c4] font-medium">{m.title}</td>
                         <td className="py-3 px-4 text-[#9a9080] max-w-[220px] truncate" title={m.description}>{m.description || "—"}</td>
@@ -1000,6 +971,32 @@ const Admin = () => {
                   </tbody>
                 </table>
               </div>
+              {totalModulePages > 1 && (
+                <div className="mt-4 flex items-center justify-between px-4">
+                  <p className="text-[#706858] text-[13px]">
+                    Showing {(modulePage - 1) * MODULE_PAGE_SIZE + 1}–{Math.min(modulePage * MODULE_PAGE_SIZE, filteredModules.length)} of {filteredModules.length}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setModulePage((p) => Math.max(1, p - 1))}
+                      disabled={modulePage <= 1}
+                      className="px-3 py-1.5 rounded-lg border border-[#252c3a] bg-[#161c28] text-[#d8d0c4] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="px-3 py-1.5 text-[#9a9080] text-[13px]">Page {modulePage} of {totalModulePages}</span>
+                    <button
+                      type="button"
+                      onClick={() => setModulePage((p) => Math.min(totalModulePages, p + 1))}
+                      disabled={modulePage >= totalModulePages}
+                      className="px-3 py-1.5 rounded-lg border border-[#252c3a] bg-[#161c28] text-[#d8d0c4] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1051,20 +1048,6 @@ const Admin = () => {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="gameStudio"
-                  checked={userModal.gameStudioEnabled}
-                  onChange={(e) =>
-                    setUserModal((p) => ({ ...p, gameStudioEnabled: e.target.checked }))
-                  }
-                  className="rounded border-[#252c3a] bg-[#161c28] text-[#4e9a8e]"
-                />
-                <label htmlFor="gameStudio" className="text-[13px] text-[#9a9080]">
-                  Game Studio enabled
-                </label>
               </div>
               <div className="flex items-center gap-2">
                 <input
