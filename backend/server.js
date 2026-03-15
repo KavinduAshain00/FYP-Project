@@ -104,7 +104,7 @@ app.use('/api/tutor', require('./routes/tutor'));
 app.use('/api/admin', require('./routes/admin'));
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get('/', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
