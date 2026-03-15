@@ -8,6 +8,7 @@ import {
   FaBookOpen,
   FaChevronRight,
   FaCode,
+  FaCompass,
   FaDoorOpen,
   FaLayerGroup,
   FaLock,
