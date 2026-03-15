@@ -15,5 +15,7 @@ router.put('/module/complete', auth, userController.completeModule);
 router.put('/module/current', auth, userController.setCurrentModule);
 // Update the user's profile
 router.put('/profile', auth, userController.updateProfile);
+// Change password (current + new)
+router.put('/password', auth, userController.changePassword);
 
 module.exports = router;

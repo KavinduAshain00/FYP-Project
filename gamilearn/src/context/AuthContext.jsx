@@ -1,20 +1,39 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { authAPI, userAPI } from "../api/api";
-
-const AuthContext = createContext(null);
+import { AuthContext } from "./AuthContextStore";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Auto-login: validate token and restore user when token is present
   useEffect(() => {
     const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
-
-    if (token && userData) {
-      setUser(JSON.parse(userData));
+    if (!token) {
+      queueMicrotask(() => setLoading(false));
+      return;
     }
-    setLoading(false);
+    let cancelled = false;
+    userAPI
+      .getProfile()
+      .then((response) => {
+        if (cancelled) return;
+        const newUser = response.data?.user;
+        if (newUser) {
+          localStorage.setItem("user", JSON.stringify(newUser));
+          setUser(newUser);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setUser(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const login = async (email, password) => {
@@ -70,12 +89,4 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return context;
 };

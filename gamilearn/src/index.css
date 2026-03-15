@@ -28,3 +28,14 @@
     @apply min-h-screen;
   }
 }
+
+/* Prevent autofill from turning inputs white – keep dark theme */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #d8d0c4;
+  -webkit-box-shadow: 0 0 0 1000px #161c28 inset;
+  box-shadow: 0 0 0 1000px #161c28 inset;
+  transition: background-color 5000s ease-in-out 0s;
+}

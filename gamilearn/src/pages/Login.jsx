@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { FaEnvelope, FaLock, FaGamepad, FaArrowRight } from 'react-icons/fa';
 import { GameLayout } from '../components/layout/GameLayout';
 
@@ -27,7 +27,8 @@ const Login = () => {
     }
   };
 
-  const inputClass = 'w-full px-3 py-2 border-0 bg-transparent text-[#d8d0c4] placeholder-[#585048] focus:outline-none';
+  const inputClass =
+    'w-full px-3 py-2 border-0 bg-transparent text-[#d8d0c4] placeholder-[#585048] focus:outline-none rounded-xl [&:-webkit-autofill]:!bg-[#161c28] [&:-webkit-autofill]:![-webkit-text-fill-color:#d8d0c4] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#161c28]';
   const labelClass = 'block text-sm font-medium text-[#a09888] mb-1';
 
   return (
@@ -59,7 +60,7 @@ const Login = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@example.com"
-                className={inputClass + ' rounded-xl'}
+                className={inputClass}
               />
             </div>
           </div>
@@ -73,10 +74,15 @@ const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="Your password"
-                className={inputClass + ' rounded-xl'}
+                className={inputClass}
               />
             </div>
           </div>
+          <p className="text-right">
+            <Link to="/forgot-password" className="text-xs text-[#706858] hover:text-[#c8a040] transition-colors">
+              Forgot password?
+            </Link>
+          </p>
           <button
             type="submit"
             disabled={loading}

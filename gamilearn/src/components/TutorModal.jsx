@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { tutorAPI } from "../api/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 const HINT_STYLES = [
   { value: "general", label: "General" },

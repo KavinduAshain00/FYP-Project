@@ -15,7 +15,7 @@ import {
   FaStar,
   FaLink,
 } from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import { achievementsAPI, userAPI } from "../api/api";
 import { GameLayout } from "../components/layout/GameLayout";
 
@@ -84,6 +84,10 @@ const Profile = () => {
   const [aiFrequency, setAiFrequency] = useState("normal");
   const [aiPreset, setAiPreset] = useState("balanced");
   const [savingAi, setSavingAi] = useState(false);
+  const [changePasswordCurrent, setChangePasswordCurrent] = useState("");
+  const [changePasswordNew, setChangePasswordNew] = useState("");
+  const [changePasswordConfirm, setChangePasswordConfirm] = useState("");
+  const [changePasswordSaving, setChangePasswordSaving] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -198,6 +202,30 @@ const Profile = () => {
   const handleAiFrequencyChange = (v) => {
     setAiFrequency(v);
     setAiPreset(getPresetFromPrefs(aiTone, aiHintDetail, v));
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (changePasswordNew !== changePasswordConfirm) {
+      toast.error("New passwords do not match.");
+      return;
+    }
+    if (changePasswordNew.length < 6) {
+      toast.error("New password must be at least 6 characters.");
+      return;
+    }
+    setChangePasswordSaving(true);
+    try {
+      await userAPI.changePassword(changePasswordCurrent, changePasswordNew);
+      toast.success("Password updated.");
+      setChangePasswordCurrent("");
+      setChangePasswordNew("");
+      setChangePasswordConfirm("");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Could not update password.");
+    } finally {
+      setChangePasswordSaving(false);
+    }
   };
 
   const levelInfo = profile?.levelInfo || user?.levelInfo || null;
@@ -551,6 +579,57 @@ const Profile = () => {
             </div>
           </div>
         )}
+
+        {/* Change password */}
+        <div className="border border-[#252c3a] bg-[#111620] p-6 mb-6 rounded-2xl">
+          <h2 className="text-lg font-bold text-[#d8d0c4] flex items-center gap-2 mb-4">
+            <FaLock className="text-[#9a9080]" /> Change password
+          </h2>
+          <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+            <div>
+              <label className="block text-sm font-medium text-[#a09888] mb-1">Current password</label>
+              <input
+                type="password"
+                value={changePasswordCurrent}
+                onChange={(e) => setChangePasswordCurrent(e.target.value)}
+                placeholder="Enter current password"
+                className="w-full px-3 py-2 border border-[#252c3a] bg-[#161c28] rounded-xl text-[#d8d0c4] placeholder-[#585048] focus:outline-none focus:border-[#3a4258]"
+                autoComplete="current-password"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#a09888] mb-1">New password</label>
+              <input
+                type="password"
+                value={changePasswordNew}
+                onChange={(e) => setChangePasswordNew(e.target.value)}
+                placeholder="At least 6 characters"
+                minLength={6}
+                className="w-full px-3 py-2 border border-[#252c3a] bg-[#161c28] rounded-xl text-[#d8d0c4] placeholder-[#585048] focus:outline-none focus:border-[#3a4258]"
+                autoComplete="new-password"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#a09888] mb-1">Confirm new password</label>
+              <input
+                type="password"
+                value={changePasswordConfirm}
+                onChange={(e) => setChangePasswordConfirm(e.target.value)}
+                placeholder="Confirm new password"
+                minLength={6}
+                className="w-full px-3 py-2 border border-[#252c3a] bg-[#161c28] rounded-xl text-[#d8d0c4] placeholder-[#585048] focus:outline-none focus:border-[#3a4258]"
+                autoComplete="new-password"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={changePasswordSaving || !changePasswordCurrent || !changePasswordNew || !changePasswordConfirm}
+              className="flex items-center gap-2 px-4 py-2 border border-[#4e9a8e]/30 bg-[#4e9a8e]/10 text-[#4e9a8e] text-sm font-medium hover:bg-[#4e9a8e]/20 disabled:opacity-50 rounded-xl transition-colors"
+            >
+              <FaSave /> {changePasswordSaving ? "Updating…" : "Update password"}
+            </button>
+          </form>
+        </div>
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-4 mb-6">

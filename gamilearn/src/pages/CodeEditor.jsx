@@ -8,7 +8,7 @@ import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import { modulesAPI, userAPI, tutorAPI, achievementsAPI } from "../api/api";
 // eslint-disable-next-line no-unused-vars -- motion used in JSX as motion.div, motion.span, motion.aside
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import {
   FaBookOpen,
   FaPlay,

@@ -32,6 +32,8 @@ api.interceptors.response.use(
 export const authAPI = {
   signup: (data) => api.post('/auth/signup', data),
   login: (data) => api.post('/auth/login', data),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, newPassword }),
 };
 
 // User API
@@ -40,6 +42,8 @@ export const userAPI = {
   getDashboard: () => api.get('/user/dashboard'),
   getAvatars: () => api.get('/user/avatars'),
   updateProfile: (payload) => api.put('/user/profile', payload),
+  changePassword: (currentPassword, newPassword) =>
+    api.put('/user/password', { currentPassword, newPassword }),
   completeModule: (moduleId, sessionStats = {}) =>
     api.put('/user/module/complete', { moduleId, sessionStats }),
   setCurrentModule: (moduleId) => api.put('/user/module/current', { moduleId }),
