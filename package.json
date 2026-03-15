@@ -6,7 +6,8 @@
   "scripts": {
     "start": "concurrently \"npm:dev:frontend\" \"npm:dev:backend\"",
     "dev:frontend": "cd gamilearn && npm run dev",
-    "dev:backend": "cd backend && npm start"
+    "dev:backend": "cd backend && npm run dev",
+    "install": "cd gamilearn && pnpm install && cd ../backend && pnpm install"
   },
   "license": "MIT",
   "devDependencies": {
