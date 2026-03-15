@@ -22,6 +22,7 @@ import {
   FaCheckCircle,
 } from "react-icons/fa";
 import { GameLayout } from "../components/layout/GameLayout";
+import LoadingScreen from "../components/ui/LoadingScreen";
 
 const Dashboard = () => {
   const [modules, setModules] = useState([]);
@@ -116,8 +117,11 @@ const Dashboard = () => {
   if (loading) {
     return (
       <GameLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex items-center justify-center text-[#706858] min-h-[50vh]">
-          Loading...
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <LoadingScreen
+            message="Loading your dashboard…"
+            subMessage="Fetching your progress and modules"
+          />
         </div>
       </GameLayout>
     );

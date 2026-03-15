@@ -2,6 +2,16 @@ const mongoose = require('mongoose');
 const Module = require('./models/Module');
 require('dotenv').config();
 
+/**
+ * Step verification types (must match backend tutorController.js):
+ * - verifyType: 'code'        → AI verifies concept; expectedConsole: null
+ * - verifyType: 'checkConsole' → backend checks console output; expectedConsole:
+ *   { type: 'any' }            → any output
+ *   { type: 'multipleLines' }  → at least 2 lines
+ *   { exactLine: 'string' }    → exactly one line matching (strict)
+ *   { contains: ['a','b'] }    → each string must appear in some log line
+ * - verifyType: 'checkComments' → backend checks for // or multi-line comments; expectedConsole: null
+ */
 const sampleModules = [
   // =============================================
   //  JAVASCRIPT BASICS (0–9) — beginner
@@ -47,24 +57,24 @@ Print a welcome banner, your player name, starting HP, and a ready status.`,
     steps: [
       {
         title: 'Print a welcome message',
-        instruction: 'Use console.log to print the string "Welcome to GamiLearn!" — make sure the text matches exactly.',
+        instruction: 'Use console.log to print a welcome message (e.g. "Welcome to GamiLearn!"). Run the code and check the console.',
         concept: 'console.log() sends output to the browser console.',
         verifyType: 'checkConsole',
-        expectedConsole: { exactLine: 'Welcome to GamiLearn!' },
+        expectedConsole: { type: 'any' },
       },
       {
         title: 'Log your player name',
-        instruction: 'Add a second console.log that prints a player name of your choice (any non-empty string).',
+        instruction: 'Add a second console.log that prints a player name of your choice (any non-empty string). Run and confirm you see multiple lines.',
         concept: 'Each console.log prints on its own line.',
-        verifyType: 'code',
-        expectedConsole: null,
+        verifyType: 'checkConsole',
+        expectedConsole: { type: 'multipleLines' },
       },
       {
         title: 'Log a number and a boolean',
-        instruction: 'Log the number 100 and the boolean true on separate lines. Numbers don\'t need quotes, and true/false are booleans.',
+        instruction: 'Log the number 100 and the boolean true on separate lines. Run and verify you see several lines in the console.',
         concept: 'JavaScript has different data types: strings, numbers, and booleans.',
-        verifyType: 'code',
-        expectedConsole: null,
+        verifyType: 'checkConsole',
+        expectedConsole: { type: 'multipleLines' },
       },
       {
         title: 'Print a combined status line',
@@ -124,6 +134,13 @@ Declare variables for a player profile and log each value along with its type.`,
     ],
     steps: [
       {
+        title: 'Add a single-line comment',
+        instruction: 'Add a single-line comment at the top (e.g. // Player profile variables) describing what the block does.',
+        concept: 'Single-line comments use // and help document your code.',
+        verifyType: 'checkComments',
+        expectedConsole: null,
+      },
+      {
         title: 'Declare a constant player name',
         instruction: 'Use const to create a variable called playerName and assign it a string value (your name or a character name). Log it.',
         concept: 'const prevents accidental reassignment of values that should stay fixed.',
@@ -139,10 +156,10 @@ Declare variables for a player profile and log each value along with its type.`,
       },
       {
         title: 'Log the type of each variable',
-        instruction: 'Use console.log(typeof playerName), console.log(typeof score), and console.log(typeof isAlive) to print each type.',
+        instruction: 'Use console.log(typeof playerName), console.log(typeof score), and console.log(typeof isAlive) to print each type. Run and check the console.',
         concept: 'typeof returns "string", "number", or "boolean" — useful for debugging.',
-        verifyType: 'code',
-        expectedConsole: null,
+        verifyType: 'checkConsole',
+        expectedConsole: { contains: ['string', 'number', 'boolean'] },
       },
       {
         title: 'Update score and log the change',
@@ -228,6 +245,13 @@ Calculate damage after armor, check if the player survives, and decide if a trea
         instruction: 'Create a variable turnNumber set to 7. Log turnNumber % 2 to check if the turn is odd or even (0 = even, 1 = odd).',
         concept: 'The remainder (%) operator is useful for alternating turns or cycling through frames.',
         verifyType: 'code',
+        expectedConsole: null,
+      },
+      {
+        title: 'Add a multi-line comment',
+        instruction: 'Add a multi-line comment above the commented block (e.g. /* net damage = attack - armor */) or a short // comment describing one of your calculations.',
+        concept: 'Comments document intent; multi-line comments use /* ... */.',
+        verifyType: 'checkComments',
         expectedConsole: null,
       },
     ],

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { tutorAPI } from "../api/api";
 import { useAuth } from "../context/AuthContext";
 
@@ -133,6 +133,12 @@ const TutorModal = ({ open, onClose, context = {} }) => {
   const [hintStyle, setHintStyle] = useState("general");
   const [confidence, setConfidence] = useState(null);
   const { user } = useAuth();
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   if (!open) return null;
 
@@ -150,13 +156,14 @@ const TutorModal = ({ open, onClose, context = {} }) => {
         userId: user?.id,
         username: user?.username,
       });
+      if (!isMountedRef.current) return;
       setAnswer(resp.data.answer || "No answer from tutor.");
       setConfidence(resp.data.confidence);
     } catch (err) {
       console.error("Tutor error", err);
-      setAnswer("Error: Failed to get response from tutor.");
+      if (isMountedRef.current) setAnswer("Error: Failed to get response from tutor.");
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   };
 
@@ -215,7 +222,7 @@ const TutorModal = ({ open, onClose, context = {} }) => {
               className="rounded-md bg-indigo-600 px-4 py-2.5 font-semibold text-white hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={loading}
             >
-              {loading ? "Thinking..." : "Get Hint"}
+              {loading ? "Thinking of a hint…" : "Get hint"}
             </button>
             <button
               type="button"

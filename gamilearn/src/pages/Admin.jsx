@@ -24,6 +24,7 @@ import { useAuth } from "../context/AuthContext";
 import { adminAPI, modulesAPI, achievementsAPI } from "../api/api";
 import { GameLayout, PageHeader } from "../components/layout/GameLayout";
 import ConfirmModal from "../components/ui/ConfirmModal";
+import LoadingScreen from "../components/ui/LoadingScreen";
 
 const LEARNING_PATHS = [
   "none",
@@ -584,9 +585,11 @@ const Admin = () => {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16 text-[#706858]">
-            Loading...
-          </div>
+          <LoadingScreen
+            message="Loading admin panel…"
+            subMessage="Fetching users and stats"
+            inline
+          />
         ) : tab === "overview" ? (
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

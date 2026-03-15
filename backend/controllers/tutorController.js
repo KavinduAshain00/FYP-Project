@@ -24,7 +24,7 @@ async function generateMCQs(req, res) {
     return res.json(result);
   } catch (err) {
     console.error('[Tutor] generateMCQs error', err.message || err);
-    return res.status(500).json({ error: 'MCQ generation failed', questions: [] });
+    return res.status(500).json({ error: 'We couldn\'t load the quiz. Please try again.', questions: [] });
   }
 }
 
@@ -42,7 +42,7 @@ async function verifyMCQ(req, res) {
     console.error('[Tutor] verifyMCQ error', err.message || err);
     return res.status(500).json({
       correct: false,
-      explanation: 'Verification failed. Please try again.',
+      explanation: 'We couldn\'t check your answer. Please try again.',
     });
   }
 }
@@ -59,7 +59,7 @@ async function explainCode(req, res) {
     return res.json({ explanation });
   } catch (err) {
     console.error('[Tutor] explainCode error', err.message || err);
-    return res.status(500).json({ error: err.message || 'Explanation failed' });
+    return res.status(500).json({ error: err.message || 'We couldn\'t explain that right now. Please try again.' });
   }
 }
 
@@ -79,7 +79,7 @@ async function explainError(req, res) {
     return res.json({ explanation });
   } catch (err) {
     console.error('[Tutor] explainError error', err.message || err);
-    return res.status(500).json({ error: err.message || 'Error explanation failed' });
+    return res.status(500).json({ error: err.message || 'We couldn\'t explain that error. Please try again.' });
   }
 }
 
@@ -99,7 +99,7 @@ async function generateGameStarterCode(req, res) {
     return res.json({ answer: code });
   } catch (err) {
     console.error('[Tutor] generateGameStarterCode error', err.message || err);
-    return res.status(500).json({ error: err.message || 'Starter code generation failed' });
+    return res.status(500).json({ error: err.message || 'We couldn\'t generate starter code. Please try again.' });
   }
 }
 
@@ -420,44 +420,43 @@ function checkConsoleOutput(consoleOutput, expectedConsole) {
 
 /**
  * Check code for comment requirements (for verifyType: checkComments).
+ * Lenient: only checks that the right type of comment exists, not exact wording.
  */
 function checkCommentsStep(stepDescription, normalized) {
   const stepLower = (stepDescription || '').toLowerCase();
   const js = (normalized && normalized.js) ? normalized.js : '';
   const jsLines = js.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
-  // Single-line comment on line 1 that says "Opening line"
-  if (stepLower.includes('single-line comment') && (stepLower.includes("'opening line'") || stepLower.includes('opening line'))) {
-    const hasOpeningLineComment = jsLines.some((line) => line.startsWith('//') && /opening\s*line/i.test(line));
-    if (hasOpeningLineComment) {
-      return { correct: true, feedback: 'Step complete! You added the single-line comment correctly.' };
+  if (stepLower.includes('single-line comment')) {
+    const hasSingleLine = jsLines.some((line) => line.startsWith('//') && line.length > 3);
+    if (hasSingleLine) {
+      return { correct: true, feedback: 'Nice work! Single-line comment added.' };
     }
-    return { correct: false, feedback: "On line 1, add a single-line comment that says Opening line. Use // before the text." };
+    return { correct: false, feedback: 'Add a single-line comment using // followed by some descriptive text.' };
   }
 
-  // Comment above the commented block (e.g. "Rest of passage commented out")
-  if (stepLower.includes('comment above') || stepLower.includes('above the commented block')) {
+  if (stepLower.includes('comment above') || stepLower.includes('above the commented block') || stepLower.includes('multi-line comment')) {
     const hasMultiLine = js.includes('/*') && js.includes('*/');
-    const hasSingleLineNearBlock = jsLines.some((line) => line.startsWith('//') && line.length > 2);
-    if (hasMultiLine && hasSingleLineNearBlock) {
-      return { correct: true, feedback: 'Step complete! You added a comment above the block.' };
+    const hasSingleLine = jsLines.some((line) => line.startsWith('//') && line.length > 3);
+    if (hasMultiLine && hasSingleLine) {
+      return { correct: true, feedback: 'Great — you have both a descriptive comment and a multi-line comment block.' };
     }
     if (!hasMultiLine) {
-      return { correct: false, feedback: 'Add a multi-line comment block (/* ... */) and a single-line comment above it describing what you did.' };
+      return { correct: false, feedback: 'Use /* ... */ to wrap the code you want to comment out, and add a // comment nearby describing what you did.' };
     }
-    return { correct: false, feedback: "Add a single-line comment (// ...) above the multi-line comment block, e.g. // Rest of passage commented out." };
+    return { correct: false, feedback: 'Add a single-line comment (// ...) describing the commented-out block.' };
   }
 
-  return null; // fallback to AI
+  return null;
 }
 
 /**
  * POST /api/tutor/verify - AI verify if user code satisfies current step objective
- * Body: { stepIndex, stepDescription, code, moduleTitle?, objectives?, verifyType?, consoleOutput?, expectedConsole? }
+ * Body: { stepIndex, stepDescription, stepInstruction?, stepConcept?, code, moduleTitle?, objectives?, verifyType?, consoleOutput?, expectedConsole? }
  * Returns: { correct: boolean, feedback: string }
  */
 async function verifyStep(req, res) {
-  const { stepIndex, stepDescription, code, moduleTitle, objectives, verifyType, consoleOutput, expectedConsole } = req.body;
+  const { stepIndex, stepDescription, stepInstruction, stepConcept, code, moduleTitle, objectives, verifyType, consoleOutput, expectedConsole } = req.body;
   const userId = req.user?._id?.toString();
   if (stepDescription === null || stepDescription === undefined || typeof stepDescription !== 'string') {
     return res.status(400).json({ error: 'stepDescription (string) is required' });
@@ -481,12 +480,11 @@ async function verifyStep(req, res) {
     if (commentResult) {
       return res.json(commentResult);
     }
-    // Fallback: still require some code (e.g. at least one line with // or /*)
     const hasComment = (normalized.js || '').includes('//') || (normalized.js || '').includes('/*');
     if (!hasComment) {
       return res.json({
         correct: false,
-        feedback: 'Add the required comment in your code (single-line // or multi-line /* */), then click Check again.',
+        feedback: 'Add a comment in your code (single-line // or multi-line /* */), then click Check again.',
       });
     }
     return res.json({
@@ -499,7 +497,7 @@ async function verifyStep(req, res) {
   if (isCodeEmptyForStep(normalized)) {
     return res.json({
       correct: false,
-      feedback: 'Add code that actually implements the step before verifying. Empty or placeholder-only code cannot pass.',
+      feedback: 'Write some code that addresses this step before verifying. Comments or empty code won\'t pass.',
     });
   }
 
@@ -511,43 +509,40 @@ async function verifyStep(req, res) {
       normalized.jsx ? `JSX/React:\n${normalized.jsx}` : '',
     ].filter(Boolean).join('\n\n---\n\n');
 
-    // Quick pass: single-line comment "Opening line" (also used for code steps that mention it)
-    const stepLower = stepDescription.toLowerCase();
-    const jsLines = (normalized.js || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-    if (
-      stepLower.includes('single-line comment') &&
-      (stepLower.includes("'opening line'") || stepLower.includes('opening line')) &&
-      jsLines.length > 0
-    ) {
-      const hasOpeningLineComment = jsLines.some(
-        (line) => line.startsWith('//') && /opening\s*line/i.test(line)
-      );
-      if (hasOpeningLineComment) {
-        return res.json({
-          correct: true,
-          feedback: 'Step complete! You added the single-line comment correctly.',
-        });
-      }
-    }
+    const instructionCtx = stepInstruction ? `\nDETAILED INSTRUCTION: "${stepInstruction}"` : '';
+    const conceptCtx = stepConcept ? `\nCONCEPT BEING TAUGHT: "${stepConcept}"` : '';
 
-    const prompt = `You are a coding tutor. Verify ONLY the CORE requirement for THIS step. Ensure the student's code does what they were instructed to do for this step, without errors.
+    const prompt = `You are a lenient but thoughtful coding tutor verifying a beginner's work.
 
 MODULE: ${moduleTitle || 'Programming module'}
-STEP TO VERIFY (index ${stepIndex}): "${stepDescription}"
-${objectives?.length ? `All objectives for context: ${objectives.join('; ')}` : ''}
+STEP TITLE (index ${stepIndex}): "${stepDescription}"${instructionCtx}${conceptCtx}
+${objectives?.length ? `Module objectives for context: ${objectives.join('; ')}` : ''}
 
 STUDENT'S CURRENT CODE:
 ${codeBlock}
 
-VERIFICATION RULES:
-1. Check ONLY the core thing needed for THIS step. Do not require extra or unrelated code from other steps.
-2. The code must correctly implement what the step asks for and have no obvious syntax or runtime errors. If you see syntax errors (e.g. missing bracket, typo) or common runtime errors (e.g. undefined variable, TypeError), set correct: false and in feedback name the error and what to fix.
-3. Reject empty, placeholder, or non-implementing code (comments/TODOs alone are NOT enough).
-4. If the code properly does what the step instructs and runs without errors, return correct: true.
-5. Respond with ONLY a single JSON object, no other text: {"correct": true or false, "feedback": "one or two sentences"}
-6. For correct: false, feedback MUST explain WHY it is not working and what to do instead. For correct: true, feedback is brief and positive.`;
+YOUR JOB — verify the student demonstrated the CONCEPT for this step:
 
-    const raw = await ai.generateTextWithModel(prompt, { maxTokens: 256, temperature: 0.2 }, AI_CODER_MODEL);
+1. ACCEPT if the student's code shows they understood and applied the concept correctly, even if:
+   - Variable/function names differ from the examples (e.g. "myScore" instead of "score" is fine)
+   - String values or messages differ (e.g. "Hi" instead of "Hello" is fine)
+   - They used a slightly different but valid approach (e.g. for...of instead of for loop)
+   - Formatting, spacing, or style choices differ
+   - They did more than required
+
+2. REJECT only if:
+   - The code is empty, placeholder-only, or only comments/TODOs
+   - The code has obvious syntax errors that would crash (missing brackets, typos in keywords)
+   - The student clearly did NOT attempt what the step asks (e.g. step says "use a loop" but there is no loop)
+   - The concept is fundamentally wrong (e.g. step says "use const" but they only used var)
+
+3. DO NOT require exact variable names, exact string content, exact numeric values, or pixel-perfect output. Focus on whether the right programming concept was applied.
+
+Respond with ONLY a JSON object: {"correct": true or false, "feedback": "brief sentence"}
+- If correct: positive, encouraging feedback.
+- If incorrect: explain what concept is missing and what to try, without giving the answer.`;
+
+    const raw = await ai.generateTextWithModel(prompt, { maxTokens: 256, temperature: 0.15 }, AI_CODER_MODEL);
     const result = parseVerificationResponse(raw);
     console.log('[Tutor] verifyStep result', { userId, stepIndex, correct: result.correct });
     return res.json({ correct: result.correct, feedback: result.feedback });

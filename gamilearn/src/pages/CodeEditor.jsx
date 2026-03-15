@@ -111,10 +111,23 @@ const CodeEditor = () => {
   const codeChangeTimerRef = useRef(null);
   const previewTimerRef = useRef(null);
   const isLoadingDraftRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const saveInProgressRef = useRef(false);
+  const stepsVerifiedRef = useRef(stepsVerified);
+  const currentStepIndexRef = useRef(currentStepIndex);
+  const runFeedbackTidRef = useRef(null);
+  const runFeedbackClearTidRef = useRef(null);
   useEffect(() => { isLoadingDraftRef.current = isLoadingDraft; }, [isLoadingDraft]);
+  useEffect(() => {
+    stepsVerifiedRef.current = stepsVerified;
+    currentStepIndexRef.current = currentStepIndex;
+  }, [stepsVerified, currentStepIndex]);
   useEffect(() => () => {
+    isMountedRef.current = false;
     if (codeChangeTimerRef.current) clearTimeout(codeChangeTimerRef.current);
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    if (runFeedbackTidRef.current) clearTimeout(runFeedbackTidRef.current);
+    if (runFeedbackClearTidRef.current) clearTimeout(runFeedbackClearTidRef.current);
   }, []);
 
   // Explain selection (highlight code → ask for explanation)
@@ -180,9 +193,10 @@ const CodeEditor = () => {
   const addFloatingMessage = useCallback((type, text, points = null) => {
     const id = Date.now() + Math.random();
     setFloatingMessages((prev) => [...prev, { id, type, text, points }]);
-    setTimeout(() => {
-      setFloatingMessages((prev) => prev.filter((m) => m.id !== id));
+    const tid = setTimeout(() => {
+      if (isMountedRef.current) setFloatingMessages((prev) => prev.filter((m) => m.id !== id));
     }, 2600);
+    return () => clearTimeout(tid);
   }, []);
 
   const { refreshProfile } = useAuth();
@@ -252,10 +266,14 @@ const CodeEditor = () => {
 
   const STORAGE_KEY = `codeEditorProgress_${moduleId}`;
 
+  const draftLoadTimeoutRef = useRef(null);
+  const fetchAbortedRef = useRef(false);
   useEffect(() => {
+    fetchAbortedRef.current = false;
     const fetchModule = async () => {
       try {
         const response = await modulesAPI.getById(moduleId);
+        if (fetchAbortedRef.current) return;
         const moduleData = response.data.module;
         setModule(moduleData);
         const initialHtml = moduleData.starterCode?.html || "";
@@ -285,12 +303,13 @@ const CodeEditor = () => {
               usedSession = true;
             }
           }
-          
-          // Load draft code with delay to prevent cursor conflicts
-          setTimeout(async () => {
+          if (fetchAbortedRef.current) return;
+          draftLoadTimeoutRef.current = setTimeout(async () => {
             try {
+              if (fetchAbortedRef.current) return;
+              const draft = await loadEditorDraft(moduleId);
+              if (fetchAbortedRef.current) return;
               if (!usedSession) {
-                const draft = await loadEditorDraft(moduleId);
                 if (draft?.stepsVerified?.length === stepCount && typeof draft.currentStepIndex === "number") {
                   setStepsVerified(draft.stepsVerified);
                   setCurrentStepIndex(Math.min(draft.currentStepIndex, stepCount - 1));
@@ -307,10 +326,9 @@ const CodeEditor = () => {
                     jsx: c.jsx != null ? c.jsx : initialJsx,
                     server: c.serverJs != null ? c.serverJs : initialServer,
                   };
-                  setEditorKey(prev => prev + 1); // Force remount after loading
+                  setEditorKey(prev => prev + 1);
                 }
               } else {
-                const draft = await loadEditorDraft(moduleId);
                 if (draft?.code && typeof draft.code === "object") {
                   const c = draft.code;
                   codeRefs.current = {
@@ -320,28 +338,38 @@ const CodeEditor = () => {
                     jsx: c.jsx != null ? c.jsx : "",
                     server: c.serverJs != null ? c.serverJs : "",
                   };
-                  setEditorKey(prev => prev + 1); // Force remount after loading
+                  setEditorKey(prev => prev + 1);
                 }
               }
             } catch (draftError) {
               console.warn('Could not load draft:', draftError);
             } finally {
-              setIsLoadingDraft(false);
+              if (!fetchAbortedRef.current) setIsLoadingDraft(false);
             }
           }, 200);
         } catch {
-          setStepsVerified([]);
-          setCurrentStepIndex(0);
-          setIsLoadingDraft(false);
+          if (!fetchAbortedRef.current) {
+            setStepsVerified([]);
+            setCurrentStepIndex(0);
+            setIsLoadingDraft(false);
+          }
         }
-        setLoading(false);
+        if (!fetchAbortedRef.current) setLoading(false);
       } catch (error) {
+        if (fetchAbortedRef.current) return;
         console.error("Error fetching module:", error);
-        toast.error("We couldn't load this lesson. Try again from the dashboard.");
+        toast.error("We couldn't load this lesson. Please try again from your dashboard.");
         navigate("/dashboard");
       }
     };
     fetchModule();
+    return () => {
+      fetchAbortedRef.current = true;
+      if (draftLoadTimeoutRef.current) {
+        clearTimeout(draftLoadTimeoutRef.current);
+        draftLoadTimeoutRef.current = null;
+      }
+    };
   }, [moduleId, navigate, STORAGE_KEY]);
 
   useEffect(() => {
@@ -456,21 +484,27 @@ const CodeEditor = () => {
       .catch(() => {});
   }, [stepsVerified, module, codeChanges, streak, points]);
 
-  // IndexedDB draft auto-save (every 10s) from refs so we don't depend on state
+  // IndexedDB draft auto-save (every 10s) from refs to avoid stale closure and race with typing
   useEffect(() => {
     if (!moduleId || !module || isLoadingDraft) return;
-    const interval = setInterval(() => {
-      if (!codeChangeTimerRef.current && !previewTimerRef.current && !isLoadingDraftRef.current) {
+    const interval = setInterval(async () => {
+      if (!isMountedRef.current) return;
+      if (codeChangeTimerRef.current || previewTimerRef.current || isLoadingDraftRef.current) return;
+      if (saveInProgressRef.current) return;
+      saveInProgressRef.current = true;
+      try {
         const r = codeRefs.current;
-        saveEditorDraft(moduleId, {
-          stepsVerified,
-          currentStepIndex,
+        await saveEditorDraft(moduleId, {
+          stepsVerified: stepsVerifiedRef.current,
+          currentStepIndex: currentStepIndexRef.current,
           code: { html: r.html, css: r.css, javascript: r.js, jsx: r.jsx, serverJs: r.server },
         });
+      } finally {
+        if (isMountedRef.current) saveInProgressRef.current = false;
       }
     }, 10000);
     return () => clearInterval(interval);
-  }, [moduleId, module, stepsVerified, currentStepIndex, isLoadingDraft]);
+  }, [moduleId, module, isLoadingDraft]);
 
   const allStepsVerified = useMemo(() => {
     if (!steps.length) return false;
@@ -488,7 +522,10 @@ const CodeEditor = () => {
 
   const showPointFloater = useCallback((amount) => {
     setPointFloater({ id: Date.now(), amount });
-    setTimeout(() => setPointFloater(null), 1200);
+    const tid = setTimeout(() => {
+      if (isMountedRef.current) setPointFloater(null);
+    }, 1200);
+    return () => clearTimeout(tid);
   }, []);
 
   // Stable extension arrays so CodeMirror doesn't reconfigure on every render
@@ -515,6 +552,8 @@ const CodeEditor = () => {
       const payload = {
         stepIndex: currentStepIndex,
         stepDescription: steps[currentStepIndex].title,
+        stepInstruction: steps[currentStepIndex].instruction || '',
+        stepConcept: steps[currentStepIndex].concept || '',
         code: { html: r.html, css: r.css, javascript: r.js, jsx: r.jsx, serverJs: r.server },
         moduleTitle: module?.title,
         objectives: module?.objectives,
@@ -573,7 +612,7 @@ const CodeEditor = () => {
       setVerifyFeedback(msg);
       setVerifyPassed(false);
       setStepFailureFeedback((prev) => ({ ...prev, [currentStepIndex]: msg }));
-      toast.error("Check the hint and try again.");
+      toast.error("Not quite yet—check the hint and try again.");
       setShowTutorSidebar(true);
       const step = steps[currentStepIndex];
       const instructionBlock = [
@@ -612,7 +651,7 @@ const CodeEditor = () => {
     } catch {
       setMcqQuestions([]);
       setMcqGateForStep(null);
-      toast.error("Could not load quiz. You can continue to the next step.");
+      toast.error("We couldn't load the quiz. You can skip to the next step or try again.");
     } finally {
       setMcqLoading(false);
     }
@@ -685,7 +724,7 @@ const CodeEditor = () => {
       setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "explain", userLabel: "Explanation of selection", content: explanation, timestamp: new Date().toLocaleTimeString() }]);
     } catch (err) {
       console.error("Explain code error", err);
-      toast.error("Could not get explanation. Try again.");
+      toast.error("We couldn't get an explanation right now. Please try again.");
     } finally {
       setExplainCodeLoading(false);
     }
@@ -840,6 +879,12 @@ const CodeEditor = () => {
   const handleCodeChange = useCallback((value, tabKey) => {
     if (isLoadingDraftRef.current) return;
     codeRefs.current[tabKey] = value;
+    // Auto-clear console when user edits and there were errors, so errors disappear once they fix the code
+    setConsoleLogs((prev) => {
+      const hadErrors = prev.some((e) => e.level === "error");
+      return hadErrors ? [] : prev;
+    });
+    setShowAllClear(false);
     if (codeChangeTimerRef.current) clearTimeout(codeChangeTimerRef.current);
     codeChangeTimerRef.current = setTimeout(() => {
       codeChangeTimerRef.current = null;
@@ -877,15 +922,20 @@ const CodeEditor = () => {
     }
     setPoints((p) => p + 5);
     setStreak((s) => s + 1);
-    setTimeout(() => {
+    const runFeedbackTid = setTimeout(() => {
+      if (!isMountedRef.current) return;
       if (hadErrorsBeforeRun && errorCountRef.current === 0) {
         setPoints((p) => p + 10);
         showPointFloater(10);
         addFloatingMessage("success", "Errors fixed!", 10);
         setShowAllClear(true);
-        setTimeout(() => setShowAllClear(false), 2500);
+        const clearTid = setTimeout(() => {
+          if (isMountedRef.current) setShowAllClear(false);
+        }, 2500);
+        runFeedbackClearTidRef.current = clearTid;
       }
     }, 1500);
+    runFeedbackTidRef.current = runFeedbackTid;
   };
 
   const handleReset = () => setShowResetConfirm(true);
@@ -946,7 +996,7 @@ const CodeEditor = () => {
       ]);
     } catch (err) {
       console.error("Explain error", err);
-      toast.error("Could not get error explanation. Try again.");
+      toast.error("We couldn't explain that error right now. Please try again.");
     } finally {
       setExplainErrorLoading(false);
     }
@@ -977,15 +1027,15 @@ const CodeEditor = () => {
         recentErrors,
         errorMessage: errorFromQuestion || (recentErrors.length > 0 ? recentErrors[0] : null),
       });
-      let answer = resp.data.answer || "We couldn't get a hint right now.";
+      let answer = resp.data.answer || "We couldn't generate a hint right now. Try rephrasing your question or try again.";
       // Never show raw API internals (thinking, model, eval_count, etc.)
       if (typeof answer === "string" && (answer.includes('"thinking"') || answer.includes('"eval_count"') || answer.includes('"model":'))) {
-        answer = "Something went wrong. Please try asking again.";
+        answer = "Something went wrong on our side. Please try your question again in a moment.";
       }
       setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "hint", userLabel: question, content: answer, timestamp: new Date().toLocaleTimeString(), confidence: resp.data.confidence }]);
     } catch (err) {
       console.error("Tutor error", err);
-      setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "hint", userLabel: question, content: "Something went wrong. Please try again.", timestamp: new Date().toLocaleTimeString() }]);
+      setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "hint", userLabel: question, content: "We couldn't get a response right now. Please try asking again.", timestamp: new Date().toLocaleTimeString() }]);
     } finally {
       setTutorLoading(false);
     }
@@ -1000,9 +1050,14 @@ const CodeEditor = () => {
 
   if (loading || isLoadingDraft) {
     return (
-      <div className="min-h-screen bg-game-void text-slate-100 flex flex-col items-center justify-center gap-4">
-        <div className="h-12 w-12 animate-spin rounded-full border-2 border-neon-cyan border-t-transparent" />
-        <p className="text-sm text-slate-400">{loading ? 'Loading module...' : 'Loading saved progress...'}</p>
+      <div className="min-h-screen bg-game-void text-slate-100 flex flex-col items-center justify-center gap-4" role="status" aria-live="polite">
+        <div className="h-12 w-12 animate-spin rounded-full border-2 border-neon-cyan border-t-transparent" aria-hidden />
+        <p className="text-sm font-medium text-slate-300">
+          {loading ? "Preparing your lesson…" : "Restoring your progress…"}
+        </p>
+        <p className="text-xs text-slate-500">
+          {loading ? "Fetching content and steps" : "Loading your last saved code"}
+        </p>
       </div>
     );
   }
@@ -1440,9 +1495,9 @@ const CodeEditor = () => {
                     <FaBolt className="text-amber-400" /> Concept Check
                   </h4>
                   {mcqLoading ? (
-                    <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                      <div className="h-3 w-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
-                      Loading questions...
+                    <div className="flex items-center gap-2 text-[11px] text-slate-400" role="status" aria-label="Preparing quiz">
+                      <div className="h-3 w-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" aria-hidden />
+                      Preparing your quiz…
                     </div>
                   ) : mcqQuestions.length > 0 ? (
                     <>
@@ -1487,7 +1542,7 @@ const CodeEditor = () => {
                           disabled={mcqVerifyLoading || mcqSelectedIndex == null}
                           className="flex-1 py-1.5 rounded-lg bg-amber-500 text-game-void text-xs font-bold hover:bg-amber-400 disabled:opacity-50 transition"
                         >
-                          {mcqVerifyLoading ? "Checking..." : "Check"}
+                          {mcqVerifyLoading ? "Checking your answer…" : "Check answer"}
                         </button>
                         {mcqPassedCount === mcqQuestions.length && mcqQuestions.length > 0 && (
                           <button type="button" onClick={handleMCQNextStep} className="flex-1 py-1.5 rounded-lg bg-neon-green text-game-void text-xs font-bold hover:brightness-110 transition flex items-center justify-center gap-1">
@@ -1535,8 +1590,8 @@ const CodeEditor = () => {
                   >
                     {verifyLoading ? (
                       <>
-                        <div className="h-3 w-3 rounded-full border-2 border-game-void border-t-transparent animate-spin" />
-                        Checking...
+                        <div className="h-3 w-3 rounded-full border-2 border-game-void border-t-transparent animate-spin" aria-hidden />
+                        Checking your code…
                       </>
                     ) : (
                       <>
@@ -2131,10 +2186,10 @@ const CodeEditor = () => {
                     );
                   })}
                   {(explainCodeLoading || tutorLoading || explainErrorLoading) && (
-                    <div className="rounded-xl border border-violet-400/20 bg-violet-500/10 p-3 flex items-center gap-2 text-violet-200">
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
+                    <div className="rounded-xl border border-violet-400/20 bg-violet-500/10 p-3 flex items-center gap-2 text-violet-200" role="status">
+                      <div className="h-3.5 w-3.5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" aria-hidden />
                       <span className="text-[11px]">
-                        {explainCodeLoading ? "Explaining code..." : tutorLoading ? "Getting hint..." : "Explaining error..."}
+                        {explainCodeLoading ? "Explaining your code…" : tutorLoading ? "Thinking of a hint…" : "Explaining this error…"}
                       </span>
                     </div>
                   )}
@@ -2183,7 +2238,7 @@ const CodeEditor = () => {
                       className="flex-1 min-h-[36px] max-h-[80px] rounded-lg border border-white/10 bg-game-void/70 p-2 text-[11px] text-slate-100 outline-none focus:ring-1 focus:ring-violet-400/40 resize-none"
                       value={tutorQuestion}
                       onChange={(e) => setTutorQuestion(e.target.value)}
-                      placeholder="Ask a question..."
+                      placeholder="Ask a question about this step…"
                       rows={1}
                     />
                     <button
@@ -2203,8 +2258,8 @@ const CodeEditor = () => {
 
       <ConfirmModal
         open={showResetConfirm}
-        title="Reset code?"
-        message="Reset to starter template? Step progress and session points will be cleared."
+        title="Reset your code?"
+        message="This will restore the starter template. Your step progress and points for this session will be cleared. You can continue from the dashboard later."
         onConfirm={confirmReset}
         onCancel={() => setShowResetConfirm(false)}
       />

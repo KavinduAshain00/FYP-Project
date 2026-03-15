@@ -18,6 +18,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { achievementsAPI, userAPI } from "../api/api";
 import { GameLayout } from "../components/layout/GameLayout";
+import LoadingScreen from "../components/ui/LoadingScreen";
 
 const buildPromptUrl = (prompt) =>
   `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=768&height=768&seed=42&nologo=true`;
@@ -238,8 +239,11 @@ const Profile = () => {
   if (loading) {
     return (
       <GameLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex items-center justify-center text-[#706858] min-h-[50vh]">
-          Loading your profile...
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <LoadingScreen
+            message="Loading your profile…"
+            subMessage="Fetching your stats and achievements"
+          />
         </div>
       </GameLayout>
     );

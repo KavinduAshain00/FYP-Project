@@ -888,18 +888,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                           zIndex: 10,
                         }}
                       >
-                        <div>
+                        <div className="flex flex-col items-center justify-center text-center">
                           <div
-                            style={{ fontSize: "24px", marginBottom: "10px" }}
-                          >
-                            ⚡
-                          </div>
-                          <div>
-                            Loading preview
+                            className="h-8 w-8 rounded-full border-2 border-[#4e9a8e] border-t-transparent animate-spin mb-3"
+                            aria-hidden
+                          />
+                          <div className="text-sm font-medium text-[#d8d0c4]">
+                            Preparing your preview
                             {isMultiplayer
-                              ? ` for ${activePreviewTab === "player1" ? "Player 1" : "Player 2"}`
+                              ? ` (${activePreviewTab === "player1" ? "Player 1" : "Player 2"})`
                               : ""}
-                            ...
+                            …
                           </div>
                         </div>
                       </div>
@@ -947,7 +946,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                       }}
                       onError={(e) => {
                         console.error("Preview iframe error:", e);
-                        setPreviewError("Failed to load preview");
+                        setPreviewError("Preview couldn't load. Try running your code again.");
                         setIsPreviewLoading(false);
                       }}
                     />
