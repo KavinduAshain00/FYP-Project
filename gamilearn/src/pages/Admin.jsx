@@ -20,7 +20,7 @@ import {
   FaUserPlus,
   FaUserMinus,
 } from "react-icons/fa";
-import { useAuth } from "../context/useAuth";
+import { useAuth } from "../context/AuthContext";
 import { adminAPI, modulesAPI, achievementsAPI } from "../api/api";
 import { GameLayout, PageHeader } from "../components/layout/GameLayout";
 import ConfirmModal from "../components/ui/ConfirmModal";

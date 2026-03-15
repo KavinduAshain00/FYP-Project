@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/useAuth";
+import { useAuth } from "../context/AuthContext";
 import { userAPI } from "../api/api";
 import { toast } from "react-toastify";
 import {

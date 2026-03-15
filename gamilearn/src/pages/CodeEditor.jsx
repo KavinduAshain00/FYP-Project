@@ -8,7 +8,7 @@ import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import { modulesAPI, userAPI, tutorAPI, achievementsAPI } from "../api/api";
 // eslint-disable-next-line no-unused-vars -- motion used in JSX as motion.div, motion.span, motion.aside
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "../context/useAuth";
+import { useAuth } from "../context/AuthContext";
 import {
   FaBookOpen,
   FaPlay,
@@ -32,6 +32,8 @@ import {
   FaArrowLeft,
   FaFire,
   FaLightbulb,
+  FaExclamationTriangle,
+  FaCheckCircle,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import ConfirmModal from "../components/ui/ConfirmModal";
@@ -158,12 +160,30 @@ const CodeEditor = () => {
   const [multiplayerSnapshot, setMultiplayerSnapshot] = useState(null);
   const [consoleLogs, setConsoleLogs] = useState([]);
   const [consoleOpen, setConsoleOpen] = useState(true);
+  /** Ref synced with error count for "errors fixed" detection after Run */
+  const errorCountRef = useRef(0);
+  /** Floating gamified messages (e.g. "Errors fixed! +10") */
+  const [floatingMessages, setFloatingMessages] = useState([]);
+  /** Brief "All clear!" state when errors go to zero after a run (replaces error panel) */
+  const [showAllClear, setShowAllClear] = useState(false);
 
   const recentErrors = useMemo(
     () => consoleLogs.filter((e) => e.level === "error").slice(-5).map((e) => e.message),
     [consoleLogs]
   );
   const lastError = recentErrors.length > 0 ? recentErrors[recentErrors.length - 1] : null;
+
+  useEffect(() => {
+    errorCountRef.current = consoleLogs.filter((e) => e.level === "error").length;
+  }, [consoleLogs]);
+
+  const addFloatingMessage = useCallback((type, text, points = null) => {
+    const id = Date.now() + Math.random();
+    setFloatingMessages((prev) => [...prev, { id, type, text, points }]);
+    setTimeout(() => {
+      setFloatingMessages((prev) => prev.filter((m) => m.id !== id));
+    }, 2600);
+  }, []);
 
   const { refreshProfile } = useAuth();
 
@@ -841,6 +861,9 @@ const CodeEditor = () => {
   const onEditorCreate = useCallback((view) => { editorViewRef.current = view; }, []);
 
   const handleRunCode = () => {
+    const hadErrorsBeforeRun = errorCountRef.current > 0;
+    setConsoleLogs([]);
+    setShowAllClear(false);
     setPreviewKey((k) => k + 1);
     if (isMultiplayerModule) {
       setMultiplayerSnapshot({
@@ -854,6 +877,15 @@ const CodeEditor = () => {
     }
     setPoints((p) => p + 5);
     setStreak((s) => s + 1);
+    setTimeout(() => {
+      if (hadErrorsBeforeRun && errorCountRef.current === 0) {
+        setPoints((p) => p + 10);
+        showPointFloater(10);
+        addFloatingMessage("success", "Errors fixed!", 10);
+        setShowAllClear(true);
+        setTimeout(() => setShowAllClear(false), 2500);
+      }
+    }, 1500);
   };
 
   const handleReset = () => setShowResetConfirm(true);
@@ -1046,7 +1078,12 @@ const CodeEditor = () => {
       </AnimatePresence>
 
       {/* ─── HEADER ─── */}
-      <header className="flex items-center justify-between px-4 h-12 border-b border-white/10 bg-game-night/90 backdrop-blur shrink-0 relative z-10">
+      <motion.header
+        className="flex items-center justify-between px-4 h-12 border-b border-white/10 bg-game-night/90 backdrop-blur shrink-0 relative z-10"
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", damping: 22, stiffness: 300 }}
+      >
         {/* Left: back + title */}
         <div className="flex items-center gap-3 min-w-0">
           <button
@@ -1158,17 +1195,61 @@ const CodeEditor = () => {
             <FaCheck className="text-[9px]" /> Complete
           </button>
         </div>
-      </header>
+      </motion.header>
+
+      {/* Floating gamified messages (errors fixed, etc.) */}
+      <div className="fixed left-1/2 -translate-x-1/2 top-20 z-[100] flex flex-col items-center gap-2 pointer-events-none">
+        <AnimatePresence>
+          {floatingMessages.map((m) => (
+            <motion.div
+              key={m.id}
+              initial={{ opacity: 0, y: 0, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -24, scale: 0.95 }}
+              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg ${
+                m.type === "success"
+                  ? "bg-emerald-500/95 text-white border-2 border-emerald-300/50 shadow-emerald-500/30"
+                  : m.type === "error"
+                    ? "bg-red-500/95 text-white border-2 border-red-300/50"
+                    : "bg-neon-cyan/95 text-game-void border-2 border-neon-cyan/50"
+              }`}
+            >
+              {m.type === "success" && <FaCheckCircle className="text-base shrink-0" />}
+              {m.type === "error" && <FaExclamationTriangle className="text-base shrink-0" />}
+              <span>{m.text}</span>
+              {m.points != null && (
+                <span className="shrink-0 flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                  <FaStar className="text-[10px]" /> +{m.points}
+                </span>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
       {/* ─── MAIN CONTENT ─── */}
-      <div className="flex-1 flex overflow-hidden min-h-0 relative">
+      <motion.div
+        className="flex-1 flex overflow-hidden min-h-0 relative"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.25 }}
+      >
         {/* ─── LEFT PANEL (resizable) ─── */}
-        <aside
+        <motion.aside
           className="flex flex-col shrink-0 min-h-0 border-r border-white/10 bg-game-night/60"
           style={{ width: leftPanelWidth }}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ type: "spring", damping: 24, stiffness: 300 }}
         >
           {/* Lesson overview (collapsible) – clear, readable block */}
-          <div className="border-b border-white/10 shrink-0 bg-game-abyss/50">
+          <motion.div
+            className="border-b border-white/10 shrink-0 bg-game-abyss/50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.05 }}
+          >
             <button
               onClick={() => setShowOverview(!showOverview)}
               className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-200 hover:bg-white/5 transition"
@@ -1203,12 +1284,24 @@ const CodeEditor = () => {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
 
           {/* Step-by-step tracker */}
-          <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0">
+          <motion.div
+            className="flex-1 overflow-y-auto scrollbar-hide min-h-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.08 }}
+          >
             <div className="px-4 py-3">
-              <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 mb-3">Steps</h3>
+              <motion.h3
+                className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 mb-3"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                Steps
+              </motion.h3>
               <div className="space-y-1">
                 {steps.map((step, i) => {
                   const verified = stepsVerified[i];
@@ -1216,7 +1309,13 @@ const CodeEditor = () => {
                   const locked = i > currentStepIndex && !verified;
                   const failedFeedback = stepFailureFeedback[i];
                   return (
-                    <div key={step.id} className="flex gap-2.5 items-start">
+                    <motion.div
+                      key={step.id}
+                      className="flex gap-2.5 items-start"
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.12 + i * 0.04 }}
+                    >
                       {/* Vertical line + circle */}
                       <div className="flex flex-col items-center shrink-0 pt-0.5">
                         <div
@@ -1253,76 +1352,19 @@ const CodeEditor = () => {
                           <p className="text-[10px] text-red-300/80 mt-0.5 line-clamp-2">{failedFeedback}</p>
                         )}
                       </button>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
             </div>
 
-            {/* MCQ gate */}
-            {mcqGateForStep !== null && (
-              <div className="mx-4 mb-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 space-y-2">
-                <h4 className="text-xs font-bold text-amber-200 flex items-center gap-1.5">
-                  <FaBolt className="text-amber-400" /> Concept Check
-                </h4>
-                {mcqLoading ? (
-                  <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                    <div className="h-3 w-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
-                    Loading questions...
-                  </div>
-                ) : mcqQuestions.length > 0 ? (
-                  <>
-                    <p className="text-[11px] text-slate-200 leading-relaxed">
-                      <span className="text-amber-300 font-semibold">Q{mcqCurrentIndex + 1}/{mcqQuestions.length}:</span>{" "}
-                      {mcqQuestions[mcqCurrentIndex]?.question}
-                    </p>
-                    <div className="space-y-1">
-                      {mcqQuestions[mcqCurrentIndex]?.options?.map((opt, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setMcqSelectedIndex(idx)}
-                          className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] border transition ${
-                            mcqSelectedIndex === idx
-                              ? "border-amber-400 bg-amber-500/20 text-amber-100"
-                              : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
-                          }`}
-                        >
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                    {mcqResult && (
-                      <div className={`rounded-lg p-2 text-[11px] ${mcqResult.correct ? "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30" : "bg-red-500/15 text-red-200 border border-red-400/30"}`}>
-                        {mcqResult.explanation}
-                      </div>
-                    )}
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleMCQSubmit}
-                        disabled={mcqVerifyLoading || mcqSelectedIndex == null}
-                        className="flex-1 py-1.5 rounded-lg bg-amber-500 text-game-void text-xs font-bold hover:bg-amber-400 disabled:opacity-50 transition"
-                      >
-                        {mcqVerifyLoading ? "Checking..." : "Check"}
-                      </button>
-                      {mcqPassedCount === mcqQuestions.length && mcqQuestions.length > 0 && (
-                        <button type="button" onClick={handleMCQNextStep} className="flex-1 py-1.5 rounded-lg bg-neon-green text-game-void text-xs font-bold hover:brightness-110 transition flex items-center justify-center gap-1">
-                          Next <FaChevronRight className="text-[8px]" />
-                        </button>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <button type="button" onClick={handleMCQNextStep} className="w-full py-1.5 rounded-lg bg-white/10 text-slate-300 text-xs hover:bg-white/15 transition">
-                    Skip to next step
-                  </button>
-                )}
-              </div>
-            )}
-
             {/* Achievements panel (collapsible) */}
-            <div className="mx-4 mb-3">
+            <motion.div
+              className="mx-4 mb-3"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
               <button
                 onClick={() => setShowAchievements(!showAchievements)}
                 className="w-full flex items-center justify-between py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition"
@@ -1346,9 +1388,12 @@ const CodeEditor = () => {
                     className="overflow-hidden"
                   >
                     <div className="grid grid-cols-2 gap-2 pb-3 max-h-[240px] overflow-y-auto scrollbar-hide">
-                      {achievements.map((ach) => (
-                        <div
+                      {achievements.map((ach, idx) => (
+                        <motion.div
                           key={ach.id}
+                          initial={{ opacity: 0, scale: 0.92 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.05 + idx * 0.04 }}
                           className={`rounded-lg border p-2 flex flex-col items-center text-center gap-1 transition ${
                             ach.earned
                               ? "border-neon-gold/30 bg-neon-gold/5"
@@ -1367,7 +1412,7 @@ const CodeEditor = () => {
                           {ach.earned && ach.points && (
                             <span className="text-[9px] text-neon-gold/70">+{ach.points} pts</span>
                           )}
-                        </div>
+                        </motion.div>
                       ))}
                       {achievements.length === 0 && (
                         <p className="col-span-2 text-[11px] text-slate-500 italic py-2">Complete steps to earn achievements</p>
@@ -1376,66 +1421,159 @@ const CodeEditor = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          {/* Active step card + actions (pinned bottom) */}
-          {mcqGateForStep === null && (
-            <div className="border-t border-white/10 bg-game-night/80 px-4 py-3 shrink-0 space-y-2">
-              <div className="rounded-xl bg-neon-cyan/10 border border-neon-cyan/20 p-3">
-                <p className="text-[10px] uppercase tracking-[0.15em] text-neon-cyan/80 mb-1 font-bold">
-                  Step {currentStepIndex + 1} of {steps.length}
-                </p>
-                {currentStep?.title && (
-                  <p className="text-xs font-semibold text-white mb-1">{currentStep.title}</p>
-                )}
-                <p className="text-[11px] text-slate-300 leading-relaxed line-clamp-3">
-                  {currentStep?.instruction ?? currentStep?.title ?? "Complete this step."}
-                </p>
-                {currentStep?.concept && (
-                  <p className="text-[10px] text-neon-cyan/70 mt-1.5 italic border-l-2 border-neon-cyan/30 pl-2 line-clamp-2">
-                    {currentStep.concept}
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={handleVerifyCode}
-                disabled={verifyLoading}
-                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-neon-cyan text-game-void text-xs font-bold hover:brightness-110 disabled:opacity-50 transition shadow-sm"
-              >
-                {verifyLoading ? (
-                  <>
-                    <div className="h-3 w-3 rounded-full border-2 border-game-void border-t-transparent animate-spin" />
-                    Checking...
-                  </>
-                ) : (
-                  <>
-                    <FaCheck className="text-[9px]" /> Check my code
-                  </>
-                )}
-              </button>
-              {(verifyPassed || stepsVerified[currentStepIndex]) && currentStepIndex < steps.length - 1 && (
-                <button
-                  type="button"
-                  onClick={handleNextStep}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-neon-green text-game-void text-xs font-bold hover:brightness-110 transition"
+          {/* Left bottom: MCQ (when active) OR Step card + Check my code */}
+          <div className="border-t border-white/10 bg-game-night/80 px-4 py-3 shrink-0 space-y-2 min-h-0">
+            <AnimatePresence mode="wait">
+              {mcqGateForStep !== null ? (
+                <motion.div
+                  key="mcq-bottom"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ type: "spring", damping: 22, stiffness: 300 }}
+                  className="rounded-xl border-2 border-amber-400/30 bg-amber-500/10 p-3 space-y-2"
                 >
-                  Next step <FaChevronRight className="text-[8px]" />
-                </button>
+                  <h4 className="text-xs font-bold text-amber-200 flex items-center gap-1.5">
+                    <FaBolt className="text-amber-400" /> Concept Check
+                  </h4>
+                  {mcqLoading ? (
+                    <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                      <div className="h-3 w-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+                      Loading questions...
+                    </div>
+                  ) : mcqQuestions.length > 0 ? (
+                    <>
+                      <p className="text-[11px] text-slate-200 leading-relaxed">
+                        <span className="text-amber-300 font-semibold">Q{mcqCurrentIndex + 1}/{mcqQuestions.length}:</span>{" "}
+                        {mcqQuestions[mcqCurrentIndex]?.question}
+                      </p>
+                      <div className="space-y-1">
+                        {mcqQuestions[mcqCurrentIndex]?.options?.map((opt, idx) => (
+                          <motion.button
+                            key={idx}
+                            type="button"
+                            onClick={() => setMcqSelectedIndex(idx)}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] border transition ${
+                              mcqSelectedIndex === idx
+                                ? "border-amber-400 bg-amber-500/20 text-amber-100"
+                                : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                            }`}
+                          >
+                            {opt}
+                          </motion.button>
+                        ))}
+                      </div>
+                      <AnimatePresence mode="wait">
+                        {mcqResult && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className={`overflow-hidden rounded-lg p-2 text-[11px] ${mcqResult.correct ? "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30" : "bg-red-500/15 text-red-200 border border-red-400/30"}`}
+                          >
+                            {mcqResult.explanation}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleMCQSubmit}
+                          disabled={mcqVerifyLoading || mcqSelectedIndex == null}
+                          className="flex-1 py-1.5 rounded-lg bg-amber-500 text-game-void text-xs font-bold hover:bg-amber-400 disabled:opacity-50 transition"
+                        >
+                          {mcqVerifyLoading ? "Checking..." : "Check"}
+                        </button>
+                        {mcqPassedCount === mcqQuestions.length && mcqQuestions.length > 0 && (
+                          <button type="button" onClick={handleMCQNextStep} className="flex-1 py-1.5 rounded-lg bg-neon-green text-game-void text-xs font-bold hover:brightness-110 transition flex items-center justify-center gap-1">
+                            Next <FaChevronRight className="text-[8px]" />
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <button type="button" onClick={handleMCQNextStep} className="w-full py-1.5 rounded-lg bg-white/10 text-slate-300 text-xs hover:bg-white/15 transition">
+                      Skip to next step
+                    </button>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="step-card-bottom"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ type: "spring", damping: 22, stiffness: 300 }}
+                  className="space-y-2"
+                >
+                  <div className="rounded-xl bg-neon-cyan/10 border border-neon-cyan/20 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.15em] text-neon-cyan/80 mb-1 font-bold">
+                      Step {currentStepIndex + 1} of {steps.length}
+                    </p>
+                    {currentStep?.title && (
+                      <p className="text-xs font-semibold text-white mb-1">{currentStep.title}</p>
+                    )}
+                    <p className="text-[11px] text-slate-300 leading-relaxed line-clamp-3">
+                      {currentStep?.instruction ?? currentStep?.title ?? "Complete this step."}
+                    </p>
+                    {currentStep?.concept && (
+                      <p className="text-[10px] text-neon-cyan/70 mt-1.5 italic border-l-2 border-neon-cyan/30 pl-2 line-clamp-2">
+                        {currentStep.concept}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleVerifyCode}
+                    disabled={verifyLoading}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-neon-cyan text-game-void text-xs font-bold hover:brightness-110 disabled:opacity-50 transition shadow-sm"
+                  >
+                    {verifyLoading ? (
+                      <>
+                        <div className="h-3 w-3 rounded-full border-2 border-game-void border-t-transparent animate-spin" />
+                        Checking...
+                      </>
+                    ) : (
+                      <>
+                        <FaCheck className="text-[9px]" /> Check my code
+                      </>
+                    )}
+                  </button>
+                  {(verifyPassed || stepsVerified[currentStepIndex]) && currentStepIndex < steps.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-neon-green text-game-void text-xs font-bold hover:brightness-110 transition"
+                    >
+                      Next step <FaChevronRight className="text-[8px]" />
+                    </button>
+                  )}
+                  <AnimatePresence>
+                    {verifyFeedback && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className={`rounded-lg p-2 text-[11px] leading-relaxed ${
+                          verifyPassed
+                            ? "bg-neon-green/10 text-emerald-200 border border-neon-green/20"
+                            : "bg-amber-500/10 text-amber-200 border border-amber-400/20"
+                        }`}
+                      >
+                        {verifyFeedback}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
               )}
-              {verifyFeedback && (
-                <div className={`rounded-lg p-2 text-[11px] leading-relaxed ${
-                  verifyPassed
-                    ? "bg-neon-green/10 text-emerald-200 border border-neon-green/20"
-                    : "bg-amber-500/10 text-amber-200 border border-amber-400/20"
-                }`}>
-                  {verifyFeedback}
-                </div>
-              )}
-            </div>
-          )}
-        </aside>
+            </AnimatePresence>
+          </div>
+        </motion.aside>
 
         {/* Left panel resize handle */}
         <div
@@ -1449,12 +1587,27 @@ const CodeEditor = () => {
         </div>
 
         {/* ─── CENTER: CODE EDITOR ─── */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-0 border-r border-white/10">
+        <motion.div
+          className="flex-1 flex flex-col min-w-0 min-h-0 border-r border-white/10"
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ type: "spring", damping: 24, stiffness: 300, delay: 0.06 }}
+        >
           {/* File tabs */}
-          <div className="flex items-center border-b border-white/10 bg-game-night/50 shrink-0">
-            {moduleConfig.tabs.map((tab) => (
-              <button
+          <motion.div
+            className="flex items-center border-b border-white/10 bg-game-night/50 shrink-0"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            {moduleConfig.tabs.map((tab, idx) => (
+              <motion.button
                 key={tab}
+                initial={{ opacity: 0, y: -2 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12 + idx * 0.03 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 className={`px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition border-b-2 ${
                   activeTab === tab
                     ? "border-neon-cyan text-neon-cyan bg-neon-cyan/5"
@@ -1465,7 +1618,7 @@ const CodeEditor = () => {
                 {tab === "jsx" && <FaReact className="text-cyan-400 text-xs" />}
                 {tab === "server" && <FaServer className="text-amber-400 text-xs" />}
                 {tab === "server" ? "SERVER.JS" : tab.toUpperCase()}
-              </button>
+              </motion.button>
             ))}
             {isReactModule && (
               <span className="ml-auto mr-3 flex items-center gap-1 text-[10px] text-cyan-400/60">
@@ -1477,9 +1630,14 @@ const CodeEditor = () => {
                 <FaUsers /> Multiplayer
               </span>
             )}
-          </div>
+          </motion.div>
           {/* Editor + floating step guide */}
-          <div className="flex-1 overflow-hidden bg-game-void relative">
+          <motion.div
+            className="flex-1 overflow-hidden bg-game-void relative"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.15 }}
+          >
             {/* Floating step guide */}
             <AnimatePresence>
               {showStepGuide && currentStep && (
@@ -1523,13 +1681,18 @@ const CodeEditor = () => {
             </AnimatePresence>
             {/* Re-show guide button (when dismissed) */}
             {!showStepGuide && currentStep && !allStepsVerified && (
-              <button
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: "spring", damping: 20 }}
                 onClick={() => setShowStepGuide(true)}
                 className="absolute bottom-2 right-2 z-30 flex items-center gap-1.5 rounded-lg border border-neon-cyan/20 bg-game-night/80 backdrop-blur px-2.5 py-1.5 text-[10px] font-semibold text-neon-cyan/80 hover:text-neon-cyan hover:bg-game-night/95 transition shadow-sm"
                 title="Show step guide"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
               >
                 <FaLightbulb className="text-[9px]" /> Step {currentStepIndex + 1}
-              </button>
+              </motion.button>
             )}
             {activeTab === "html" && (
               <CodeMirror
@@ -1591,8 +1754,69 @@ const CodeEditor = () => {
                 basicSetup={{ lineNumbers: true, completionKeymap: true }}
               />
             )}
-          </div>
-        </div>
+          </motion.div>
+
+          {/* Code errors panel — shows runtime/console errors below the editor; "All clear!" when fixed */}
+          <AnimatePresence mode="wait">
+            {showAllClear ? (
+              <motion.div
+                key="all-clear"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ type: "spring", damping: 20 }}
+                className="shrink-0 border-t border-emerald-400/30 bg-emerald-950/50 px-3 py-3 flex items-center gap-3"
+              >
+              <span className="w-8 h-8 rounded-full bg-emerald-500/30 flex items-center justify-center shrink-0">
+                <FaCheckCircle className="text-emerald-400 text-sm" />
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-emerald-200">All clear!</p>
+                <p className="text-[10px] text-emerald-300/80">No errors in this run. Keep going!</p>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full">
+                +10
+              </span>
+            </motion.div>
+            ) : recentErrors.length > 0 ? (
+            <div className="shrink-0 border-t border-red-400/20 bg-red-950/40">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-red-400/10">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-red-300 flex items-center gap-1.5">
+                  <FaExclamationTriangle className="text-red-400" /> Errors ({recentErrors.length})
+                </span>
+                <button
+                  type="button"
+                  onClick={clearConsole}
+                  className="text-[9px] font-semibold text-red-300/80 hover:text-red-200 transition"
+                >
+                  Clear
+                </button>
+              </div>
+              <ul className="max-h-24 overflow-y-auto scrollbar-hide px-3 py-2 space-y-1.5">
+                {recentErrors.map((msg, i) => (
+                  <li
+                    key={`editor-err-${i}`}
+                    className="flex items-start gap-2 text-[11px] rounded-lg border border-red-400/20 bg-red-500/10 px-2 py-1.5"
+                  >
+                    <span className="shrink-0 w-5 h-5 rounded bg-red-500/40 text-red-100 flex items-center justify-center text-[10px] font-bold">
+                      !
+                    </span>
+                    <span className="text-red-200/95 break-words flex-1 min-w-0 font-medium">{msg}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleExplainErrorClick(msg)}
+                      disabled={explainErrorLoading}
+                      className="shrink-0 rounded-md px-2 py-0.5 text-[9px] font-bold bg-red-500/40 text-red-100 hover:bg-red-500/60 disabled:opacity-50 transition border border-red-400/30"
+                    >
+                      Explain
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            ) : null}
+          </AnimatePresence>
+        </motion.div>
 
         {/* Right panel resize handle */}
         <div
@@ -1606,14 +1830,22 @@ const CodeEditor = () => {
         </div>
 
         {/* ─── RIGHT: PREVIEW + CONSOLE (resizable) ─── */}
-        <div
+        <motion.div
           className="flex flex-col bg-game-abyss shrink-0 min-h-0"
           style={{ width: rightPanelWidth }}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ type: "spring", damping: 24, stiffness: 300, delay: 0.1 }}
         >
           {isMultiplayerModule ? (
             <>
               {/* Multiplayer preview tabs */}
-              <div className="flex border-b border-white/10 bg-game-night/50 shrink-0">
+              <motion.div
+                className="flex border-b border-white/10 bg-game-night/50 shrink-0"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12 }}
+              >
                 {[
                   { key: "server", label: "Server", color: "amber" },
                   { key: "player1", label: "Client 1", color: "red", icon: FaUser },
@@ -1631,7 +1863,7 @@ const CodeEditor = () => {
                     {Icon && <Icon className="text-[8px]" />} {label}
                   </button>
                 ))}
-              </div>
+              </motion.div>
               <div className="flex-1 flex flex-col bg-gray-900 overflow-hidden min-h-0 relative">
                 {/* Keep all iframes mounted; use snapshot so code changes don't reload (new socket). Only Run/Reset update snapshot. */}
                 <iframe
@@ -1666,7 +1898,12 @@ const CodeEditor = () => {
           ) : (
             <>
               {/* Standard preview */}
-              <div className="flex items-center justify-between border-b border-white/10 bg-game-night/50 px-3 py-2 shrink-0">
+              <motion.div
+                className="flex items-center justify-between border-b border-white/10 bg-game-night/50 px-3 py-2 shrink-0"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12 }}
+              >
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <FaPlay className="text-[8px] text-neon-green" /> Preview
                 </span>
@@ -1680,7 +1917,7 @@ const CodeEditor = () => {
                     <FaExternalLinkAlt />
                   </button>
                 </div>
-              </div>
+              </motion.div>
               <iframe
                 key={previewKey}
                 className="flex-1 border-0 bg-gray-900 w-full min-h-0"
@@ -1797,14 +2034,14 @@ const CodeEditor = () => {
                       >
                         <span className="shrink-0 opacity-50 text-[10px]">[{entry.level}]</span>
                         <span className="break-all flex-1">{entry.message}</span>
-                      </div>
-                    ))
+                    </div>
+                  ))
                   )}
                 </div>
               )
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* ─── AI COMPANION SLIDE-OUT ─── */}
         <AnimatePresence>
@@ -1825,53 +2062,74 @@ const CodeEditor = () => {
                 </button>
               </div>
               <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                {/* Recent errors */}
+                {/* Recent errors — gamified highlight */}
                 {recentErrors.length > 0 && (
-                  <div className="mx-3 mt-2 p-2.5 rounded-lg border border-red-400/20 bg-red-500/10 shrink-0">
-                    <p className="text-[9px] uppercase tracking-wider text-red-300/80 mb-1.5 font-bold">Errors</p>
-                    <ul className="space-y-1">
+                  <div className="mx-3 mt-2 p-2.5 rounded-xl border-2 border-red-400/30 bg-red-500/15 shrink-0 shadow-lg shadow-red-500/5">
+                    <p className="text-[9px] uppercase tracking-wider text-red-300 font-bold mb-1.5 flex items-center gap-1.5">
+                      <FaExclamationTriangle className="text-red-400" /> Errors
+                    </p>
+                    <ul className="space-y-1.5">
                       {recentErrors.slice(-3).map((msg, i) => (
-                        <li key={`err-${i}`} className="flex items-start gap-1.5">
-                          <span className="text-[10px] text-red-200/80 break-words flex-1 min-w-0 line-clamp-2">{msg}</span>
+                        <li key={`err-${i}`} className="flex items-start gap-1.5 rounded-lg border border-red-400/20 bg-red-500/10 px-2 py-1.5">
+                          <span className="text-[10px] text-red-200 break-words flex-1 min-w-0 line-clamp-2 font-medium">{msg}</span>
                           <button
                             type="button"
                             onClick={() => handleExplainErrorClick(msg)}
                             disabled={explainErrorLoading}
-                            className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold bg-red-500/30 text-red-100 hover:bg-red-500/50 disabled:opacity-50 transition"
+                            className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold bg-red-500/40 text-red-100 hover:bg-red-500/60 disabled:opacity-50 transition border border-red-400/30"
                           >
-                            Fix
+                            Explain
                           </button>
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
-                {/* Message thread */}
+                {/* Message thread — highlighted code vs error explanations */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide p-3 space-y-2">
                   {companionMessages.length === 0 && !explainCodeLoading && !tutorLoading && !explainErrorLoading && (
                     <p className="text-[11px] text-slate-500 italic leading-relaxed">Ask a question, select code and click &quot;Explain&quot;, or paste an error message.</p>
                   )}
-                  {companionMessages.map((msg) => (
-                    <div key={msg.id} className="rounded-xl border border-white/10 bg-game-void/60 overflow-hidden">
-                      <div className="px-3 py-1.5 border-b border-white/[0.06] text-[10px] font-semibold text-slate-500 flex items-center justify-between gap-2">
-                        <span className="flex items-center gap-1">
-                          {msg.type === "explain" ? <><FaMagic className="inline text-violet-400" /> Code</> : "You"}
-                          {msg.type === "hint" && msg.userLabel !== "Step help" && <span className="text-slate-600 truncate max-w-[80px]" title={msg.userLabel}>: {msg.userLabel}</span>}
-                        </span>
-                        <span className="text-slate-600 shrink-0">{msg.timestamp}</span>
-                      </div>
-                      <div className="p-3 text-xs text-slate-200 leading-relaxed">
-                        <MarkdownContent content={msg.content} />
-                      </div>
-                      {msg.confidence != null && msg.type === "hint" && (
-                        <div className="px-3 pb-2">
-                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] text-slate-500">
-                            {msg.confidence >= 0.6 ? "Targeted" : msg.confidence >= 0.4 ? "General" : "Needs context"}
+                  {companionMessages.map((msg) => {
+                    const isErrorExplanation = msg.type === "explain" && msg.userLabel === "Error explanation";
+                    const isCodeExplanation = msg.type === "explain" && !isErrorExplanation;
+                    return (
+                      <motion.div
+                        key={msg.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`rounded-xl overflow-hidden border-2 ${
+                          isErrorExplanation
+                            ? "border-red-400/40 bg-red-950/40 shadow-lg shadow-red-500/5"
+                            : isCodeExplanation
+                              ? "border-violet-400/30 bg-violet-950/30 shadow-lg shadow-violet-500/5"
+                              : "border-white/10 bg-game-void/60"
+                        }`}
+                      >
+                        <div className={`px-3 py-1.5 border-b flex items-center justify-between gap-2 ${
+                          isErrorExplanation ? "border-red-400/20 text-red-200" : isCodeExplanation ? "border-violet-400/20 text-violet-200" : "border-white/[0.06] text-slate-500"
+                        } text-[10px] font-semibold`}>
+                          <span className="flex items-center gap-1.5">
+                            {isErrorExplanation && <FaExclamationTriangle className="text-red-400 shrink-0" />}
+                            {isCodeExplanation && <FaMagic className="text-violet-400 shrink-0" />}
+                            {isErrorExplanation ? "Error explanation" : isCodeExplanation ? "Code explanation" : "You"}
+                            {msg.type === "hint" && msg.userLabel !== "Step help" && <span className="text-slate-600 truncate max-w-[80px]" title={msg.userLabel}>: {msg.userLabel}</span>}
                           </span>
+                          <span className="shrink-0 opacity-70">{msg.timestamp}</span>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        <div className="p-3 text-xs leading-relaxed text-slate-200">
+                          <MarkdownContent content={msg.content} />
+                        </div>
+                        {msg.confidence != null && msg.type === "hint" && (
+                          <div className="px-3 pb-2">
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] text-slate-500">
+                              {msg.confidence >= 0.6 ? "Targeted" : msg.confidence >= 0.4 ? "General" : "Needs context"}
+                            </span>
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
                   {(explainCodeLoading || tutorLoading || explainErrorLoading) && (
                     <div className="rounded-xl border border-violet-400/20 bg-violet-500/10 p-3 flex items-center gap-2 text-violet-200">
                       <div className="h-3.5 w-3.5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
@@ -1941,7 +2199,7 @@ const CodeEditor = () => {
             </motion.aside>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
 
       <ConfirmModal
         open={showResetConfirm}

@@ -26,7 +26,7 @@ const getNavigationDirection = (currentPath, targetPath) => {
   const targetOrder = getRouteOrderIndex(targetPath);
   return targetOrder < currentOrder ? "back" : "forward";
 };
-import { useAuth } from "../../context/useAuth";
+import { useAuth } from "../../context/AuthContext";
 import {
   FaBars,
   FaBolt,

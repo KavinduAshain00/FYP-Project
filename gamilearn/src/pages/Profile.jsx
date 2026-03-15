@@ -15,7 +15,7 @@ import {
   FaStar,
   FaLink,
 } from "react-icons/fa";
-import { useAuth } from "../context/useAuth";
+import { useAuth } from "../context/AuthContext";
 import { achievementsAPI, userAPI } from "../api/api";
 import { GameLayout } from "../components/layout/GameLayout";
 

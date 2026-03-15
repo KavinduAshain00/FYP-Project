@@ -1,6 +1,16 @@
-import { useState, useEffect } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState, useEffect } from "react";
 import { authAPI, userAPI } from "../api/api";
-import { AuthContext } from "./AuthContextStore";
+
+export const AuthContext = createContext(null);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

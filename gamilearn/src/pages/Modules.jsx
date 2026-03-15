@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/useAuth";
+import { useAuth } from "../context/AuthContext";
 import { modulesAPI, userAPI } from "../api/api";
 import { FaCheckCircle, FaPlay, FaFilter } from "react-icons/fa";
 import { GameLayout } from "../components/layout/GameLayout";

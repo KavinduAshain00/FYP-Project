@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/useAuth";
+import { useAuth } from "../context/AuthContext";
 import { toast } from "react-toastify";
 
 const ProtectedRoute = ({ children, requireGameStudio = false, requireAdmin = false }) => {
