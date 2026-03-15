@@ -3,13 +3,12 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import ConfirmModal from "../ui/ConfirmModal";
 import { AnimatePresence, motion as Motion } from "framer-motion";
 
-/** Route order for transition direction: lower index = "back" when navigating to it */
 const ROUTE_ORDER = ["/dashboard", "/modules", "/profile", "/admin", "/editor", "/custom-game", "/game-planning", "/multiplayer-studio"];
 
 const getRouteDepth = (pathname) => {
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return 0;
   if (pathname === "/modules" || pathname === "/profile" || pathname === "/admin") return 1;
-  return 2; // editor, custom-game, game-planning, multiplayer-studio
+  return 2;
 };
 
 const getRouteOrderIndex = (pathname) => {
@@ -18,7 +17,6 @@ const getRouteOrderIndex = (pathname) => {
   return idx >= 0 ? idx : ROUTE_ORDER.length;
 };
 
-/** Returns "back" or "forward" for page transition direction when navigating from currentPath to targetPath */
 const getNavigationDirection = (currentPath, targetPath) => {
   const currentDepth = getRouteDepth(currentPath);
   const targetDepth = getRouteDepth(targetPath);
@@ -49,9 +47,6 @@ import {
   GameAvatar,
 } from "../ui/GameUI";
 
-/* ========================================
-   NAVBAR – minimal bar, flat colors
-   ======================================== */
 export const GameNavbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -82,14 +77,14 @@ export const GameNavbar = () => {
   };
 
   return (
-    <nav className="bg-[#0c0c0c] border-b border-[#1f1f1f] sticky top-0 z-50">
+    <nav className="bg-[#111620] border-b border-[#252c3a] sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-14">
           <Link
             to="/dashboard"
-            className="flex items-center gap-2.5 text-[#e5e5e5] hover:text-white transition-colors"
+            className="flex items-center gap-2.5 text-[#d8d0c4] hover:text-white transition-colors"
           >
-            <span className="w-8 h-8 flex items-center justify-center bg-[#1a1a1a] border border-[#2a2a2a] text-[#a3a3a3]">
+            <span className="w-8 h-8 flex items-center justify-center bg-[#1c2230] border border-[#2e3648] text-[#9a9080] rounded-lg">
               <FaGamepad className="text-sm" />
             </span>
             <span className="font-semibold text-[15px] tracking-tight">
@@ -103,10 +98,10 @@ export const GameNavbar = () => {
                 key={link.path}
                 type="button"
                 onClick={() => handleNavClick(link.path)}
-                className={`flex items-center gap-2 px-3 py-2 text-[13px] font-medium transition-colors rounded ${
+                className={`flex items-center gap-2 px-3 py-2 text-[13px] font-medium transition-colors rounded-lg ${
                   isActive(link.path)
-                    ? "bg-[#1a1a1a] text-white"
-                    : "text-[#a3a3a3] hover:text-[#e5e5e5] hover:bg-[#141414]"
+                    ? "bg-[#1c2230] text-white"
+                    : "text-[#9a9080] hover:text-[#d8d0c4] hover:bg-[#161c28]"
                 }`}
               >
                 <link.icon className="text-[11px] opacity-80" />
@@ -118,11 +113,11 @@ export const GameNavbar = () => {
           <div className="flex items-center gap-2">
             {user && (
               <>
-                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#141414] border border-[#262626] text-[#a3a3a3] text-[12px] font-medium">
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#1c2230] border border-[#2e3648] text-[#c8a040] text-[12px] font-medium rounded-lg">
                   <FaBolt className="text-[10px]" />
                   {user.totalPoints ?? 0}
                 </span>
-                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#141414] border border-[#262626] text-[#a3a3a3] text-[12px] font-medium">
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#1c2230] border border-[#2e3648] text-[#9a9080] text-[12px] font-medium rounded-lg">
                   <FaCrown className="text-[10px]" />
                   Lv.{user.level ?? 1}
                 </span>
@@ -130,14 +125,14 @@ export const GameNavbar = () => {
             )}
             <button
               onClick={handleLogout}
-              className="hidden md:flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-[#a3a3a3] hover:text-white hover:bg-[#141414] rounded transition-colors"
+              className="hidden md:flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-[#9a9080] hover:text-white hover:bg-[#161c28] rounded-lg transition-colors"
             >
               <FaDoorOpen className="text-[11px]" />
               Logout
             </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-[#a3a3a3] hover:text-white hover:bg-[#1a1a1a] rounded transition-colors"
+              className="md:hidden p-2 text-[#9a9080] hover:text-white hover:bg-[#1c2230] rounded-lg transition-colors"
               aria-label="Menu"
             >
               {mobileMenuOpen ? <FaTimes /> : <FaBars />}
@@ -153,7 +148,7 @@ export const GameNavbar = () => {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden border-t border-[#1f1f1f] bg-[#0c0c0c]"
+            className="md:hidden border-t border-[#252c3a] bg-[#111620]"
           >
             <div className="px-4 py-3 space-y-0.5">
               {navLinks.map((link) => (
@@ -164,10 +159,10 @@ export const GameNavbar = () => {
                     handleNavClick(link.path);
                     setMobileMenuOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium rounded text-left ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium rounded-lg text-left ${
                     isActive(link.path)
-                      ? "bg-[#1a1a1a] text-white"
-                      : "text-[#a3a3a3] hover:bg-[#141414]"
+                      ? "bg-[#1c2230] text-white"
+                      : "text-[#9a9080] hover:bg-[#161c28]"
                   }`}
                 >
                   <link.icon className="text-[11px] opacity-80" />
@@ -176,7 +171,7 @@ export const GameNavbar = () => {
               ))}
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium text-[#a3a3a3] hover:bg-[#141414] hover:text-white rounded"
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium text-[#9a9080] hover:bg-[#161c28] hover:text-white rounded-lg"
               >
                 <FaDoorOpen className="text-[11px]" />
                 Logout
@@ -196,9 +191,6 @@ export const GameNavbar = () => {
   );
 };
 
-/* ========================================
-   SIDEBAR – flat panels, no neon
-   ======================================== */
 export const GameSidebar = ({
   user,
   stats = {},
@@ -211,20 +203,20 @@ export const GameSidebar = ({
 
   return (
     <aside className="w-64 shrink-0 space-y-4">
-      <div className="bg-[#0c0c0c] border border-[#1f1f1f] p-4">
+      <div className="bg-[#111620] border border-[#252c3a] p-4 rounded-xl">
         <div className="flex items-center gap-3">
           <GameAvatar
             src={user?.avatarUrl}
             size="md"
             level={level}
             animated={false}
-            className="!rounded border border-[#262626]"
+            className="!rounded-lg border border-[#2e3648]"
           />
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[#e5e5e5] text-sm truncate">
+            <p className="font-semibold text-[#d8d0c4] text-sm truncate">
               {user?.name || "User"}
             </p>
-            <p className="text-[11px] text-[#737373] truncate">{user?.email}</p>
+            <p className="text-[11px] text-[#706858] truncate">{user?.email}</p>
           </div>
         </div>
         {showXPBar && (
@@ -240,28 +232,28 @@ export const GameSidebar = ({
         )}
       </div>
 
-      <div className="bg-[#0c0c0c] border border-[#1f1f1f] p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#737373] mb-3">
+      <div className="bg-[#111620] border border-[#252c3a] p-4 rounded-xl">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#706858] mb-3">
           Stats
         </p>
         <div className="grid grid-cols-2 gap-2">
-          <div className="p-2.5 bg-[#141414] border border-[#262626]">
-            <p className="text-[10px] text-[#737373] uppercase">XP</p>
-            <p className="text-sm font-semibold text-[#e5e5e5]">{totalPoints}</p>
+          <div className="p-2.5 bg-[#161c28] border border-[#252c3a] rounded-lg">
+            <p className="text-[10px] text-[#706858] uppercase">XP</p>
+            <p className="text-sm font-semibold text-[#d8d0c4]">{totalPoints}</p>
           </div>
-          <div className="p-2.5 bg-[#141414] border border-[#262626]">
-            <p className="text-[10px] text-[#737373] uppercase">Level</p>
-            <p className="text-sm font-semibold text-[#e5e5e5]">{level}</p>
+          <div className="p-2.5 bg-[#161c28] border border-[#252c3a] rounded-lg">
+            <p className="text-[10px] text-[#706858] uppercase">Level</p>
+            <p className="text-sm font-semibold text-[#d8d0c4]">{level}</p>
           </div>
-          <div className="p-2.5 bg-[#141414] border border-[#262626]">
-            <p className="text-[10px] text-[#737373] uppercase">Quests</p>
-            <p className="text-sm font-semibold text-[#e5e5e5]">
+          <div className="p-2.5 bg-[#161c28] border border-[#252c3a] rounded-lg">
+            <p className="text-[10px] text-[#706858] uppercase">Quests</p>
+            <p className="text-sm font-semibold text-[#d8d0c4]">
               {stats.completedModules ?? 0}
             </p>
           </div>
-          <div className="p-2.5 bg-[#141414] border border-[#262626]">
-            <p className="text-[10px] text-[#737373] uppercase">Badges</p>
-            <p className="text-sm font-semibold text-[#e5e5e5]">
+          <div className="p-2.5 bg-[#161c28] border border-[#252c3a] rounded-lg">
+            <p className="text-[10px] text-[#706858] uppercase">Badges</p>
+            <p className="text-sm font-semibold text-[#d8d0c4]">
               {stats.achievements ?? 0}
             </p>
           </div>
@@ -269,24 +261,24 @@ export const GameSidebar = ({
       </div>
 
       {showAchievements && achievements.length > 0 && (
-        <div className="bg-[#0c0c0c] border border-[#1f1f1f] p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#737373] mb-3">
+        <div className="bg-[#111620] border border-[#252c3a] p-4 rounded-xl">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#706858] mb-3">
             Recent badges
           </p>
           <div className="space-y-2">
             {achievements.slice(0, 3).map((ach, i) => (
               <div
                 key={i}
-                className="flex items-center gap-2.5 p-2 bg-[#141414] border border-[#262626]"
+                className="flex items-center gap-2.5 p-2 bg-[#161c28] border border-[#252c3a] rounded-lg"
               >
-                <span className="w-7 h-7 flex items-center justify-center bg-[#1a1a1a] border border-[#262626] text-[#737373]">
+                <span className="w-7 h-7 flex items-center justify-center bg-[#1c2230] border border-[#2e3648] text-[#c8a040] rounded-lg">
                   <FaTrophy className="text-[10px]" />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-medium text-[#e5e5e5] truncate">
+                  <p className="text-[12px] font-medium text-[#d8d0c4] truncate">
                     {ach.name}
                   </p>
-                  <p className="text-[10px] text-[#737373] truncate">
+                  <p className="text-[10px] text-[#706858] truncate">
                     {ach.description}
                   </p>
                 </div>
@@ -299,9 +291,6 @@ export const GameSidebar = ({
   );
 };
 
-/* ========================================
-   LAYOUT WRAPPER – no particles, no glow
-   ======================================== */
 export const GameLayout = ({
   children,
   showNavbar = true,
@@ -311,7 +300,7 @@ export const GameLayout = ({
   className = "",
 }) => {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e5e5e5]">
+    <div className="min-h-screen bg-[#0d1017] text-[#d8d0c4]">
       {showParticles && <ParticleBackground count={12} />}
       {showNavbar && <GameNavbar />}
       <main className={showNavbar ? "" : ""}>
@@ -330,9 +319,6 @@ export const GameLayout = ({
   );
 };
 
-/* ========================================
-   PAGE HEADER – simple title block
-   ======================================== */
 export const PageHeader = ({
   title,
   subtitle,
@@ -343,27 +329,27 @@ export const PageHeader = ({
 }) => {
   return (
     <div
-      className={`border-b border-[#1f1f1f] bg-[#0c0c0c] ${className}`}
+      className={`border-b border-[#252c3a] bg-[#111620] ${className}`}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             {Icon && (
-              <span className="w-10 h-10 flex items-center justify-center bg-[#141414] border border-[#262626] text-[#a3a3a3]">
+              <span className="w-10 h-10 flex items-center justify-center bg-[#1c2230] border border-[#2e3648] text-[#9a9080] rounded-xl">
                 <Icon className="text-lg" />
               </span>
             )}
             <div>
               {badge && (
-                <span className="inline-block text-[10px] font-semibold uppercase tracking-wider text-[#737373] mb-1">
+                <span className="inline-block text-[10px] font-semibold uppercase tracking-wider text-[#706858] mb-1">
                   {badge}
                 </span>
               )}
-              <h1 className="text-xl font-semibold text-[#e5e5e5] tracking-tight">
+              <h1 className="text-xl font-semibold text-[#d8d0c4] tracking-tight">
                 {title}
               </h1>
               {subtitle && (
-                <p className="mt-0.5 text-[13px] text-[#737373]">{subtitle}</p>
+                <p className="mt-0.5 text-[13px] text-[#706858]">{subtitle}</p>
               )}
             </div>
           </div>

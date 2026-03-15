@@ -69,7 +69,6 @@ const Modules = () => {
 
   const toId = (id) => (id && typeof id === "object" && id._id ? String(id._id) : String(id));
 
-  // Free no-key image API: Picsum Photos — deterministic per module via seed
   const getModuleImageUrl = (module, width = 400, height = 250) => {
     const seed = (module._id || module.title || "").toString().replace(/\s/g, "");
     return `https://picsum.photos/seed/${seed || "module"}/${width}/${height}`;
@@ -102,7 +101,7 @@ const Modules = () => {
   if (loading) {
     return (
       <GameLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex items-center justify-center text-gray-400 min-h-[50vh]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex items-center justify-center text-[#706858] min-h-[50vh]">
           Loading...
         </div>
       </GameLayout>
@@ -110,12 +109,12 @@ const Modules = () => {
   }
 
   const difficultyStyles = {
-    easy: "bg-emerald-500/20 text-emerald-400 border-emerald-500/40",
-    medium: "bg-amber-500/20 text-amber-400 border-amber-500/40",
-    hard: "bg-rose-500/20 text-rose-400 border-rose-500/40",
+    easy: "bg-[#5c9650]/15 text-[#5c9650] border-[#5c9650]/30",
+    medium: "bg-[#c8a040]/15 text-[#c8a040] border-[#c8a040]/30",
+    hard: "bg-[#c04848]/15 text-[#c04848] border-[#c04848]/30",
   };
   const getDifficultyClass = (d) =>
-    difficultyStyles[d?.toLowerCase()] || "bg-gray-500/20 text-gray-400 border-gray-500/40";
+    difficultyStyles[d?.toLowerCase()] || "bg-[#585048]/15 text-[#9a9080] border-[#585048]/30";
 
   const toTitleCase = (str) =>
     (str || "")
@@ -125,39 +124,39 @@ const Modules = () => {
   return (
     <GameLayout>
       <div className="min-h-[60vh]">
-        {/* Header strip */}
+        {/* Header */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#d8d0c4] tracking-tight">
                 Quests
               </h1>
-              <p className="text-gray-400 text-sm mt-0.5">
+              <p className="text-[#706858] text-sm mt-0.5">
                 {completedModuleIds.length} of {modules.length} completed
               </p>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-800/80 border border-gray-700/80">
-                <span className="text-gray-400 text-sm">Level</span>
-                <span className="font-semibold text-cyan-400">{level}</span>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#111620] border border-[#252c3a]">
+                <span className="text-[#706858] text-sm">Level</span>
+                <span className="font-semibold text-[#c8a040]">{level}</span>
               </div>
-              <div className="h-8 w-px bg-gray-600 hidden sm:block" />
+              <div className="h-8 w-px bg-[#252c3a] hidden sm:block" />
               <div className="flex items-center gap-2">
                 <div
-                  className="h-2 flex-1 min-w-[80px] rounded-full bg-gray-800 overflow-hidden"
+                  className="h-2 flex-1 min-w-[80px] rounded-full bg-[#1c2230] overflow-hidden"
                   style={{ width: 96 }}
                 >
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all duration-500"
+                    className="h-full rounded-full bg-[#4e9a8e] transition-all duration-500"
                     style={{ width: `${completionPct}%` }}
                   />
                 </div>
-                <span className="text-gray-400 text-sm tabular-nums w-10">{completionPct}%</span>
+                <span className="text-[#706858] text-sm tabular-nums w-10">{completionPct}%</span>
               </div>
               {nextModule && (
                 <button
                   onClick={() => handleStartModule(nextModule._id)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30 font-medium text-sm transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#4e9a8e]/10 text-[#4e9a8e] border border-[#4e9a8e]/30 hover:bg-[#4e9a8e]/20 font-medium text-sm transition-colors"
                 >
                   <FaPlay className="text-xs" /> Continue
                 </button>
@@ -169,14 +168,14 @@ const Modules = () => {
         {/* Filters */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-6">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 text-gray-400 text-sm font-medium">
+            <span className="inline-flex items-center gap-2 text-[#9a9080] text-sm font-medium">
               <FaFilter className="w-4 h-4" /> Filter
             </span>
             <div className="flex flex-wrap gap-2">
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-700 bg-gray-800/60 text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/50 transition-shadow"
+                className="px-3 py-2 rounded-xl border border-[#252c3a] bg-[#111620] text-[#d8d0c4] text-sm focus:outline-none focus:ring-2 focus:ring-[#4e9a8e]/30 focus:border-[#4e9a8e]/40 transition-shadow"
               >
                 <option value="all">All categories</option>
                 {filterOptions.categories.map((cat) => (
@@ -188,7 +187,7 @@ const Modules = () => {
               <select
                 value={filterDifficulty}
                 onChange={(e) => setFilterDifficulty(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-700 bg-gray-800/60 text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/50 transition-shadow"
+                className="px-3 py-2 rounded-xl border border-[#252c3a] bg-[#111620] text-[#d8d0c4] text-sm focus:outline-none focus:ring-2 focus:ring-[#4e9a8e]/30 focus:border-[#4e9a8e]/40 transition-shadow"
               >
                 <option value="all">All difficulties</option>
                 {filterOptions.difficulties.map((d) => (
@@ -204,7 +203,7 @@ const Modules = () => {
                     setFilterCategory("all");
                     setFilterDifficulty("all");
                   }}
-                  className="px-3 py-2 rounded-xl text-sm text-gray-400 hover:text-gray-200 border border-gray-600 hover:border-gray-500 transition-colors"
+                  className="px-3 py-2 rounded-xl text-sm text-[#9a9080] hover:text-[#d8d0c4] border border-[#2e3648] hover:border-[#3a4258] transition-colors"
                 >
                   Clear
                 </button>
@@ -223,42 +222,41 @@ const Modules = () => {
               return (
                 <article
                   key={module._id}
-                  className={`group relative overflow-hidden rounded-2xl border bg-gray-900/60 transition-all duration-300 hover:shadow-xl hover:shadow-black/20 hover:-translate-y-0.5 ${
+                  className={`group relative overflow-hidden rounded-2xl border bg-[#111620] transition-all duration-300 hover:shadow-lg hover:shadow-black/20 hover:-translate-y-0.5 ${
                     done
-                      ? "border-gray-700/80 shadow-lg shadow-black/10"
+                      ? "border-[#5c9650]/30"
                       : isNext
-                        ? "border-cyan-500/50 shadow-lg shadow-cyan-500/10"
-                        : "border-gray-700/60 hover:border-gray-600"
+                        ? "border-[#4e9a8e]/40"
+                        : "border-[#252c3a] hover:border-[#3a4258]"
                   }`}
                 >
-                  {/* Image + overlay */}
-                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-gray-800">
+                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#1c2230]">
                     <img
                       src={getModuleImageUrl(module)}
                       alt=""
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-80"
                       loading="lazy"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/20 to-transparent" />
+                    <div className="absolute inset-0 bg-[#0d1017]/70" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <h3 className="font-semibold text-white text-sm sm:text-base truncate drop-shadow-lg">
+                      <h3 className="font-semibold text-[#d8d0c4] text-sm sm:text-base truncate">
                         {module.title}
                       </h3>
                       {module.difficulty && (
                         <span
-                          className={`inline-block mt-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-wider px-2 py-0.5 rounded-md border ${getDifficultyClass(module.difficulty)}`}
+                          className={`inline-block mt-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-wider px-2 py-0.5 rounded-lg border ${getDifficultyClass(module.difficulty)}`}
                         >
                           {module.difficulty}
                         </span>
                       )}
                     </div>
                     {done && (
-                      <div className="absolute top-3 right-3 rounded-full bg-emerald-500/90 p-1.5 shadow-lg">
+                      <div className="absolute top-3 right-3 rounded-full bg-[#5c9650] p-1.5">
                         <FaCheckCircle className="text-white w-4 h-4" />
                       </div>
                     )}
                     {isNext && !done && (
-                      <div className="absolute top-3 right-3 rounded-full bg-cyan-500/90 px-2 py-1 text-[10px] font-bold text-white uppercase tracking-wider shadow-lg">
+                      <div className="absolute top-3 right-3 rounded-lg bg-[#c8a040] px-2 py-1 text-[10px] font-bold text-[#0d1017] uppercase tracking-wider">
                         Next
                       </div>
                     )}
@@ -266,18 +264,18 @@ const Modules = () => {
 
                   <div className="p-4">
                     {module.description && (
-                      <p className="text-xs text-gray-500 line-clamp-2 mb-4">
+                      <p className="text-xs text-[#706858] line-clamp-2 mb-4">
                         {module.description}
                       </p>
                     )}
                     {done ? (
                       <div className="flex items-center gap-3 flex-wrap">
-                        <span className="inline-flex items-center gap-1.5 text-gray-400 text-sm">
-                          <FaCheckCircle className="text-emerald-500 shrink-0" /> Completed
+                        <span className="inline-flex items-center gap-1.5 text-[#9a9080] text-sm">
+                          <FaCheckCircle className="text-[#5c9650] shrink-0" /> Completed
                         </span>
                         <button
                           onClick={() => handleStartModule(module._id)}
-                          className="px-4 py-2 rounded-xl text-sm font-semibold border border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-gray-500 transition-all"
+                          className="px-4 py-2 rounded-xl text-sm font-semibold border border-[#2e3648] text-[#d8d0c4] hover:bg-[#1c2230] hover:border-[#3a4258] transition-all"
                         >
                           Retry
                         </button>
@@ -287,8 +285,8 @@ const Modules = () => {
                         onClick={() => handleStartModule(module._id)}
                         className={`w-full px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                           isNext
-                            ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30"
-                            : "bg-gray-800 text-gray-200 border border-gray-600 hover:bg-gray-700 hover:border-gray-500"
+                            ? "bg-[#4e9a8e]/10 text-[#4e9a8e] border border-[#4e9a8e]/30 hover:bg-[#4e9a8e]/20"
+                            : "bg-[#1c2230] text-[#d8d0c4] border border-[#2e3648] hover:bg-[#242c3c] hover:border-[#3a4258]"
                         }`}
                       >
                         {isNext ? "Continue quest" : "Start quest"}
@@ -301,8 +299,8 @@ const Modules = () => {
           </div>
 
           {filteredModules.length === 0 && (
-            <div className="rounded-2xl border border-gray-700/60 bg-gray-800/30 py-16 text-center">
-              <p className="text-gray-500 text-sm">No quests match your filters.</p>
+            <div className="rounded-2xl border border-[#252c3a] bg-[#111620] py-16 text-center">
+              <p className="text-[#706858] text-sm">No quests match your filters.</p>
             </div>
           )}
         </div>

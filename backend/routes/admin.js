@@ -13,5 +13,7 @@ router.get('/users', adminController.listUsers);
 router.get('/users/:id', adminController.getUserById);
 router.put('/users/:id', adminController.updateUser);
 router.delete('/users/:id', adminController.deleteUser);
+router.post('/users/:id/achievements', adminController.grantAchievement);
+router.delete('/users/:id/achievements/:achievementId', adminController.revokeAchievement);
 
 module.exports = router;

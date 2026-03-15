@@ -11,6 +11,7 @@ function assessQuestionConfidence(message, context) {
     if (codeLen > 20) confidence += 0.2;
   }
   if (context?.errorMessage) confidence += 0.15;
+  if (context?.recentErrors && Array.isArray(context.recentErrors) && context.recentErrors.length > 0) confidence += 0.15;
   if (context?.currentFile) confidence += 0.1;
 
   const vaguePatterns = [/^why$/i, /doesn't work/i, /not working/i, /help me/i, /^how$/i];
@@ -107,12 +108,12 @@ INSTEAD:
 
   switch (hintStyle) {
     case 'error-explanation':
-      promptParts.push(`\nHINT STYLE: Error Explanation
-- Focus on explaining what the error message means in simple terms
-- Explain WHY this type of error occurs (the underlying cause)
-- Point to common mistakes that lead to this error
-- Suggest what part of the code to examine
-- DO NOT fix the error directly`);
+      promptParts.push(`\nHINT STYLE: Error Explanation (DIRECTIVE)
+- Explain what the error message means in simple terms and what to fix
+- Explain WHY this type of error occurs (underlying cause)
+- Point to common mistakes (typo, wrong type, missing bracket, etc.)
+- Suggest what part of the code to examine; do NOT write the full fix
+- Keep the response focused and under the word limit`);
       break;
     case 'logic-guidance':
       promptParts.push(`\nHINT STYLE: Logic Guidance
@@ -165,8 +166,16 @@ INSTEAD:
   if (context?.codeSummary) {
     promptParts.push(`\nSTUDENT'S CODE (summary for context only - do not invent code):\n${context.codeSummary}`);
   }
-  if (context?.errorMessage) {
-    promptParts.push(`\nERROR MESSAGE: ${context.errorMessage}`);
+  const hasErrorContext = context?.errorMessage || (context?.recentErrors && context.recentErrors.length > 0);
+  if (hasErrorContext) {
+    promptParts.push(`\nPRIORITY: The student has an error. Explain this error in simple terms and what to check or fix. Do NOT give the full solution; guide them.`);
+    if (context.errorMessage) {
+      promptParts.push(`\nERROR MESSAGE (primary): ${context.errorMessage}`);
+    }
+    if (context.recentErrors && context.recentErrors.length > 0) {
+      const errList = context.recentErrors.slice(0, 5).map((e) => `- ${e}`).join('\n');
+      promptParts.push(`\nRECENT CONSOLE ERRORS:\n${errList}`);
+    }
   }
   if (context?.moduleTitle) {
     promptParts.push(`\nMODULE: ${context.moduleTitle}`);

@@ -60,6 +60,10 @@ export const adminAPI = {
   getUser: (id) => api.get(`/admin/users/${id}`),
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  grantAchievement: (userId, achievementId) =>
+    api.post(`/admin/users/${userId}/achievements`, { achievementId }),
+  revokeAchievement: (userId, achievementId) =>
+    api.delete(`/admin/users/${userId}/achievements/${achievementId}`),
 };
 
 // Achievements API
@@ -71,13 +75,15 @@ export const achievementsAPI = {
   checkAchievements: (progressData) => api.post('/achievements/check', progressData),
 };
 
-// Tutor API (Gemini / Ollama)
+// Tutor API
 export const tutorAPI = {
   ask: (message, context) => api.post('/tutor', { message, context }),
   verifyStep: (payload) => api.post('/tutor/verify', payload),
   generateMCQs: (payload) => api.post('/tutor/mcq/generate', payload),
   verifyMCQ: (payload) => api.post('/tutor/mcq/verify', payload),
   explainCode: (code, language) => api.post('/tutor/explain-code', { code, language }),
+  explainError: (errorMessage, codeSnippet, language) =>
+    api.post('/tutor/explain-error', { errorMessage, codeSnippet: codeSnippet || '', language: language || 'javascript' }),
   generateStarterCode: (planning) => api.post('/tutor/generate-starter-code', { planning }),
 };
 

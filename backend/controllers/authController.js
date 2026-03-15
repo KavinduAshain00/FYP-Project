@@ -1,24 +1,19 @@
 const User = require('../models/User');
 const { generateToken } = require('../utils/jwt');
 const { isAdminEmail } = require('../utils/admin');
+const { grantSignupAchievement } = require('../services/achievementService');
 
 /**
  * POST /api/auth/signup - Register new user
  */
 async function signup(req, res) {
   try {
-    console.log('Signup request received:', { ...req.body, password: '[HIDDEN]' });
     const { name, email, password, knowsJavaScript } = req.body;
 
     if (!name || !email || !password || knowsJavaScript === undefined) {
-      console.log('Validation failed:', {
-        name: Boolean(name),
-        email: Boolean(email),
-        password: Boolean(password),
-        knowsJavaScript,
-      });
       return res.status(400).json({ message: 'Please provide all required fields' });
     }
+    console.log('[Auth] signup', { email });
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -43,6 +38,8 @@ async function signup(req, res) {
     }
 
     await user.save();
+    await grantSignupAchievement(user._id);
+    console.log('[Auth] signup success', { userId: user._id?.toString(), email });
     const token = generateToken(user._id);
 
     const savedUser = await User.findById(user._id)
@@ -59,7 +56,7 @@ async function signup(req, res) {
       user: userPayload,
     });
   } catch (error) {
-    console.error('Signup error:', error);
+    console.error('[Auth] signup error', error.message);
     return res.status(500).json({ message: 'Server error during signup' });
   }
 }
@@ -74,6 +71,7 @@ async function login(req, res) {
     if (!email || !password) {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
+    console.log('[Auth] login', { email });
 
     const user = await User.findOne({ email });
     if (!user) {
@@ -86,6 +84,7 @@ async function login(req, res) {
     }
 
     const token = generateToken(user._id);
+    console.log('[Auth] login success', { userId: user._id?.toString(), email });
     const fullUser = await User.findById(user._id)
       .select('-password')
       .populate('completedModules.moduleId', 'title category')
@@ -100,7 +99,7 @@ async function login(req, res) {
       user: userPayload,
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('[Auth] login error', error.message);
     return res.status(500).json({ message: 'Server error during login' });
   }
 }

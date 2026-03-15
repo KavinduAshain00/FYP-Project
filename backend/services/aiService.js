@@ -1,54 +1,44 @@
-const { Ollama } = require('ollama');
-const { OLLAMA_HOST, OLLAMA_MODEL, OLLAMA_MCQ_MODEL, OLLAMA_CODER_MODEL, OLLAMA_MERMAID_MODEL } = require('../constants/ai');
+const githubModels = require('./githubModelsService');
+const { AI_MODEL, AI_MCQ_MODEL, AI_CODER_MODEL, AI_MERMAID_MODEL } = require('../constants/ai');
 
-const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
-if (!OLLAMA_API_KEY) {
-  console.warn('Warning: OLLAMA_API_KEY not set. Ollama Cloud calls will fail until configured.');
+if (!GITHUB_TOKEN) {
+  console.warn('Warning: GITHUB_TOKEN not set. AI calls will fail until configured.');
 }
 
-const ollama = new Ollama({
-  host: OLLAMA_HOST,
-  headers: {
-    Authorization: `Bearer ${OLLAMA_API_KEY}`,
-  },
-});
-
-console.log(`Using Ollama at ${OLLAMA_HOST} with model ${OLLAMA_MODEL}`);
+console.log(`Using GitHub Models with model ${AI_MODEL}`);
 
 async function generateText(prompt, options = {}) {
-  return generateTextWithModel(prompt, options, OLLAMA_MODEL);
+  return generateTextWithModel(prompt, options, AI_MODEL);
 }
 
-/** Generate text with a specific model (e.g. qwen3-coder for MCQ). */
-async function generateTextWithModel(prompt, options = {}, model = OLLAMA_MODEL) {
-  if (!OLLAMA_API_KEY) throw new Error('OLLAMA_API_KEY not configured');
+/** Generate text with a specific model. */
+async function generateTextWithModel(prompt, options = {}, model = AI_MODEL) {
+  if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN not configured');
 
   try {
-    const response = await ollama.chat({
+    const content = await githubModels.chatCompletion(
+      [{ role: 'user', content: prompt }],
       model,
-      messages: [{ role: 'user', content: prompt }],
-      stream: false,
-      options: {
+      {
         temperature: options.temperature ?? 0.2,
-        num_predict: options.maxTokens ?? 512,
+        maxTokens: options.maxTokens ?? 512,
       },
-    });
+    );
 
-    // Use only the assistant's reply text. Never expose thinking, model, or internal metadata.
-    const msg = response.message;
-    if (msg && typeof msg.content === 'string' && msg.content.trim()) {
-      return msg.content.trim();
+    if (content && typeof content === 'string' && content.trim()) {
+      return content.trim();
     }
-    return ''; // Empty or thinking-only: return nothing; caller can show a friendly fallback
+    return '';
   } catch (err) {
     const message = err.message || String(err);
-    throw new Error(`Ollama API error: ${message}`, { cause: err });
+    throw new Error(`GitHub Models API error: ${message}`, { cause: err });
   }
 }
 
 async function generateMermaidDiagram(description, diagramType = 'flowchart', options = {}) {
-  if (!OLLAMA_API_KEY) throw new Error('OLLAMA_API_KEY not configured');
+  if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN not configured');
 
   try {
     const prompt = `You are a Mermaid diagram expert. Generate ONLY valid Mermaid syntax based on the following description.
@@ -68,26 +58,25 @@ Rules:
 
 Generate the Mermaid diagram now:`;
 
-    const response = await ollama.chat({
-      model: OLLAMA_MERMAID_MODEL,
-      messages: [{ role: 'user', content: prompt }],
-      stream: false,
-      options: {
+    const content = await githubModels.chatCompletion(
+      [{ role: 'user', content: prompt }],
+      AI_MERMAID_MODEL,
+      {
         temperature: options.temperature ?? 0.3,
-        num_predict: options.maxTokens ?? 1024,
+        maxTokens: options.maxTokens ?? 1024,
       },
-    });
+    );
 
-    if (response.message && response.message.content) {
-      let mermaidCode = response.message.content.trim();
+    if (content) {
+      let mermaidCode = content.trim();
       mermaidCode = mermaidCode.replace(/```mermaid\n?/g, '');
       mermaidCode = mermaidCode.replace(/```\n?/g, '');
       return mermaidCode.trim();
     }
-    return JSON.stringify(response);
+    return '';
   } catch (err) {
     const message = err.message || String(err);
-    throw new Error(`Ollama Mermaid generation error: ${message}`, { cause: err });
+    throw new Error(`Mermaid generation error: ${message}`, { cause: err });
   }
 }
 
@@ -96,7 +85,7 @@ Generate the Mermaid diagram now:`;
  * only describe what is actually present in the code.
  */
 async function summarizeCodeToMarkdown(codeByFile) {
-  if (!OLLAMA_API_KEY) return 'Code context unavailable.';
+  if (!GITHUB_TOKEN) return 'Code context unavailable.';
   const parts = [];
   if (codeByFile.html) parts.push(`HTML (excerpt): ${codeByFile.html.substring(0, 400).replace(/\n/g, ' ')}`);
   if (codeByFile.css) parts.push(`CSS (excerpt): ${codeByFile.css.substring(0, 400).replace(/\n/g, ' ')}`);
@@ -123,7 +112,7 @@ Output format: markdown bullet points only. No preamble. No code blocks.`;
  * no harmful advice, and relevant to the question. Returns { ok: boolean, reason?: string }.
  */
 async function verifyTutorResponse(question, response) {
-  if (!OLLAMA_API_KEY) return { ok: true };
+  if (!GITHUB_TOKEN) return { ok: true };
   const prompt = `You are a fact-checker for educational AI responses.
 
 QUESTION: ${question.substring(0, 300)}
@@ -149,7 +138,7 @@ Rules:
  * Verify that a code summary accurately reflects the code (no added content).
  */
 async function verifyCodeSummary(codeExcerpt, summary) {
-  if (!OLLAMA_API_KEY) return true;
+  if (!GITHUB_TOKEN) return true;
   const prompt = `You are a verifier. Does the following summary accurately describe ONLY what is in the code? Reply with ONLY "YES" or "NO".
 If the summary adds features, fixes, or details not present in the code, say NO.
 
@@ -167,11 +156,11 @@ Answer (YES or NO):`;
 }
 
 /**
- * Generate 1-2 MCQ questions for a step/concept using qwen3-coder (educational, code-focused).
+ * Generate 1-2 MCQ questions for a step/concept (educational, code-focused).
  * Returns { questions: [{ question, options: string[], correctIndex: number }] }
  */
 async function generateMCQs(stepTitle, stepConcept, moduleTitle, count = 2) {
-  if (!OLLAMA_API_KEY) return { questions: [] };
+  if (!GITHUB_TOKEN) return { questions: [] };
 
   const prompt = `You are an educational quiz generator for programming. Generate exactly ${count} multiple-choice question(s) about the concept below. Keep questions clear and focused on what the student just learned.
 
@@ -180,29 +169,40 @@ STEP/CONCEPT: ${stepTitle}
 ${stepConcept ? `CONCEPT DETAIL: ${stepConcept}` : ''}
 
 RULES:
-1. Output ONLY valid JSON, no other text.
+1. Output ONLY a single JSON object, no other text before or after.
 2. Format: {"questions":[{"question":"...","options":["A","B","C","D"],"correctIndex":0}]}
-3. correctIndex is 0-based (0 = first option).
-4. Each question must have exactly 4 options. Options should be short (one line).
-5. Questions should test understanding, not trivia. One correct answer per question.`;
+3. correctIndex is 0-based (0 = first option). Each question must have exactly 4 options.
+4. Options should be short (one line). One correct answer per question.`;
 
-  try {
-    const raw = await generateTextWithModel(prompt, { maxTokens: 800, temperature: 0.4 }, OLLAMA_MCQ_MODEL);
+  const parseQuestions = (raw) => {
     const trimmed = raw.trim().replace(/^```\w*\n?|```$/g, '').trim();
     const data = JSON.parse(trimmed);
     const questions = Array.isArray(data.questions) ? data.questions : [];
-    return { questions: questions.slice(0, count).filter((q) => q.question && Array.isArray(q.options) && typeof q.correctIndex === 'number') };
+    return questions.slice(0, count).filter((q) => q.question && Array.isArray(q.options) && q.options.length === 4 && typeof q.correctIndex === 'number' && q.correctIndex >= 0 && q.correctIndex < 4);
+  };
+
+  try {
+    let raw = await generateTextWithModel(prompt, { maxTokens: 800, temperature: 0.4 }, AI_MCQ_MODEL);
+    let questions = parseQuestions(raw);
+    if (questions.length === 0 && raw.trim()) {
+      raw = await generateTextWithModel(prompt, { maxTokens: 800, temperature: 0.2 }, AI_MCQ_MODEL);
+      questions = parseQuestions(raw);
+    }
+    if (questions.length === 0) {
+      return { questions: [{ question: 'What did you learn in this step?', options: ['I applied the concept correctly.', 'I need to review the instructions.', 'I am not sure yet.', 'I want to try again.'], correctIndex: 0 }] };
+    }
+    return { questions };
   } catch {
-    return { questions: [] };
+    return { questions: [{ question: 'What did you learn in this step?', options: ['I applied the concept correctly.', 'I need to review the instructions.', 'I am not sure yet.', 'I want to try again.'], correctIndex: 0 }] };
   }
 }
 
 /**
- * Explain why an MCQ answer is wrong (or confirm correct) using qwen3-coder.
+ * Explain why an MCQ answer is wrong (or confirm correct).
  * Returns { correct: boolean, explanation: string }
  */
 async function verifyMCQAnswer(question, options, correctIndex, selectedIndex) {
-  if (!OLLAMA_API_KEY) return { correct: selectedIndex === correctIndex, explanation: 'Verification unavailable.' };
+  if (!GITHUB_TOKEN) return { correct: selectedIndex === correctIndex, explanation: 'Verification unavailable.' };
 
   const correct = selectedIndex === correctIndex;
   const selectedText = options[selectedIndex];
@@ -222,7 +222,7 @@ STUDENT CHOSE INDEX: ${selectedIndex} (their answer: "${selectedText}")
 Reply with ONLY a short explanation (2-4 sentences). No preamble like "The correct answer is...". Focus on WHY the wrong answer is wrong and what the right concept is.`;
 
   try {
-    const explanation = await generateTextWithModel(prompt, { maxTokens: 256, temperature: 0.3 }, OLLAMA_MCQ_MODEL);
+    const explanation = await generateTextWithModel(prompt, { maxTokens: 256, temperature: 0.3 }, AI_MCQ_MODEL);
     return { correct: false, explanation: (explanation || '').trim() || 'That option is incorrect. Review the concept and try again.' };
   } catch {
     return { correct: false, explanation: 'That option is incorrect. The correct answer is option ' + (correctIndex + 1) + '.' };
@@ -230,12 +230,12 @@ Reply with ONLY a short explanation (2-4 sentences). No preamble like "The corre
 }
 
 /**
- * Generate React game starter code from planning board data using qwen3-coder:480b.
+ * Generate React game starter code from planning board data.
  * Planning should include: name, description, mechanics, gameLoop, coreFeatures, winLoseConditions, gameMode.
  * Returns raw code string (single file or markdown with ``` blocks); caller may parse.
  */
 async function generateGameStarterCode(planning) {
-  if (!OLLAMA_API_KEY) throw new Error('OLLAMA_API_KEY not configured');
+  if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN not configured');
   const name = planning.name || 'My Game';
   const description = planning.description || 'A fun game';
   const mechanics = planning.mechanics || planning.mechanicsText || 'Score, basic controls';
@@ -274,7 +274,7 @@ Generate the code now.`;
     const raw = await generateTextWithModel(
       prompt,
       { maxTokens: 4096, temperature: 0.3 },
-      OLLAMA_CODER_MODEL
+      AI_CODER_MODEL
     );
     return (raw || '').trim();
   } catch (err) {
@@ -287,7 +287,7 @@ Generate the code now.`;
  * Explain a highlighted code snippet (educational, concise). Uses main model.
  */
 async function explainCodeSnippet(code, language = 'javascript') {
-  if (!OLLAMA_API_KEY) throw new Error('OLLAMA_API_KEY not configured');
+  if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN not configured');
   if (!code || !code.trim()) throw new Error('No code provided');
 
   const prompt = `You are a friendly programming tutor. The student highlighted this code and asked for an explanation.
@@ -312,6 +312,39 @@ Do not repeat the code in full. Use simple language.`;
   }
 }
 
+/**
+ * Explain a runtime/syntax error message in simple terms. Pedagogical, no full solution.
+ * Uses main model. Optional codeSnippet for context.
+ */
+async function explainErrorMessage(errorMessage, codeSnippet = '', language = 'javascript') {
+  if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN not configured');
+  if (!errorMessage || !String(errorMessage).trim()) throw new Error('No error message provided');
+
+  const codeBlock = codeSnippet && codeSnippet.trim()
+    ? `\nRelevant code (for context only):\n\`\`\`${language}\n${String(codeSnippet).substring(0, 800)}\n\`\`\``
+    : '';
+
+  const prompt = `You are a patient programming tutor. The student sees this error and wants to understand it.
+
+ERROR MESSAGE:
+${String(errorMessage).substring(0, 600)}
+${codeBlock}
+
+Explain in simple terms (2-3 short paragraphs):
+1. What this error means in plain language
+2. Common causes (e.g. typo, wrong type, missing bracket)
+3. What to check or try first (do NOT write the full fix; point to the idea)
+
+Do not provide the complete corrected code. Guide them to fix it themselves.`;
+
+  try {
+    const explanation = await generateText(prompt, { maxTokens: 400, temperature: 0.3 });
+    return (explanation || '').trim() || 'Could not generate explanation.';
+  } catch (err) {
+    throw new Error(err.message || 'Error explanation failed');
+  }
+}
+
 module.exports = {
   generateText,
   generateTextWithModel,
@@ -323,4 +356,5 @@ module.exports = {
   verifyMCQAnswer,
   generateGameStarterCode,
   explainCodeSnippet,
+  explainErrorMessage,
 };

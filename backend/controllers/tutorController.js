@@ -1,4 +1,5 @@
 const ai = require('../services/aiService');
+const { AI_CODER_MODEL } = require('../constants/ai');
 const {
   assessQuestionConfidence,
   getFallbackHints,
@@ -12,15 +13,17 @@ async function generateMCQs(req, res) {
     return res.status(400).json({ error: 'stepTitle (string) is required' });
   }
   try {
+    console.log('[Tutor] generateMCQs', { stepTitle: stepTitle?.slice(0, 40), moduleTitle });
     const result = await ai.generateMCQs(
       stepTitle,
       stepConcept || '',
       moduleTitle || '',
       typeof count === 'number' ? Math.min(2, Math.max(1, count)) : 2
     );
+    console.log('[Tutor] generateMCQs success', { questionCount: result?.questions?.length ?? 0 });
     return res.json(result);
   } catch (err) {
-    console.error('MCQ generate error:', err.message || err);
+    console.error('[Tutor] generateMCQs error', err.message || err);
     return res.status(500).json({ error: 'MCQ generation failed', questions: [] });
   }
 }
@@ -32,10 +35,11 @@ async function verifyMCQ(req, res) {
     return res.status(400).json({ error: 'question, options (array), correctIndex, and selectedIndex are required' });
   }
   try {
+    console.log('[Tutor] verifyMCQ', { correct: selectedIndex === correctIndex });
     const result = await ai.verifyMCQAnswer(question, options, correctIndex, selectedIndex);
     return res.json(result);
   } catch (err) {
-    console.error('MCQ verify error:', err.message || err);
+    console.error('[Tutor] verifyMCQ error', err.message || err);
     return res.status(500).json({
       correct: false,
       explanation: 'Verification failed. Please try again.',
@@ -50,11 +54,32 @@ async function explainCode(req, res) {
     return res.status(400).json({ error: 'code (string) is required' });
   }
   try {
+    console.log('[Tutor] explainCode', { language: language || 'javascript', codeLen: code?.length });
     const explanation = await ai.explainCodeSnippet(code.trim(), language || 'javascript');
     return res.json({ explanation });
   } catch (err) {
-    console.error('Explain code error:', err.message || err);
+    console.error('[Tutor] explainCode error', err.message || err);
     return res.status(500).json({ error: err.message || 'Explanation failed' });
+  }
+}
+
+/** POST /api/tutor/explain-error - Explain a runtime/syntax error message in simple terms */
+async function explainError(req, res) {
+  const { errorMessage, codeSnippet, language } = req.body;
+  if (!errorMessage || typeof errorMessage !== 'string' || !errorMessage.trim()) {
+    return res.status(400).json({ error: 'errorMessage (string) is required' });
+  }
+  try {
+    console.log('[Tutor] explainError', { errorLen: errorMessage?.length, hasCodeSnippet: Boolean(codeSnippet) });
+    const explanation = await ai.explainErrorMessage(
+      errorMessage.trim(),
+      codeSnippet && typeof codeSnippet === 'string' ? codeSnippet.trim() : '',
+      language || 'javascript'
+    );
+    return res.json({ explanation });
+  } catch (err) {
+    console.error('[Tutor] explainError error', err.message || err);
+    return res.status(500).json({ error: err.message || 'Error explanation failed' });
   }
 }
 
@@ -68,10 +93,12 @@ async function generateGameStarterCode(req, res) {
     return res.status(400).json({ error: 'planning must include at least name or description' });
   }
   try {
+    console.log('[Tutor] generateGameStarterCode', { name: planning?.name, isMultiplayer: planning?.gameMode === 'multiplayer' });
     const code = await ai.generateGameStarterCode(planning);
+    console.log('[Tutor] generateGameStarterCode success', { codeLen: code?.length });
     return res.json({ answer: code });
   } catch (err) {
-    console.error('Generate starter code error:', err.message || err);
+    console.error('[Tutor] generateGameStarterCode error', err.message || err);
     return res.status(500).json({ error: err.message || 'Starter code generation failed' });
   }
 }
@@ -82,11 +109,13 @@ async function generateGameStarterCode(req, res) {
  */
 async function postTutor(req, res) {
   const { message, context } = req.body;
+  const userId = req.user?._id?.toString();
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'message (string) is required' });
   }
 
   try {
+    console.log('[Tutor] postTutor', { userId, contextType: context?.type, hintStyle: context?.hintStyle });
     if (context?.type === 'hint-mode') {
       const confidence = assessQuestionConfidence(message, context);
       const hintStyle = context?.hintStyle || 'general';
@@ -123,7 +152,14 @@ async function postTutor(req, res) {
       }
 
       const aiPreferences = req.user?.aiPreferences || {};
-      const prompt = buildPedagogicalPrompt(message, { ...context, codeSummary, codeIsEmpty }, hintStyle, confidence, aiPreferences);
+      const hintContext = {
+        ...context,
+        codeSummary,
+        codeIsEmpty,
+        recentErrors: context?.recentErrors || [],
+        errorMessage: context?.errorMessage || null,
+      };
+      const prompt = buildPedagogicalPrompt(message, hintContext, hintStyle, confidence, aiPreferences);
       let answer = await ai.generateText(prompt, { maxTokens: 400, temperature: 0.4 });
 
       const verification = await ai.verifyTutorResponse(message, answer);
@@ -218,7 +254,7 @@ ${context.codeSnippet ? `Relevant code (excerpt):\n\`\`\`\n${String(context.code
 
     return res.json({ answer });
   } catch (err) {
-    console.error('Tutor route error:', err.message || err);
+    console.error('[Tutor] postTutor error', { userId, error: err.message });
     return res.status(500).json({ error: 'Tutor service failed to generate a response' });
   }
 }
@@ -422,6 +458,7 @@ function checkCommentsStep(stepDescription, normalized) {
  */
 async function verifyStep(req, res) {
   const { stepIndex, stepDescription, code, moduleTitle, objectives, verifyType, consoleOutput, expectedConsole } = req.body;
+  const userId = req.user?._id?.toString();
   if (stepDescription === null || stepDescription === undefined || typeof stepDescription !== 'string') {
     return res.status(400).json({ error: 'stepDescription (string) is required' });
   }
@@ -429,6 +466,7 @@ async function verifyStep(req, res) {
     return res.status(400).json({ error: 'code (object with html/css/js/jsx) is required' });
   }
 
+  console.log('[Tutor] verifyStep', { userId, stepIndex, verifyType, moduleTitle });
   const normalized = getCodeForVerify(code);
 
   // --- verifyType: checkConsole (non-coding step: user must run and have console output) ---
@@ -503,17 +541,18 @@ ${codeBlock}
 
 VERIFICATION RULES:
 1. Check ONLY the core thing needed for THIS step. Do not require extra or unrelated code from other steps.
-2. The code must correctly implement what the step asks for and have no obvious syntax or runtime errors.
+2. The code must correctly implement what the step asks for and have no obvious syntax or runtime errors. If you see syntax errors (e.g. missing bracket, typo) or common runtime errors (e.g. undefined variable, TypeError), set correct: false and in feedback name the error and what to fix.
 3. Reject empty, placeholder, or non-implementing code (comments/TODOs alone are NOT enough).
 4. If the code properly does what the step instructs and runs without errors, return correct: true.
-5. Respond with ONLY this JSON, no other text: {"correct": true or false, "feedback": "one or two sentences"}
-6. For correct: false, feedback MUST explain WHY it is not working (e.g. "Did you write a single-line comment using two forward slashes?") and what to do instead. For correct: true, feedback is brief and positive.`;
+5. Respond with ONLY a single JSON object, no other text: {"correct": true or false, "feedback": "one or two sentences"}
+6. For correct: false, feedback MUST explain WHY it is not working and what to do instead. For correct: true, feedback is brief and positive.`;
 
-    const raw = await ai.generateText(prompt, { maxTokens: 256, temperature: 0.2 });
+    const raw = await ai.generateTextWithModel(prompt, { maxTokens: 256, temperature: 0.2 }, AI_CODER_MODEL);
     const result = parseVerificationResponse(raw);
+    console.log('[Tutor] verifyStep result', { userId, stepIndex, correct: result.correct });
     return res.json({ correct: result.correct, feedback: result.feedback });
   } catch (err) {
-    console.error('Verify step error:', err.message || err);
+    console.error('[Tutor] verifyStep error', { userId, stepIndex, error: err.message });
     return res.status(500).json({
       correct: false,
       feedback: 'Verification service failed. Please try again.',
@@ -527,5 +566,6 @@ module.exports = {
   generateMCQs,
   verifyMCQ,
   explainCode,
+  explainError,
   generateGameStarterCode,
 };

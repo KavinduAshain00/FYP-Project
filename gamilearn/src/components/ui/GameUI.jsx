@@ -120,9 +120,8 @@ export const LevelBadge = ({
       className={`relative flex items-center justify-center rounded-xl font-bold ${sizeClasses[size]} ${className}`}
       style={{
         background:
-          "linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 107, 53, 0.2) 100%)",
-        border: "2px solid rgba(255, 215, 0, 0.5)",
-        boxShadow: "0 0 20px rgba(255, 215, 0, 0.3)",
+          "rgba(200, 160, 64, 0.12)",
+        border: "2px solid rgba(200, 160, 64, 0.4)",
       }}
       animate={animated ? { scale: [1, 1.05, 1] } : {}}
       transition={{ duration: 2, repeat: Infinity }}
@@ -433,8 +432,8 @@ export const QuestCard = ({
             style={{
               background:
                 status === "completed"
-                  ? "linear-gradient(90deg, var(--neon-green), #00cc6a)"
-                  : "linear-gradient(90deg, var(--neon-cyan), var(--neon-purple))",
+                  ? "rgb(92, 150, 80)"
+                  : "rgb(78, 154, 142)",
             }}
             initial={{ width: 0 }}
             animate={{ width: `${progressPercent}%` }}
@@ -586,7 +585,7 @@ export const GameAvatar = ({
         )}
       </div>
       {level && (
-        <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-gradient-to-br from-neon-gold to-neon-orange flex items-center justify-center text-game-void font-bold text-xs border-2 border-game-void">
+        <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-neon-gold flex items-center justify-center text-game-void font-bold text-xs border-2 border-game-void">
           {level}
         </div>
       )}
@@ -630,7 +629,7 @@ export const MiniStat = ({ icon: Icon, value, label, color = "cyan" }) => {
 export const StreakCounter = ({ count, label = "Day Streak" }) => {
   return (
     <motion.div
-      className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-neon-orange/20 to-hp-red/20 border border-neon-orange/30"
+      className="flex items-center gap-3 px-4 py-3 rounded-xl bg-neon-orange/15 border border-neon-orange/30"
       animate={{ scale: [1, 1.02, 1] }}
       transition={{ duration: 2, repeat: Infinity }}
     >

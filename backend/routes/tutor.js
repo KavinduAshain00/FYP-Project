@@ -29,7 +29,10 @@ router.post('/mcq/verify', auth, tutorLimiter, tutorController.verifyMCQ);
 // Explain highlighted code snippet
 router.post('/explain-code', auth, tutorLimiter, tutorController.explainCode);
 
-// Generate game starter code from planning board (qwen3-coder:480b)
+// Explain a runtime/syntax error message
+router.post('/explain-error', auth, tutorLimiter, tutorController.explainError);
+
+// Generate game starter code from planning board
 router.post('/generate-starter-code', auth, tutorLimiter, tutorController.generateGameStarterCode);
 
 module.exports = router;

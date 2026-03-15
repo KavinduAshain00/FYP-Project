@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Hide scrollbars but keep scroll behavior */
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -21,7 +20,9 @@
     @apply scroll-smooth;
   }
   body {
-    @apply m-0 min-h-screen overflow-x-hidden font-sans antialiased text-gray-200 bg-gray-950;
+    @apply m-0 min-h-screen overflow-x-hidden font-sans antialiased;
+    color: #d8d0c4;
+    background-color: #0d1017;
   }
   #root {
     @apply min-h-screen;

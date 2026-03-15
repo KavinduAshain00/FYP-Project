@@ -3,6 +3,7 @@ const { getPathCategories } = require('../constants/learningPath');
 
 async function getAll(req, res) {
   try {
+    console.log('[Modules] getAll', { category: req.query?.category });
     const { category } = req.query;
     const query = {};
     if (category && category !== 'all') {
@@ -22,14 +23,16 @@ async function getAll(req, res) {
 }
 
 async function getById(req, res) {
+  const moduleId = req.params.id;
   try {
-    const module = await Module.findById(req.params.id);
+    console.log('[Modules] getById', { moduleId });
+    const module = await Module.findById(moduleId);
     if (!module) {
       return res.status(404).json({ message: 'Module not found' });
     }
     return res.json({ module });
   } catch (error) {
-    console.error('Get module error:', error);
+    console.error('[Modules] getById error', { moduleId, error: error.message });
     return res.status(500).json({ message: 'Server error' });
   }
 }

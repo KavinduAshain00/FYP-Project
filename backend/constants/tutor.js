@@ -37,6 +37,23 @@ const FALLBACK_HINTS = {
     '💥 Check if (rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x)...',
     '💥 Remember to check both X and Y axes for 2D collision.',
   ],
+  error: [
+    '🔍 Read the error message: it often says which line or variable caused the problem.',
+    '🔍 Check for typos in variable and function names (JavaScript is case-sensitive).',
+    '🔍 Look for missing brackets, parentheses, or quotes.',
+  ],
+  ReferenceError: [
+    '❓ You might be using a variable or function that was not defined. Check spelling and scope.',
+    '❓ Make sure the variable is declared (with let, const, or var) before you use it.',
+  ],
+  TypeError: [
+    '❓ You might be calling something that is not a function, or reading a property of undefined.',
+    '❓ Check that the value exists before using it (e.g. optional chaining or an if check).',
+  ],
+  SyntaxError: [
+    '🔧 Look for missing or extra brackets, parentheses, or semicolons.',
+    '🔧 Check that all strings are properly closed with matching quotes.',
+  ],
 };
 
 const DEFAULT_FALLBACK_HINTS = [

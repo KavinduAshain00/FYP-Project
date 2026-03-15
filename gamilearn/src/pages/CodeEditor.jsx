@@ -5,7 +5,9 @@ import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { javascript } from "@codemirror/lang-javascript";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
-import { modulesAPI, userAPI, tutorAPI } from "../api/api";
+import { modulesAPI, userAPI, tutorAPI, achievementsAPI } from "../api/api";
+// eslint-disable-next-line no-unused-vars -- motion used in JSX as motion.div, motion.span, motion.aside
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import {
   FaBookOpen,
@@ -20,17 +22,22 @@ import {
   FaUsers,
   FaChevronRight,
   FaChevronDown,
+  FaChevronUp,
   FaTimes,
   FaExternalLinkAlt,
   FaUser,
-  FaColumns,
   FaMagic,
   FaServer,
+  FaLock,
+  FaArrowLeft,
+  FaFire,
+  FaLightbulb,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import ConfirmModal from "../components/ui/ConfirmModal";
 import MarkdownContent from "../components/ui/MarkdownContent";
 import { loadEditorDraft, saveEditorDraft } from "../utils/draftStorage";
+import { buildServerPreviewHtml, buildClientPreviewHtml } from "../utils/multiplayerRuntime";
 
 // Module type configurations (multiplayer uses HTML/CSS/JS only, no React)
 const MODULE_TYPES = {
@@ -46,14 +53,8 @@ const CodeEditor = () => {
   const navigate = useNavigate();
 
   const [module, setModule] = useState(null);
-  const [htmlCode, setHtmlCode] = useState("");
-  const [cssCode, setCssCode] = useState("");
-  const [jsCode, setJsCode] = useState("");
-  const [jsxCode, setJsxCode] = useState("");
-  const [serverCode, setServerCode] = useState("");
   const [activeTab, setActiveTab] = useState("html");
   const [loading, setLoading] = useState(true);
-  const [showInstructions, setShowInstructions] = useState(true);
   const [previewKey, setPreviewKey] = useState(0);
   const [editorKey, setEditorKey] = useState(0); // Force editor remount when needed
   const [isLoadingDraft, setIsLoadingDraft] = useState(false);
@@ -80,6 +81,10 @@ const CodeEditor = () => {
   /** When user fails a step: show step crossed and this explanation (key = step index) */
   const [stepFailureFeedback, setStepFailureFeedback] = useState({});
 
+  // Floating step guide (auto-shows on step change)
+  const [showStepGuide, setShowStepGuide] = useState(true);
+  const prevStepIndexRef = useRef(null);
+
   // MCQ between steps (1-2 questions, generated/verified by qwen3-coder)
   const [mcqGateForStep, setMcqGateForStep] = useState(null);
   const [mcqQuestions, setMcqQuestions] = useState([]);
@@ -90,13 +95,30 @@ const CodeEditor = () => {
   const [mcqResult, setMcqResult] = useState(null);
   const [mcqPassedCount, setMcqPassedCount] = useState(0);
 
+  // Refs for live code (avoids re-render on every keystroke; state only on load/draft/reset)
+  const codeRefs = useRef({
+    html: "",
+    css: "",
+    js: "",
+    jsx: "",
+    server: "",
+  });
+  const CODE_REF_KEYS = { html: "html", css: "css", js: "js", jsx: "jsx", server: "server" };
+
+  // Stable timer refs (avoid window globals that leak across hot-reloads)
+  const codeChangeTimerRef = useRef(null);
+  const previewTimerRef = useRef(null);
+  const isLoadingDraftRef = useRef(false);
+  useEffect(() => { isLoadingDraftRef.current = isLoadingDraft; }, [isLoadingDraft]);
+  useEffect(() => () => {
+    if (codeChangeTimerRef.current) clearTimeout(codeChangeTimerRef.current);
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+  }, []);
+
   // Explain selection (highlight code → ask for explanation)
   const editorViewRef = useRef(null);
   const [explainCodeLoading, setExplainCodeLoading] = useState(false);
-  const [explainCodeResult, setExplainCodeResult] = useState(null);
-
-  // Main area tab: Editor | Live Preview
-  const [mainViewTab, setMainViewTab] = useState("editor");
+  const [explainErrorLoading, setExplainErrorLoading] = useState(false);
 
   // Gamification states
   const [points, setPoints] = useState(0);
@@ -104,28 +126,53 @@ const CodeEditor = () => {
   const completionBonus = 100;
   const [streak, setStreak] = useState(0);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // Achievements
+  const [achievements, setAchievements] = useState([]);
+  const [showAchievements, setShowAchievements] = useState(false);
+  const [pointFloater, setPointFloater] = useState(null);
+
+  // Left panel sections (overview expanded by default so it's clearly visible)
+  const [showOverview, setShowOverview] = useState(true);
+  const [showOverviewPopup, setShowOverviewPopup] = useState(false);
+  const shownOverviewPopupRef = useRef({});
   const [showTutorSidebar, setShowTutorSidebar] = useState(false);
+
+  // Resizable panel dimensions (px)
+  const [leftPanelWidth, setLeftPanelWidth] = useState(320);
+  const [rightPanelWidth, setRightPanelWidth] = useState(480);
+  const [consoleHeight, setConsoleHeight] = useState(180);
+  const resizeRef = useRef({ active: null, startX: 0, startY: 0, startLeft: 0, startRight: 0, startConsole: 0 });
   const [tutorQuestion, setTutorQuestion] = useState("");
-  const [tutorAnswer, setTutorAnswer] = useState(null);
   const [tutorLoading, setTutorLoading] = useState(false);
   const [hintStyle, setHintStyle] = useState("general");
-  const [tutorConfidence, setTutorConfidence] = useState(null);
-  const [tutorHistory, setTutorHistory] = useState([]);
+  // Unified thread: explain + hint Q&A in one list
+  const [companionMessages, setCompanionMessages] = useState([]);
 
   // Multiplayer: dual preview state (like MultiplayerGameStudio)
   const [player1PreviewKey, setPlayer1PreviewKey] = useState(0);
   const [player2PreviewKey, setPlayer2PreviewKey] = useState(0);
   const [serverPreviewKey, setServerPreviewKey] = useState(0);
-  const [activePreviewTab, setActivePreviewTab] = useState("split");
+  const [activePreviewTab, setActivePreviewTab] = useState("server");
+  /** Multiplayer: frozen preview HTML so iframes don't reload on every code change (only on Run/Reset) */
+  const [multiplayerSnapshot, setMultiplayerSnapshot] = useState(null);
   const [consoleLogs, setConsoleLogs] = useState([]);
   const [consoleOpen, setConsoleOpen] = useState(true);
+
+  const recentErrors = useMemo(
+    () => consoleLogs.filter((e) => e.level === "error").slice(-5).map((e) => e.message),
+    [consoleLogs]
+  );
+  const lastError = recentErrors.length > 0 ? recentErrors[recentErrors.length - 1] : null;
 
   const { refreshProfile } = useAuth();
 
   useEffect(() => {
     const handler = (e) => {
       if (e.data?.type === "console") {
-        setConsoleLogs((prev) => [...prev.slice(-99), { level: e.data.level, message: e.data.message, timestamp: e.data.timestamp || Date.now() }]);
+        const source = e.data.source || null; // 'server' | 'player1' | 'player2' | null (preview)
+        const message = source ? (source === "server" ? "[Server] " : "[" + source + "] ") + (e.data.message || "") : e.data.message;
+        setConsoleLogs((prev) => [...prev.slice(-199), { source, level: e.data.level, message, timestamp: e.data.timestamp || Date.now() }]);
       }
     };
     window.addEventListener("message", handler);
@@ -133,6 +180,10 @@ const CodeEditor = () => {
   }, []);
 
   const clearConsole = () => setConsoleLogs([]);
+  const serverLogs = useMemo(() => consoleLogs.filter((e) => e.source === "server"), [consoleLogs]);
+  const clientLogs = useMemo(() => consoleLogs.filter((e) => e.source === "player1" || e.source === "player2"), [consoleLogs]);
+  const clearServerConsole = () => setConsoleLogs((prev) => prev.filter((e) => e.source !== "server"));
+  const clearClientConsole = () => setConsoleLogs((prev) => prev.filter((e) => e.source !== "player1" && e.source !== "player2"));
 
   const moduleConfig = useMemo(() => {
     if (!module) return MODULE_TYPES["javascript-basics"];
@@ -144,6 +195,26 @@ const CodeEditor = () => {
     [moduleConfig, module?.category]
   );
   const isMultiplayerModule = useMemo(() => module?.category === "multiplayer", [module]);
+
+  const multiplayerSnapshotSetRef = useRef(false);
+  useEffect(() => {
+    setMultiplayerSnapshot(null);
+    multiplayerSnapshotSetRef.current = false;
+  }, [moduleId]);
+  useEffect(() => {
+    if (!module || !isMultiplayerModule || isLoadingDraft) return;
+    if (multiplayerSnapshotSetRef.current) return;
+    multiplayerSnapshotSetRef.current = true;
+    setMultiplayerSnapshot({
+      server: getPreviewContent("server"),
+      player1: getPreviewContent("player1"),
+      player2: getPreviewContent("player2"),
+    });
+  }, [module?.id, isMultiplayerModule, isLoadingDraft]); // eslint-disable-line react-hooks/exhaustive-deps -- snapshot set once per module when draft ready
+
+  useEffect(() => {
+    if (!isMultiplayerModule) setMultiplayerSnapshot(null);
+  }, [isMultiplayerModule]);
 
   const difficultyStyles = {
     beginner: "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40",
@@ -167,11 +238,12 @@ const CodeEditor = () => {
         const response = await modulesAPI.getById(moduleId);
         const moduleData = response.data.module;
         setModule(moduleData);
-        setHtmlCode(moduleData.starterCode?.html || "");
-        setCssCode(moduleData.starterCode?.css || "");
-        setJsCode(moduleData.starterCode?.javascript || "");
-        setJsxCode(moduleData.starterCode?.jsx || moduleData.starterCode?.javascript || "");
-        setServerCode(moduleData.starterCode?.serverJs || "");
+        const initialHtml = moduleData.starterCode?.html || "";
+        const initialCss = moduleData.starterCode?.css || "";
+        const initialJs = moduleData.starterCode?.javascript || "";
+        const initialJsx = moduleData.starterCode?.jsx || moduleData.starterCode?.javascript || "";
+        const initialServer = moduleData.starterCode?.serverJs || "";
+        codeRefs.current = { html: initialHtml, css: initialCss, js: initialJs, jsx: initialJsx, server: initialServer };
         const config = MODULE_TYPES[moduleData.category] || MODULE_TYPES["javascript-basics"];
         setActiveTab(config.defaultTab);
         setVerifyFeedback(null);
@@ -179,7 +251,7 @@ const CodeEditor = () => {
         setStepFailureFeedback({});
         setMcqGateForStep(null);
         setMcqQuestions([]);
-        setExplainCodeResult(null);
+        setCompanionMessages([]);
         const stepCount = moduleData.steps?.length || moduleData.objectives?.length || 1;
         let usedSession = false;
         setIsLoadingDraft(true);
@@ -207,21 +279,27 @@ const CodeEditor = () => {
                   setCurrentStepIndex(0);
                 }
                 if (draft?.code && typeof draft.code === "object") {
-                  if (draft.code.html != null) setHtmlCode(draft.code.html);
-                  if (draft.code.css != null) setCssCode(draft.code.css);
-                  if (draft.code.javascript != null) setJsCode(draft.code.javascript);
-                  if (draft.code.jsx != null) setJsxCode(draft.code.jsx);
-                  if (draft.code.serverJs != null) setServerCode(draft.code.serverJs);
+                  const c = draft.code;
+                  codeRefs.current = {
+                    html: c.html != null ? c.html : initialHtml,
+                    css: c.css != null ? c.css : initialCss,
+                    js: c.javascript != null ? c.javascript : initialJs,
+                    jsx: c.jsx != null ? c.jsx : initialJsx,
+                    server: c.serverJs != null ? c.serverJs : initialServer,
+                  };
                   setEditorKey(prev => prev + 1); // Force remount after loading
                 }
               } else {
                 const draft = await loadEditorDraft(moduleId);
                 if (draft?.code && typeof draft.code === "object") {
-                  if (draft.code.html != null) setHtmlCode(draft.code.html);
-                  if (draft.code.css != null) setCssCode(draft.code.css);
-                  if (draft.code.javascript != null) setJsCode(draft.code.javascript);
-                  if (draft.code.jsx != null) setJsxCode(draft.code.jsx);
-                  if (draft.code.serverJs != null) setServerCode(draft.code.serverJs);
+                  const c = draft.code;
+                  codeRefs.current = {
+                    html: c.html != null ? c.html : "",
+                    css: c.css != null ? c.css : "",
+                    js: c.javascript != null ? c.javascript : "",
+                    jsx: c.jsx != null ? c.jsx : "",
+                    server: c.serverJs != null ? c.serverJs : "",
+                  };
                   setEditorKey(prev => prev + 1); // Force remount after loading
                 }
               }
@@ -254,27 +332,151 @@ const CodeEditor = () => {
     );
   }, [STORAGE_KEY, module, steps.length, stepsVerified, currentStepIndex, moduleId]);
 
-  // IndexedDB draft auto-save (every 10s) for code and steps before system save
-  // Increased interval to reduce interference with typing
+  // Show floating overview popup when module has just finished loading (once per module)
+  useEffect(() => {
+    if (!module || loading || isLoadingDraft) return;
+    if (!shownOverviewPopupRef.current[moduleId]) {
+      shownOverviewPopupRef.current[moduleId] = true;
+      setShowOverviewPopup(true);
+    }
+  }, [module, moduleId, loading, isLoadingDraft]);
+
+  // Auto-show floating step guide on step change
+  useEffect(() => {
+    if (prevStepIndexRef.current !== null && prevStepIndexRef.current !== currentStepIndex) {
+      setShowStepGuide(true);
+    }
+    prevStepIndexRef.current = currentStepIndex;
+  }, [currentStepIndex]);
+
+  // Resize handlers for draggable panels
+  const handleResizeLeftStart = useCallback((e) => {
+    e.preventDefault();
+    resizeRef.current = { active: "left", startX: e.clientX, startLeft: leftPanelWidth };
+  }, [leftPanelWidth]);
+  const handleResizeRightStart = useCallback((e) => {
+    e.preventDefault();
+    resizeRef.current = { active: "right", startX: e.clientX, startRight: rightPanelWidth };
+  }, [rightPanelWidth]);
+  const handleResizeConsoleStart = useCallback((e) => {
+    e.preventDefault();
+    resizeRef.current = { active: "console", startY: e.clientY, startConsole: consoleHeight };
+  }, [consoleHeight]);
+
+  useEffect(() => {
+    const move = (e) => {
+      const { active, startX, startLeft, startRight, startY, startConsole } = resizeRef.current;
+      if (active === "left") {
+        const delta = e.clientX - startX;
+        setLeftPanelWidth(Math.min(500, Math.max(240, startLeft + delta)));
+      } else if (active === "right") {
+        const delta = e.clientX - startX;
+        setRightPanelWidth(Math.min(800, Math.max(320, startRight - delta)));
+      } else if (active === "console") {
+        const delta = e.clientY - startY;
+        setConsoleHeight(Math.min(500, Math.max(80, startConsole - delta)));
+      }
+    };
+    const up = () => { resizeRef.current.active = null; };
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+    return () => {
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", up);
+    };
+  }, []);
+
+  // Fetch achievements on mount
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await achievementsAPI.getUserAchievements();
+        const data = res.data?.achievements || res.data;
+        if (mounted && Array.isArray(data)) setAchievements(data);
+      } catch (err) {
+        console.error("Error loading achievements:", err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // Check achievements after step verification
+  useEffect(() => {
+    if (!module || stepsVerified.length === 0) return;
+    const progressData = {
+      totalEdits: codeChanges,
+      totalRuns: streak,
+      totalPoints: points,
+      streak,
+      completedModules: 0,
+    };
+    achievementsAPI
+      .checkAchievements(progressData)
+      .then((res) => {
+        const { newlyEarned = [] } = res.data;
+        if (newlyEarned.length > 0) {
+          setAchievements((prev) =>
+            prev.map((a) =>
+              newlyEarned.some((n) => n.id === a.id)
+                ? { ...a, earned: true }
+                : a
+            )
+          );
+          newlyEarned.forEach((ach) =>
+            toast.success(
+              <div>
+                <strong>Achievement Unlocked!</strong>
+                <div>{ach.name}</div>
+              </div>
+            )
+          );
+        }
+      })
+      .catch(() => {});
+  }, [stepsVerified, module, codeChanges, streak, points]);
+
+  // IndexedDB draft auto-save (every 10s) from refs so we don't depend on state
   useEffect(() => {
     if (!moduleId || !module || isLoadingDraft) return;
     const interval = setInterval(() => {
-      // Only save if user isn't actively typing and not loading draft
-      if (!window.codeChangeTimeout && !window.previewTimeout && !isLoadingDraft) {
+      if (!codeChangeTimerRef.current && !previewTimerRef.current && !isLoadingDraftRef.current) {
+        const r = codeRefs.current;
         saveEditorDraft(moduleId, {
           stepsVerified,
           currentStepIndex,
-          code: { html: htmlCode, css: cssCode, javascript: jsCode, jsx: jsxCode, serverJs: serverCode },
+          code: { html: r.html, css: r.css, javascript: r.js, jsx: r.jsx, serverJs: r.server },
         });
       }
     }, 10000);
     return () => clearInterval(interval);
-  }, [moduleId, module, stepsVerified, currentStepIndex, htmlCode, cssCode, jsCode, jsxCode, serverCode, isLoadingDraft]);
+  }, [moduleId, module, stepsVerified, currentStepIndex, isLoadingDraft]);
 
   const allStepsVerified = useMemo(() => {
     if (!steps.length) return false;
     return steps.every((_, i) => stepsVerified[i]);
   }, [steps, stepsVerified]);
+
+  const earnedAchievements = useMemo(
+    () => achievements.filter((a) => a.earned),
+    [achievements]
+  );
+  const verifiedCount = useMemo(
+    () => stepsVerified.filter(Boolean).length,
+    [stepsVerified]
+  );
+
+  const showPointFloater = useCallback((amount) => {
+    setPointFloater({ id: Date.now(), amount });
+    setTimeout(() => setPointFloater(null), 1200);
+  }, []);
+
+  // Stable extension arrays so CodeMirror doesn't reconfigure on every render
+  const extHtml = useMemo(() => [html()], []);
+  const extCss = useMemo(() => [css()], []);
+  const extJs = useMemo(() => [javascript()], []);
+  const extJsx = useMemo(() => [javascript({ jsx: true })], []);
+  const extServer = useMemo(() => [javascript()], []);
 
   const handleVerifyCode = async () => {
     if (currentStepIndex >= steps.length) return;
@@ -287,12 +489,13 @@ const CodeEditor = () => {
       return next;
     });
     try {
+      const r = codeRefs.current;
       const stepMeta = module?.steps?.[currentStepIndex];
       const verifyType = stepMeta?.verifyType || 'code';
       const payload = {
         stepIndex: currentStepIndex,
         stepDescription: steps[currentStepIndex].title,
-        code: { html: htmlCode, css: cssCode, javascript: jsCode, jsx: jsxCode, serverJs: serverCode },
+        code: { html: r.html, css: r.css, javascript: r.js, jsx: r.jsx, serverJs: r.server },
         moduleTitle: module?.title,
         objectives: module?.objectives,
         verifyType,
@@ -314,6 +517,7 @@ const CodeEditor = () => {
           return next;
         });
         setPoints((p) => p + 15);
+        showPointFloater(15);
         toast.success("Step complete!");
         // Open MCQ gate: 1-2 questions before next step (only if step has concept / we want MCQ)
         const step = steps[currentStepIndex];
@@ -329,7 +533,6 @@ const CodeEditor = () => {
       } else {
         setStepFailureFeedback((prev) => ({ ...prev, [currentStepIndex]: feedback }));
         toast.warning("Not quite yet. See the explanation below.");
-        // Auto-open companion with instruction explanation + code-help prompt (no generic "why wrong" message)
         setShowTutorSidebar(true);
         const step = steps[currentStepIndex];
         const instructionBlock = [
@@ -340,9 +543,9 @@ const CodeEditor = () => {
           .filter(Boolean)
           .join("\n\n");
         const codeHelp =
-          "**Need help with your code?**\n\nAsk below for a hint (e.g. \"How do I do this step?\") or highlight code in the editor and use **Explain selection**.";
-        setTutorAnswer(instructionBlock ? `${instructionBlock}\n\n---\n\n${codeHelp}` : codeHelp);
-        setTutorConfidence(0.5);
+          "**Need help with your code?**\n\nAsk below for a hint or use **Explain selected code** in this panel.";
+        const content = instructionBlock ? `${instructionBlock}\n\n---\n\n${codeHelp}` : codeHelp;
+        setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "hint", userLabel: "Step help", content, timestamp: new Date().toLocaleTimeString(), confidence: 0.5 }]);
       }
     } catch (err) {
       console.error("Verify error", err);
@@ -361,8 +564,9 @@ const CodeEditor = () => {
         .filter(Boolean)
         .join("\n\n");
       const codeHelp =
-        "**Need help with your code?**\n\nAsk below for a hint or use **Explain selection** on your code.";
-      setTutorAnswer(instructionBlock ? `${instructionBlock}\n\n---\n\n${codeHelp}` : codeHelp);
+        "**Need help with your code?**\n\nAsk below for a hint or use **Explain selected code** in this panel.";
+      const content = instructionBlock ? `${instructionBlock}\n\n---\n\n${codeHelp}` : codeHelp;
+      setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "hint", userLabel: "Step help", content, timestamp: new Date().toLocaleTimeString() }]);
     } finally {
       setVerifyLoading(false);
     }
@@ -446,19 +650,19 @@ const CodeEditor = () => {
       toast.info("Select some code in the editor first, then click Explain.");
       return;
     }
+    const { from, to } = view.state.selection.main;
+    const selected = view.state.sliceDoc(from, to).trim();
+    if (!selected) {
+      toast.info("Select some code in the editor first, then click Explain.");
+      return;
+    }
+    setShowTutorSidebar(true);
+    setExplainCodeLoading(true);
     try {
-      const { from, to } = view.state.selection.main;
-      const selected = view.state.sliceDoc(from, to).trim();
-      if (!selected) {
-        toast.info("Select some code in the editor first, then click Explain.");
-        return;
-      }
-      setExplainCodeLoading(true);
-      setExplainCodeResult(null);
-      setShowTutorSidebar(true);
       const lang = activeTab === "jsx" ? "javascript" : activeTab === "js" ? "javascript" : activeTab === "server" ? "javascript" : activeTab;
       const resp = await tutorAPI.explainCode(selected, lang);
-      setExplainCodeResult(resp.data?.explanation || "No explanation available.");
+      const explanation = resp.data?.explanation || "No explanation available.";
+      setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "explain", userLabel: "Explanation of selection", content: explanation, timestamp: new Date().toLocaleTimeString() }]);
     } catch (err) {
       console.error("Explain code error", err);
       toast.error("Could not get explanation. Try again.");
@@ -487,287 +691,21 @@ const CodeEditor = () => {
 
   const getPreviewContent = useCallback(
     (playerRole = null) => {
-      // Shared channel name for BroadcastChannel-based Socket.IO simulation
+      const r = codeRefs.current;
       const channelName = `gamilearn-mp-${moduleId}`;
 
-      // Multiplayer "server" view: runs server code with mocked Node.js/Socket.IO via BroadcastChannel
       if (isMultiplayerModule && playerRole === "server") {
-        return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body { margin: 0; padding: 16px; font-family: 'Courier New', monospace; background: #0f172a; color: #e2e8f0; min-height: 100%; }
-    .header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px 12px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .header h3 { margin: 0; font-size: 13px; color: #94a3b8; }
-    .header .port { color: #fbbf24; font-size: 11px; }
-    #logs { font-size: 11px; line-height: 1.6; overflow-y: auto; max-height: calc(100vh - 80px); }
-    .log { padding: 2px 0; border-bottom: 1px solid #1e293b; }
-    .log.info { color: #38bdf8; }
-    .log.warn { color: #fbbf24; }
-    .log.error { color: #f87171; }
-    .log .ts { color: #475569; margin-right: 8px; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="dot"></div>
-    <h3>Server Running</h3>
-    <span class="port">:3001</span>
-  </div>
-  <div id="logs"></div>
-  <script>
-    // Mock Node.js server environment using BroadcastChannel
-    (function() {
-      var logEl = document.getElementById('logs');
-      var ts = function() { return new Date().toLocaleTimeString(); };
-      function slog(msg, level) {
-        var d = document.createElement('div');
-        d.className = 'log ' + (level || 'info');
-        d.innerHTML = '<span class="ts">' + ts() + '</span>' + msg;
-        logEl.appendChild(d);
-        logEl.scrollTop = logEl.scrollHeight;
-        try {
-          window.parent.postMessage({ type: 'console', level: level || 'log', message: '[Server] ' + msg, timestamp: Date.now() }, '*');
-        } catch(e) {}
-      }
-      
-      var channel = new BroadcastChannel('${channelName}');
-      var sockets = {};
-      var nextId = 1;
-      var eventHandlers = {};
-
-      // Mock socket object for server-side
-      function MockServerSocket(id) {
-        this.id = id;
-        this._handlers = {};
-        this._rooms = new Set();
-      }
-      MockServerSocket.prototype.on = function(event, fn) {
-        if (!this._handlers[event]) this._handlers[event] = [];
-        this._handlers[event].push(fn);
-      };
-      MockServerSocket.prototype.emit = function(event, data) {
-        channel.postMessage({ type: 'server-to-client', target: this.id, event: event, data: data });
-      };
-      MockServerSocket.prototype.join = function(room) { this._rooms.add(room); };
-      MockServerSocket.prototype.leave = function(room) { this._rooms.delete(room); };
-      MockServerSocket.prototype._trigger = function(event, data) {
-        var handlers = this._handlers[event] || [];
-        handlers.forEach(function(fn) { fn(data); });
-      };
-
-      // Mock io object
-      var ioMock = {
-        _connectionHandlers: [],
-        on: function(event, fn) {
-          if (event === 'connection') ioMock._connectionHandlers.push(fn);
-        },
-        emit: function(event, data) {
-          channel.postMessage({ type: 'server-to-client', target: 'all', event: event, data: data });
-        },
-        to: function(room) {
-          return {
-            emit: function(event, data) {
-              // Send to all sockets in that room
-              Object.values(sockets).forEach(function(s) {
-                if (s._rooms.has(room)) {
-                  channel.postMessage({ type: 'server-to-client', target: s.id, event: event, data: data });
-                }
-              });
-              // Also broadcast to all (fallback for simple room usage)
-              channel.postMessage({ type: 'server-to-client', target: 'room:' + room, event: event, data: data });
-            }
-          };
-        }
-      };
-
-      // Listen for client messages
-      channel.onmessage = function(e) {
-        var msg = e.data;
-        if (msg.type === 'client-connect') {
-          var sid = 'socket_' + nextId++;
-          sockets[sid] = new MockServerSocket(sid);
-          channel.postMessage({ type: 'server-assign-id', clientId: msg.clientId, socketId: sid });
-          slog('Player connected: ' + sid);
-          ioMock._connectionHandlers.forEach(function(fn) { fn(sockets[sid]); });
-        } else if (msg.type === 'client-emit') {
-          var sock = sockets[msg.socketId];
-          if (sock) {
-            sock._trigger(msg.event, msg.data);
-          }
-        } else if (msg.type === 'client-disconnect') {
-          var s = sockets[msg.socketId];
-          if (s) {
-            s._trigger('disconnect');
-            slog('Player disconnected: ' + msg.socketId);
-            delete sockets[msg.socketId];
-          }
-        }
-      };
-
-      // Mock require
-      function mockRequire(mod) {
-        if (mod === 'express') return function() {
-          return { use: function(){}, get: function(){}, post: function(){} };
-        };
-        if (mod === 'http') return {
-          createServer: function() {
-            return { listen: function(port, cb) { slog('Server listening on port ' + port); if (cb) cb(); } };
-          }
-        };
-        if (mod === 'socket.io') return { Server: function() { return ioMock; } };
-        return {};
+        return buildServerPreviewHtml(channelName, r.server);
       }
 
-      // Override console for this frame
-      var origConsole = { log: console.log, info: console.info, warn: console.warn, error: console.error };
-      console.log = function() { var m = Array.prototype.map.call(arguments, function(a) { return typeof a === 'object' ? JSON.stringify(a) : String(a); }).join(' '); slog(m, 'info'); };
-      console.info = console.log;
-      console.warn = function() { var m = Array.prototype.map.call(arguments, String).join(' '); slog(m, 'warn'); };
-      console.error = function() { var m = Array.prototype.map.call(arguments, String).join(' '); slog(m, 'error'); };
-
-      // Run user server code
-      try {
-        var require = mockRequire;
-        (new Function('require', 'io', 'console', ${JSON.stringify(serverCode)}))(mockRequire, ioMock, console);
-      } catch(e) {
-        slog('Server error: ' + e.message, 'error');
-      }
-    })();
-  </script>
-</body>
-</html>`;
-      }
-
-      // Multiplayer client views: inject BroadcastChannel-based Socket.IO client mock
       if (isMultiplayerModule && (playerRole === "player1" || playerRole === "player2")) {
-        const clientId = playerRole;
-        return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>${cssCode}</style>
-</head>
-<body>
-  ${htmlCode}
-  <script>
-    // Mock Socket.IO client using BroadcastChannel
-    (function() {
-      var channelName = '${channelName}';
-      var clientId = '${clientId}';
-      var channel = new BroadcastChannel(channelName);
-      var socketId = null;
-      var handlers = {};
-      var connected = false;
-      var pendingEmits = [];
-
-      window.io = function() {
-        var socket = {
-          id: null,
-          connected: false,
-          on: function(event, fn) {
-            if (!handlers[event]) handlers[event] = [];
-            handlers[event].push(fn);
-          },
-          emit: function(event, data) {
-            if (!socketId) {
-              pendingEmits.push({ event: event, data: data });
-              return;
-            }
-            channel.postMessage({ type: 'client-emit', socketId: socketId, event: event, data: data });
-          },
-          disconnect: function() {
-            channel.postMessage({ type: 'client-disconnect', socketId: socketId });
-          }
-        };
-
-        channel.onmessage = function(e) {
-          var msg = e.data;
-          if (msg.type === 'server-assign-id' && msg.clientId === clientId) {
-            socketId = msg.socketId;
-            socket.id = socketId;
-            socket.connected = true;
-            connected = true;
-            // Fire connect handlers
-            (handlers['connect'] || []).forEach(function(fn) { fn(); });
-            // Flush pending emits
-            pendingEmits.forEach(function(p) {
-              channel.postMessage({ type: 'client-emit', socketId: socketId, event: p.event, data: p.data });
-            });
-            pendingEmits = [];
-          } else if (msg.type === 'server-to-client') {
-            if (msg.target === 'all' || msg.target === socketId || (msg.target && msg.target.startsWith && msg.target.startsWith('room:'))) {
-              (handlers[msg.event] || []).forEach(function(fn) { fn(msg.data); });
-            }
-          }
-        };
-
-        // Request connection from server
-        setTimeout(function() {
-          channel.postMessage({ type: 'client-connect', clientId: clientId });
-        }, 100);
-
-        return socket;
-      };
-
-      // Console capture
-      var originalConsole = { log: console.log, info: console.info, warn: console.warn, error: console.error };
-      function sendToParent(level, message) {
-        try {
-          if (window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'console', level: level, message: '[' + clientId + '] ' + message, timestamp: Date.now() }, '*');
-          }
-        } catch (err) {}
-      }
-      ['log','info','warn','error'].forEach(function(level) {
-        var fn = function() {
-          originalConsole[level].apply(console, arguments);
-          var message = Array.prototype.map.call(arguments, function(a) {
-            return typeof a === 'object' ? JSON.stringify(a) : String(a);
-          }).join(' ');
-          sendToParent(level, message);
-        };
-        try { console[level] = fn; } catch (e) {}
-      });
-      window.__capturedConsole = console;
-    })();
-
-    // Run user client code
-    function runUserCode() {
-      var con = window.__capturedConsole || console;
-      try {
-        (function(console) {
-          ${jsCode}
-        })(con);
-      } catch (e) {
-        con.error('Runtime error: ' + (e && e.message ? e.message : String(e)));
-        var errDiv = document.createElement('div');
-        errDiv.style.cssText = 'color:#fc4a1a;padding:20px;font-family:monospace;background:#132f4c;border-radius:8px;margin:20px;';
-        errDiv.innerHTML = '<h3>Error:</h3><pre>' + (e && e.message ? e.message : String(e)) + '</pre>';
-        if (document.body) document.body.appendChild(errDiv);
-      }
-    }
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', runUserCode);
-    } else {
-      runUserCode();
-    }
-  </script>
-</body>
-</html>`;
+        return buildClientPreviewHtml(channelName, playerRole, r.html, r.css, r.js);
       }
 
       if (isReactModule) {
         const jsx = playerRole
-          ? jsxCode.replace(/playerRole\s*=\s*['"]?player\d?['"]?/i, `playerRole="${playerRole}"`)
-          : jsxCode;
+          ? r.jsx.replace(/playerRole\s*=\s*['"]?player\d?['"]?/i, `playerRole="${playerRole}"`)
+          : r.jsx;
         return `
 <!DOCTYPE html>
 <html>
@@ -777,7 +715,7 @@ const CodeEditor = () => {
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <style>${cssCode}</style>
+  <style>${r.css}</style>
   <style>html, body, #root { margin: 0; padding: 0; min-height: 100%; } body { font-family: system-ui, sans-serif; }</style>
 </head>
 <body>
@@ -810,10 +748,10 @@ const CodeEditor = () => {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>${cssCode}</style>
+  <style>${r.css}</style>
 </head>
 <body>
-  ${htmlCode}
+  ${r.html}
   <script>
     (function() {
       var originalConsole = { log: console.log, info: console.info, warn: console.warn, error: console.error };
@@ -840,7 +778,7 @@ const CodeEditor = () => {
       var con = window.__capturedConsole || console;
       try {
         (function(console) {
-          ${jsCode}
+          ${r.js}
         })(con);
       } catch (e) {
         con.error('Runtime error: ' + (e && e.message ? e.message : String(e)));
@@ -859,7 +797,7 @@ const CodeEditor = () => {
 </body>
 </html>`;
     },
-    [isReactModule, isMultiplayerModule, htmlCode, cssCode, jsCode, jsxCode, serverCode, moduleId],
+    [isReactModule, isMultiplayerModule, moduleId],
   );
 
   const handleCompleteModule = async () => {
@@ -879,40 +817,53 @@ const CodeEditor = () => {
     }
   };
 
-  const handleCodeChange = (value, setter) => {
-    // Don't update if still loading draft to prevent conflicts
-    if (isLoadingDraft) return;
-    
-    setter(value);
-    
-    // Debounce state updates to avoid too many re-renders during typing
-    if (window.codeChangeTimeout) clearTimeout(window.codeChangeTimeout);
-    window.codeChangeTimeout = setTimeout(() => {
+  const handleCodeChange = useCallback((value, tabKey) => {
+    if (isLoadingDraftRef.current) return;
+    codeRefs.current[tabKey] = value;
+    if (codeChangeTimerRef.current) clearTimeout(codeChangeTimerRef.current);
+    codeChangeTimerRef.current = setTimeout(() => {
+      codeChangeTimerRef.current = null;
       setCodeChanges((prev) => prev + 1);
       setPoints((prev) => prev + 2);
-    }, 100);
-    
-    // Debounce preview updates
-    if (window.previewTimeout) clearTimeout(window.previewTimeout);
-    window.previewTimeout = setTimeout(() => setPreviewKey((k) => k + 1), 1500);
-  };
+    }, 500);
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = setTimeout(() => {
+      previewTimerRef.current = null;
+      setPreviewKey((k) => k + 1);
+    }, 1500);
+  }, []);
+
+  const onChangeHtml = useCallback((v) => handleCodeChange(v, "html"), [handleCodeChange]);
+  const onChangeCss = useCallback((v) => handleCodeChange(v, "css"), [handleCodeChange]);
+  const onChangeJs = useCallback((v) => handleCodeChange(v, "js"), [handleCodeChange]);
+  const onChangeJsx = useCallback((v) => handleCodeChange(v, "jsx"), [handleCodeChange]);
+  const onChangeServer = useCallback((v) => handleCodeChange(v, "server"), [handleCodeChange]);
+  const onEditorCreate = useCallback((view) => { editorViewRef.current = view; }, []);
 
   const handleRunCode = () => {
     setPreviewKey((k) => k + 1);
-    setPlayer1PreviewKey((k) => k + 1);
-    setPlayer2PreviewKey((k) => k + 1);
-    setServerPreviewKey((k) => k + 1);
+    if (isMultiplayerModule) {
+      setMultiplayerSnapshot({
+        server: getPreviewContent("server"),
+        player1: getPreviewContent("player1"),
+        player2: getPreviewContent("player2"),
+      });
+      setPlayer1PreviewKey((k) => k + 1);
+      setPlayer2PreviewKey((k) => k + 1);
+      setServerPreviewKey((k) => k + 1);
+    }
     setPoints((p) => p + 5);
     setStreak((s) => s + 1);
   };
 
   const handleReset = () => setShowResetConfirm(true);
   const confirmReset = () => {
-    setHtmlCode(module.starterCode?.html || "");
-    setCssCode(module.starterCode?.css || "");
-    setJsCode(module.starterCode?.javascript || "");
-    setJsxCode(module.starterCode?.jsx || module.starterCode?.javascript || "");
-    setServerCode(module.starterCode?.serverJs || "");
+    const h = module.starterCode?.html || "";
+    const c = module.starterCode?.css || "";
+    const j = module.starterCode?.javascript || "";
+    const jx = module.starterCode?.jsx || module.starterCode?.javascript || "";
+    const s = module.starterCode?.serverJs || "";
+    codeRefs.current = { html: h, css: c, js: j, jsx: jx, server: s };
     setPoints(0);
     setCodeChanges(0);
     setStreak(0);
@@ -926,40 +877,83 @@ const CodeEditor = () => {
     setMcqResult(null);
     setPreviewKey((k) => k + 1);
     setEditorKey((k) => k + 1); // Force editor remount
+    if (module?.category === "multiplayer") {
+      setMultiplayerSnapshot({
+        server: getPreviewContent("server"),
+        player1: getPreviewContent("player1"),
+        player2: getPreviewContent("player2"),
+      });
+      setServerPreviewKey((k) => k + 1);
+      setPlayer1PreviewKey((k) => k + 1);
+      setPlayer2PreviewKey((k) => k + 1);
+    }
     setShowResetConfirm(false);
     sessionStorage.removeItem(STORAGE_KEY);
     toast.info("Code reset to starter template.");
   };
 
+  const handleExplainErrorClick = async (errorMessage) => {
+    if (!errorMessage || explainErrorLoading) return;
+    setShowTutorSidebar(true);
+    setExplainErrorLoading(true);
+    try {
+      const r = codeRefs.current;
+      const lang = activeTab === "jsx" || activeTab === "js" || activeTab === "server" ? "javascript" : activeTab;
+      const codeSnippet = r[activeTab === "server" ? "server" : activeTab === "js" ? "js" : activeTab] || "";
+      const resp = await tutorAPI.explainError(errorMessage, codeSnippet, lang);
+      const explanation = resp.data?.explanation || "Could not get explanation.";
+      setCompanionMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: "explain",
+          userLabel: "Error explanation",
+          content: explanation,
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ]);
+    } catch (err) {
+      console.error("Explain error", err);
+      toast.error("Could not get error explanation. Try again.");
+    } finally {
+      setExplainErrorLoading(false);
+    }
+  };
+
+  const handleExplainLastError = () => {
+    if (lastError) handleExplainErrorClick(lastError);
+  };
+
   const handleTutorSubmit = async (e) => {
     e.preventDefault();
     if (!tutorQuestion.trim()) return;
+    const question = tutorQuestion.trim();
     setTutorLoading(true);
-    setTutorAnswer(null);
-    setTutorConfidence(null);
+    setTutorQuestion("");
     try {
-      const resp = await tutorAPI.ask(tutorQuestion, {
+      const r = codeRefs.current;
+      const errorFromQuestion = question.match(/error:?\s*(.+)/i)?.[1]?.trim() || null;
+      const resp = await tutorAPI.ask(question, {
         type: "hint-mode",
         hintStyle,
         moduleTitle: module?.title,
         objectives: module?.objectives,
         currentStepIndex: currentStepIndex,
         currentStepDescription: steps[currentStepIndex]?.title ?? null,
-        code: { html: htmlCode, css: cssCode, javascript: jsCode, jsx: jsxCode, serverJs: serverCode },
+        code: { html: r.html, css: r.css, javascript: r.js, jsx: r.jsx, serverJs: r.server },
         currentFile: `${activeTab}.${activeTab === "js" ? "js" : activeTab}`,
-        errorMessage: tutorQuestion.match(/error:?\s*(.+)/i)?.[1] || null,
+        recentErrors,
+        errorMessage: errorFromQuestion || (recentErrors.length > 0 ? recentErrors[0] : null),
       });
       let answer = resp.data.answer || "We couldn't get a hint right now.";
       // Never show raw API internals (thinking, model, eval_count, etc.)
       if (typeof answer === "string" && (answer.includes('"thinking"') || answer.includes('"eval_count"') || answer.includes('"model":'))) {
         answer = "Something went wrong. Please try asking again.";
       }
-      setTutorAnswer(answer);
-      setTutorConfidence(resp.data.confidence);
-      setTutorHistory((prev) => [...prev.slice(-4), { question: tutorQuestion, answer, style: hintStyle, timestamp: new Date().toLocaleTimeString() }]);
+      setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "hint", userLabel: question, content: answer, timestamp: new Date().toLocaleTimeString(), confidence: resp.data.confidence }]);
     } catch (err) {
       console.error("Tutor error", err);
-      setTutorAnswer("Something went wrong. Please try again.");
+      setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "hint", userLabel: question, content: "Something went wrong. Please try again.", timestamp: new Date().toLocaleTimeString() }]);
     } finally {
       setTutorLoading(false);
     }
@@ -974,209 +968,313 @@ const CodeEditor = () => {
 
   if (loading || isLoadingDraft) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center gap-4">
-        <div className="h-12 w-12 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+      <div className="min-h-screen bg-game-void text-slate-100 flex flex-col items-center justify-center gap-4">
+        <div className="h-12 w-12 animate-spin rounded-full border-2 border-neon-cyan border-t-transparent" />
         <p className="text-sm text-slate-400">{loading ? 'Loading module...' : 'Loading saved progress...'}</p>
       </div>
     );
   }
 
   const currentStep = steps[currentStepIndex];
+  const defaultAchievementIcon = "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/award.svg";
+  const renderAchievementIcon = (icon, alt, cls) => {
+    const isUrl = typeof icon === "string" && icon.startsWith("http");
+    if (isUrl) return <img src={icon} alt={alt} className={cls} onError={(e) => { if (!e.target.dataset.fb) { e.target.dataset.fb = "1"; e.target.src = defaultAchievementIcon; } }} />;
+    return <FaTrophy className={cls} />;
+  };
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col">
-      {/* Header - Studio style like CustomGameStudio / MultiplayerGameStudio */}
-      <header className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-slate-900/80 shrink-0">
-        <div className="flex items-center gap-4">
+    <div className="h-screen overflow-hidden bg-game-void text-slate-100 flex flex-col">
+      {/* Floating Learning Overview Popup (on module open) – centered in viewport */}
+      <AnimatePresence>
+        {showOverviewPopup && module && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+              onClick={() => setShowOverviewPopup(false)}
+              aria-hidden
+            />
+            <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="w-[min(560px,92vw)] max-h-[85vh] flex flex-col rounded-2xl border border-neon-cyan/30 bg-game-night shadow-2xl shadow-neon-cyan/10 pointer-events-auto"
+              >
+              <div className="flex items-center justify-between border-b border-white/10 px-5 py-3 shrink-0">
+                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                  <FaBookOpen className="text-neon-cyan" /> Learning Overview
+                </h2>
+                <button
+                  onClick={() => setShowOverviewPopup(false)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition"
+                  aria-label="Close"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 p-5">
+                <div className="text-base text-slate-200 leading-relaxed">
+                  <MarkdownContent content={module.content} />
+                </div>
+                {module.hints?.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Hints</p>
+                    <ul className="list-disc pl-4 space-y-1.5 text-sm text-slate-300">
+                      {module.hints.map((h, i) => <li key={i}>{h}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <div className="border-t border-white/10 px-5 py-3 shrink-0 flex justify-end">
+                <button
+                  onClick={() => setShowOverviewPopup(false)}
+                  className="px-4 py-2 rounded-lg bg-neon-cyan text-game-void text-sm font-bold hover:brightness-110 transition"
+                >
+                  Got it
+                </button>
+              </div>
+            </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ─── HEADER ─── */}
+      <header className="flex items-center justify-between px-4 h-12 border-b border-white/10 bg-game-night/90 backdrop-blur shrink-0 relative z-10">
+        {/* Left: back + title */}
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-sm hover:bg-white/10 transition"
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition"
+            title="Back to Dashboard"
           >
-            <FaBookOpen />
-            Dashboard
+            <FaArrowLeft className="text-xs" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 border border-white/20 rounded flex items-center justify-center">
-              {isMultiplayerModule ? <FaUsers className="text-purple-400" /> : <FaCode className="text-cyan-400" />}
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="shrink-0 w-7 h-7 rounded-md bg-neon-cyan/10 border border-white/10 flex items-center justify-center">
+              {isMultiplayerModule ? <FaUsers className="text-neon-purple text-xs" /> : <FaCode className="text-neon-cyan text-xs" />}
             </div>
-            <div>
-              <h1 className="text-sm font-bold text-white">{module.title}</h1>
-              <p className="text-xs text-slate-500">
-                {isMultiplayerModule ? "Multiplayer Module" : "Module Tutorial"}
-              </p>
+            <div className="min-w-0">
+              <h1 className="text-sm font-bold text-white truncate leading-tight">{module.title}</h1>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-semibold uppercase ${difficultyStyles[module.difficulty]} px-1.5 py-0 rounded`}>
+                  {module.difficulty}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Center: step progress bar */}
+        <div className="hidden md:flex items-center gap-2.5 absolute left-1/2 -translate-x-1/2">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+            {verifiedCount}/{steps.length}
+          </span>
+          <div className="flex items-center gap-0.5">
+            {steps.map((_, i) => (
+              <div
+                key={i}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  steps.length <= 6 ? "w-8" : "w-5"
+                } ${
+                  stepsVerified[i]
+                    ? "bg-neon-green shadow-glow-green/30"
+                    : i === currentStepIndex
+                      ? "bg-neon-cyan animate-pulse"
+                      : "bg-white/10"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Right: stats + actions */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs">
-            <span className="text-amber-400"><FaStar /> {points}</span>
-            <span className="text-cyan-400"><FaCode /> {codeChanges}</span>
-            <span className="text-rose-200"><FaBolt /> {streak}</span>
-            <span className="text-amber-200"><FaTrophy /> +{completionBonus}</span>
+          {/* Gamification pills */}
+          <div className="hidden sm:flex items-center gap-1.5">
+            <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-neon-gold/10 border border-neon-gold/20 text-neon-gold text-[11px] font-bold">
+              <FaStar className="text-[9px]" /> {points}
+            </span>
+            <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-[11px] font-bold">
+              <FaFire className="text-[9px]" /> {streak}
+            </span>
+            <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan text-[11px] font-bold">
+              <FaCode className="text-[9px]" /> {codeChanges}
+            </span>
+          </div>
+
+          {/* Point floater */}
+          <AnimatePresence>
+            {pointFloater && (
+              <motion.span
+                key={pointFloater.id}
+                initial={{ opacity: 1, y: 0 }}
+                animate={{ opacity: 0, y: -30 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.1 }}
+                className="absolute right-48 top-1 text-neon-gold font-bold text-sm pointer-events-none"
+              >
+                +{pointFloater.amount}
+              </motion.span>
+            )}
+          </AnimatePresence>
+
+          {/* Action buttons */}
+          <div className="flex items-center rounded-lg border border-white/10 overflow-hidden">
+            <button
+              onClick={handleRunCode}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/25 transition border-r border-white/10"
+            >
+              <FaPlay className="text-[9px]" /> Run
+            </button>
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition"
+            >
+              <FaUndo className="text-[9px]" />
+            </button>
           </div>
           <button
-            onClick={handleRunCode}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 text-sm font-medium hover:bg-green-500/30 transition"
-          >
-            <FaPlay /> Run
-          </button>
-          <button
-            onClick={handleExplainSelection}
-            disabled={explainCodeLoading}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500/20 text-violet-400 text-sm font-medium hover:bg-violet-500/30 transition disabled:opacity-50"
-            title="Highlight code in the editor and click to get an explanation"
-          >
-            {explainCodeLoading ? <span className="animate-pulse">…</span> : <FaMagic />}
-            Explain selection
-          </button>
-          <button onClick={handleReset} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/30 transition">
-            <FaUndo /> Reset
-          </button>
-          <button
             onClick={() => setShowTutorSidebar(!showTutorSidebar)}
-            className={`p-2 rounded-lg transition ${showTutorSidebar ? "bg-violet-500/30 text-violet-300" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
-            title="Companion"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              showTutorSidebar
+                ? "bg-violet-500/25 text-violet-300 border border-violet-400/40 shadow-glow-purple/20"
+                : "bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/10"
+            }`}
           >
-            <FaBolt />
+            <FaMagic className="text-[9px]" /> AI
           </button>
           <button
             onClick={handleCompleteModule}
             disabled={!allStepsVerified}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-400/90 text-slate-950 text-sm font-semibold hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-neon-gold text-game-void text-xs font-bold hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm"
           >
-            <FaCheck /> Complete
+            <FaCheck className="text-[9px]" /> Complete
           </button>
         </div>
       </header>
 
+      {/* ─── MAIN CONTENT ─── */}
       <div className="flex-1 flex overflow-hidden min-h-0 relative">
-        {/* Left: Instructions (wider panel for readability) */}
-        <aside className="w-[420px] border-r border-white/10 bg-slate-900/70 flex flex-col shrink-0 min-h-0">
-          <div className="flex items-center justify-between border-b border-white/10 bg-slate-900/90 px-4 py-3">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
-              <FaBookOpen /> Instructions
-            </h2>
+        {/* ─── LEFT PANEL (resizable) ─── */}
+        <aside
+          className="flex flex-col shrink-0 min-h-0 border-r border-white/10 bg-game-night/60"
+          style={{ width: leftPanelWidth }}
+        >
+          {/* Lesson overview (collapsible) – clear, readable block */}
+          <div className="border-b border-white/10 shrink-0 bg-game-abyss/50">
             <button
-              onClick={() => setShowInstructions(!showInstructions)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded border border-white/10 bg-white/5 text-xs"
+              onClick={() => setShowOverview(!showOverview)}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-200 hover:bg-white/5 transition"
             >
-              {showInstructions ? <FaChevronDown /> : <FaChevronRight />}
+              <span className="flex items-center gap-2">
+                <FaBookOpen className="text-neon-cyan" /> Lesson Overview
+              </span>
+              {showOverview ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
             </button>
+            <AnimatePresence>
+              {showOverview && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-4 pb-4 max-h-[400px] overflow-y-auto scrollbar-hide">
+                    <div className="text-sm text-slate-200 leading-relaxed tracking-tight">
+                      <MarkdownContent content={module.content} />
+                    </div>
+                    {module.hints?.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-white/10">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Hints</p>
+                        <ul className="list-disc pl-4 space-y-1.5 text-sm text-slate-300">
+                          {module.hints.map((h, i) => <li key={i}>{h}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {showInstructions && (
-            <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 p-4 border-b border-white/10 flex flex-col gap-4">
-              <div className="flex flex-wrap gap-2 shrink-0">
-                <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase ${difficultyStyles[module.difficulty]}`}>
-                  {module.difficulty}
-                </span>
-                <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                  {module.category.replace("-", " ")}
-                </span>
-              </div>
-
-              {/* 1. Lesson overview first — more space for easy reading */}
-              <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4 shrink-0 min-h-[200px] flex flex-col">
-                <h3 className="text-sm font-semibold text-white mb-3">Lesson overview</h3>
-                <div className="text-sm text-slate-300 leading-relaxed overflow-y-auto scrollbar-hide flex-1 min-h-[180px] pr-1">
-                  <MarkdownContent content={module.content} />
-                </div>
-              </div>
-
-              {/* 2. Step-by-step: expand only the active step */}
-              <div className="shrink-0">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                  Step-by-step
-                </h3>
-                <ul className="space-y-2">
-                  {steps.map((step, i) => {
-                    const verified = stepsVerified[i];
-                    const isCurrent = i === currentStepIndex;
-                    const locked = i > currentStepIndex && !verified;
-                    const failedFeedback = stepFailureFeedback[i];
-                    const showExpanded = isCurrent;
-                    return (
-                      <li
-                        key={step.id}
-                        className={`rounded-lg border overflow-hidden transition-all ${
-                          isCurrent
-                            ? "border-cyan-400/40 bg-cyan-500/10"
-                            : verified
-                              ? "border-emerald-400/30 bg-emerald-500/5"
-                              : failedFeedback
-                                ? "border-red-400/40 bg-red-500/10"
-                                : "border-white/10 bg-slate-950/40"
+          {/* Step-by-step tracker */}
+          <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0">
+            <div className="px-4 py-3">
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 mb-3">Steps</h3>
+              <div className="space-y-1">
+                {steps.map((step, i) => {
+                  const verified = stepsVerified[i];
+                  const isCurrent = i === currentStepIndex;
+                  const locked = i > currentStepIndex && !verified;
+                  const failedFeedback = stepFailureFeedback[i];
+                  return (
+                    <div key={step.id} className="flex gap-2.5 items-start">
+                      {/* Vertical line + circle */}
+                      <div className="flex flex-col items-center shrink-0 pt-0.5">
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all ${
+                            verified
+                              ? "border-neon-green bg-neon-green/20 text-neon-green"
+                              : isCurrent
+                                ? "border-neon-cyan bg-neon-cyan/10 text-neon-cyan shadow-glow-cyan/20"
+                                : failedFeedback
+                                  ? "border-red-400 bg-red-500/10 text-red-400"
+                                  : "border-white/20 bg-white/5 text-slate-500"
+                          }`}
+                        >
+                          {verified ? <FaCheck className="text-[8px]" /> : failedFeedback ? <FaTimes className="text-[8px]" /> : i + 1}
+                        </div>
+                        {i < steps.length - 1 && (
+                          <div className={`w-0.5 h-4 mt-1 rounded-full ${verified ? "bg-neon-green/40" : "bg-white/10"}`} />
+                        )}
+                      </div>
+                      {/* Step content */}
+                      <button
+                        onClick={() => !locked && goToStep(i)}
+                        disabled={locked}
+                        className={`flex-1 text-left pb-2 min-w-0 transition ${
+                          locked ? "cursor-not-allowed opacity-40" : "hover:opacity-80"
                         }`}
                       >
-                        <button
-                          onClick={() => !locked && goToStep(i)}
-                          disabled={locked}
-                          className={`w-full text-left flex items-center gap-2 px-3 py-2 text-xs transition ${
-                            locked ? "cursor-not-allowed text-slate-500" : "hover:bg-white/5"
-                          } ${isCurrent ? "text-cyan-200" : verified ? "text-emerald-200" : failedFeedback ? "text-red-200" : "text-slate-300"}`}
-                        >
-                          <span className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-white/10">
-                            {verified ? <FaCheck className="text-emerald-400" /> : failedFeedback ? <FaTimes className="text-red-400" /> : i + 1}
-                          </span>
-                          <span className={`flex-1 min-w-0 font-medium truncate ${failedFeedback ? "line-through opacity-90" : ""}`}>
-                            {step.title}
-                          </span>
-                          <span className={`shrink-0 transition-transform ${showExpanded ? "rotate-90" : ""}`}>
-                            <FaChevronRight className="text-[10px]" />
-                          </span>
-                        </button>
-                        {showExpanded && (
-                          <div className="px-3 pb-3 pt-0 border-t border-white/10 mt-0">
-                            <p className="text-xs text-slate-200 leading-relaxed mt-2">
-                              {step.instruction ?? step.title}
-                            </p>
-                            {step.concept && (
-                              <p className="text-[11px] text-cyan-300/90 mt-2 italic border-l-2 border-cyan-400/50 pl-2">
-                                {step.concept}
-                              </p>
-                            )}
-                          </div>
-                        )}
+                        <p className={`text-xs font-medium leading-tight truncate ${
+                          isCurrent ? "text-neon-cyan" : verified ? "text-neon-green" : failedFeedback ? "text-red-300" : "text-slate-300"
+                        } ${failedFeedback && !isCurrent ? "line-through" : ""}`}>
+                          {step.title}
+                        </p>
                         {failedFeedback && (
-                          <div className="px-3 pb-2 pt-0">
-                            <div className="rounded p-1.5 text-[10px] bg-red-500/15 text-red-200 border border-red-400/30">
-                              {failedFeedback}
-                            </div>
-                          </div>
+                          <p className="text-[10px] text-red-300/80 mt-0.5 line-clamp-2">{failedFeedback}</p>
                         )}
-                      </li>
-                    );
-                  })}
-                </ul>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
-
-              {/* 3. Hints last */}
-              {module.hints?.length > 0 && (
-                <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3 shrink-0">
-                  <h3 className="text-xs font-semibold text-white mb-2">Hints</h3>
-                  <ul className="list-disc pl-4 space-y-1 text-xs text-slate-400">
-                    {module.hints.map((h, i) => (
-                      <li key={i}>{h}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
-          )}
 
-          {/* Actions: MCQ gate + Check / Next */}
-          <div className="flex flex-col min-h-0 px-4 pt-3 pb-2 shrink-0">
-            {/* MCQ gate: 1-2 questions between steps (qwen3-coder) */}
+            {/* MCQ gate */}
             {mcqGateForStep !== null && (
-              <div className="mt-2 pt-2 border-t border-amber-400/30 space-y-2 shrink-0 rounded-lg bg-amber-500/10 border border-amber-400/30 p-2">
-                <h4 className="text-xs font-semibold text-amber-200">Concept check</h4>
+              <div className="mx-4 mb-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 space-y-2">
+                <h4 className="text-xs font-bold text-amber-200 flex items-center gap-1.5">
+                  <FaBolt className="text-amber-400" /> Concept Check
+                </h4>
                 {mcqLoading ? (
-                  <p className="text-[11px] text-slate-400">Loading questions…</p>
+                  <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                    <div className="h-3 w-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+                    Loading questions...
+                  </div>
                 ) : mcqQuestions.length > 0 ? (
                   <>
-                    <p className="text-[11px] text-slate-300">
-                      Question {mcqCurrentIndex + 1} of {mcqQuestions.length}: {mcqQuestions[mcqCurrentIndex]?.question}
+                    <p className="text-[11px] text-slate-200 leading-relaxed">
+                      <span className="text-amber-300 font-semibold">Q{mcqCurrentIndex + 1}/{mcqQuestions.length}:</span>{" "}
+                      {mcqQuestions[mcqCurrentIndex]?.question}
                     </p>
                     <div className="space-y-1">
                       {mcqQuestions[mcqCurrentIndex]?.options?.map((opt, idx) => (
@@ -1184,8 +1282,10 @@ const CodeEditor = () => {
                           key={idx}
                           type="button"
                           onClick={() => setMcqSelectedIndex(idx)}
-                          className={`w-full text-left px-2 py-1.5 rounded text-[11px] border transition ${
-                            mcqSelectedIndex === idx ? "border-amber-400 bg-amber-500/20 text-amber-100" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                          className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] border transition ${
+                            mcqSelectedIndex === idx
+                              ? "border-amber-400 bg-amber-500/20 text-amber-100"
+                              : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
                           }`}
                         >
                           {opt}
@@ -1193,7 +1293,7 @@ const CodeEditor = () => {
                       ))}
                     </div>
                     {mcqResult && (
-                      <div className={`rounded p-1.5 text-[11px] ${mcqResult.correct ? "bg-emerald-500/20 text-emerald-200" : "bg-red-500/20 text-red-200"}`}>
+                      <div className={`rounded-lg p-2 text-[11px] ${mcqResult.correct ? "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30" : "bg-red-500/15 text-red-200 border border-red-400/30"}`}>
                         {mcqResult.explanation}
                       </div>
                     )}
@@ -1202,547 +1302,645 @@ const CodeEditor = () => {
                         type="button"
                         onClick={handleMCQSubmit}
                         disabled={mcqVerifyLoading || mcqSelectedIndex == null}
-                        className="flex-1 py-1.5 rounded bg-amber-500/90 text-slate-950 text-xs font-semibold hover:bg-amber-400 disabled:opacity-50"
+                        className="flex-1 py-1.5 rounded-lg bg-amber-500 text-game-void text-xs font-bold hover:bg-amber-400 disabled:opacity-50 transition"
                       >
-                        {mcqVerifyLoading ? "Checking…" : "Check answer"}
+                        {mcqVerifyLoading ? "Checking..." : "Check"}
                       </button>
                       {mcqPassedCount === mcqQuestions.length && mcqQuestions.length > 0 && (
-                        <button type="button" onClick={handleMCQNextStep} className="flex-1 py-1.5 rounded bg-emerald-500/90 text-slate-950 text-xs font-semibold hover:bg-emerald-400">
-                          Next step <FaChevronRight />
+                        <button type="button" onClick={handleMCQNextStep} className="flex-1 py-1.5 rounded-lg bg-neon-green text-game-void text-xs font-bold hover:brightness-110 transition flex items-center justify-center gap-1">
+                          Next <FaChevronRight className="text-[8px]" />
                         </button>
                       )}
                     </div>
                   </>
                 ) : (
-                  <button type="button" onClick={handleMCQNextStep} className="w-full py-1.5 rounded bg-slate-500/50 text-slate-200 text-xs">
+                  <button type="button" onClick={handleMCQNextStep} className="w-full py-1.5 rounded-lg bg-white/10 text-slate-300 text-xs hover:bg-white/15 transition">
                     Skip to next step
                   </button>
                 )}
               </div>
             )}
 
-            {/* Current step: instruction per step (title + full instruction) */}
-            {mcqGateForStep === null && (
-              <div className="mt-2 pt-2 border-t border-white/10 space-y-2 shrink-0">
-                <div className="rounded-lg bg-cyan-500/10 border border-cyan-400/30 p-2.5">
-                  <p className="text-[10px] uppercase tracking-wider text-cyan-400/90 mb-1">
-                    Step {currentStepIndex + 1} of {steps.length}
+            {/* Achievements panel (collapsible) */}
+            <div className="mx-4 mb-3">
+              <button
+                onClick={() => setShowAchievements(!showAchievements)}
+                className="w-full flex items-center justify-between py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition"
+              >
+                <span className="flex items-center gap-2">
+                  <FaTrophy className="text-neon-gold/70" />
+                  Achievements
+                  <span className="text-[10px] font-bold text-neon-gold/80">
+                    {earnedAchievements.length}/{achievements.length}
+                  </span>
+                </span>
+                {showAchievements ? <FaChevronUp className="text-[10px]" /> : <FaChevronDown className="text-[10px]" />}
+              </button>
+              <AnimatePresence>
+                {showAchievements && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-2 gap-2 pb-3 max-h-[240px] overflow-y-auto scrollbar-hide">
+                      {achievements.map((ach) => (
+                        <div
+                          key={ach.id}
+                          className={`rounded-lg border p-2 flex flex-col items-center text-center gap-1 transition ${
+                            ach.earned
+                              ? "border-neon-gold/30 bg-neon-gold/5"
+                              : "border-white/10 bg-white/[0.02] opacity-50"
+                          }`}
+                        >
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${ach.earned ? "bg-neon-gold/15" : "bg-white/5"}`}>
+                            {ach.earned
+                              ? renderAchievementIcon(ach.icon, ach.name, "w-4 h-4 text-neon-gold")
+                              : <FaLock className="text-[10px] text-slate-500" />
+                            }
+                          </div>
+                          <p className={`text-[10px] font-semibold leading-tight line-clamp-2 ${ach.earned ? "text-slate-200" : "text-slate-500"}`}>
+                            {ach.name}
+                          </p>
+                          {ach.earned && ach.points && (
+                            <span className="text-[9px] text-neon-gold/70">+{ach.points} pts</span>
+                          )}
+                        </div>
+                      ))}
+                      {achievements.length === 0 && (
+                        <p className="col-span-2 text-[11px] text-slate-500 italic py-2">Complete steps to earn achievements</p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Active step card + actions (pinned bottom) */}
+          {mcqGateForStep === null && (
+            <div className="border-t border-white/10 bg-game-night/80 px-4 py-3 shrink-0 space-y-2">
+              <div className="rounded-xl bg-neon-cyan/10 border border-neon-cyan/20 p-3">
+                <p className="text-[10px] uppercase tracking-[0.15em] text-neon-cyan/80 mb-1 font-bold">
+                  Step {currentStepIndex + 1} of {steps.length}
+                </p>
+                {currentStep?.title && (
+                  <p className="text-xs font-semibold text-white mb-1">{currentStep.title}</p>
+                )}
+                <p className="text-[11px] text-slate-300 leading-relaxed line-clamp-3">
+                  {currentStep?.instruction ?? currentStep?.title ?? "Complete this step."}
+                </p>
+                {currentStep?.concept && (
+                  <p className="text-[10px] text-neon-cyan/70 mt-1.5 italic border-l-2 border-neon-cyan/30 pl-2 line-clamp-2">
+                    {currentStep.concept}
                   </p>
-                  {currentStep?.title && (
-                    <p className="text-xs font-semibold text-white mb-1.5">{currentStep.title}</p>
-                  )}
-                  <p className="text-xs text-slate-200 leading-relaxed">
-                    {currentStep?.instruction ?? currentStep?.title ?? "Complete this step."}
-                  </p>
-                </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleVerifyCode}
+                disabled={verifyLoading}
+                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-neon-cyan text-game-void text-xs font-bold hover:brightness-110 disabled:opacity-50 transition shadow-sm"
+              >
+                {verifyLoading ? (
+                  <>
+                    <div className="h-3 w-3 rounded-full border-2 border-game-void border-t-transparent animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <FaCheck className="text-[9px]" /> Check my code
+                  </>
+                )}
+              </button>
+              {(verifyPassed || stepsVerified[currentStepIndex]) && currentStepIndex < steps.length - 1 && (
                 <button
                   type="button"
-                  onClick={handleVerifyCode}
-                  disabled={verifyLoading}
-                  className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-cyan-500/90 text-slate-950 text-xs font-semibold hover:bg-cyan-400 disabled:opacity-60"
+                  onClick={handleNextStep}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-neon-green text-game-void text-xs font-bold hover:brightness-110 transition"
                 >
-                  {verifyLoading ? "Checking…" : "Check my code"}
+                  Next step <FaChevronRight className="text-[8px]" />
                 </button>
-                {(verifyPassed || stepsVerified[currentStepIndex]) && currentStepIndex < steps.length - 1 && (
-                  <button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-emerald-500/90 text-slate-950 text-xs font-semibold hover:bg-emerald-400"
-                  >
-                    Next step <FaChevronRight />
-                  </button>
-                )}
-                {verifyFeedback && (
-                  <div
-                    className={`rounded-lg p-1.5 text-[11px] leading-tight ${
-                      verifyPassed ? "bg-emerald-500/20 text-emerald-200" : "bg-amber-500/20 text-amber-200"
-                    }`}
-                  >
-                    {verifyFeedback}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+              )}
+              {verifyFeedback && (
+                <div className={`rounded-lg p-2 text-[11px] leading-relaxed ${
+                  verifyPassed
+                    ? "bg-neon-green/10 text-emerald-200 border border-neon-green/20"
+                    : "bg-amber-500/10 text-amber-200 border border-amber-400/20"
+                }`}>
+                  {verifyFeedback}
+                </div>
+              )}
+            </div>
+          )}
         </aside>
 
-        {/* Center + Right: Editor and Preview (Studio layout) */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-0">
-          {/* Tabs: Editor | Live Preview */}
-          <div className="flex border-b border-white/10 bg-slate-900/50 shrink-0">
-            <button
-              onClick={() => setMainViewTab("editor")}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-medium transition ${
-                mainViewTab === "editor" ? "border-b-2 border-cyan-400 text-cyan-200" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <FaCode /> Editor
-            </button>
-            <button
-              onClick={() => setMainViewTab("preview")}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-medium transition ${
-                mainViewTab === "preview" ? "border-b-2 border-cyan-400 text-cyan-200" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <FaPlay /> Live Preview
-            </button>
-            {mainViewTab === "preview" && (
-              <button
-                onClick={openLivePreviewInNewTab}
-                className="ml-auto flex items-center gap-1 px-3 py-1.5 text-xs text-slate-400 hover:text-white"
-              >
-                <FaExternalLinkAlt /> Open in new tab
-              </button>
-            )}
-          </div>
-
-          {mainViewTab === "editor" && (
-            <div className="flex-1 flex min-h-0">
-              {/* Code editor area - same as Studio */}
-              <div className="flex-1 flex flex-col border-r border-white/10 bg-slate-950 min-w-0">
-                <div className="flex items-center border-b border-white/10 bg-slate-900/80">
-                  {moduleConfig.tabs.map((tab) => (
-                    <button
-                      key={tab}
-                      className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider flex items-center gap-2 ${
-                        activeTab === tab ? "border-b-2 border-cyan-400 text-cyan-200" : "text-slate-400 hover:text-white"
-                      }`}
-                      onClick={() => setActiveTab(tab)}
-                    >
-                      {tab === "jsx" && <FaReact className="text-cyan-400" />}
-                      {tab === "server" && <FaServer className="text-amber-400" />}
-                      {tab === "server" ? "SERVER.JS" : tab.toUpperCase()}
-                    </button>
-                  ))}
-                  {isReactModule && (
-                    <span className="ml-auto mr-4 flex items-center gap-1 text-xs text-cyan-400">
-                      <FaReact /> React
-                    </span>
-                  )}
-                  {isMultiplayerModule && (
-                    <span className="ml-auto mr-4 flex items-center gap-1 text-xs text-purple-400">
-                      <FaUsers /> Multiplayer
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  {activeTab === "html" && (
-                    <CodeMirror
-                      key={`html-${editorKey}`}
-                      value={htmlCode}
-                      height="100%"
-                      theme={vscodeDark}
-                      extensions={[html()]}
-                      onCreateEditor={(view) => { editorViewRef.current = view; }}
-                      onChange={(v) => {
-                        handleCodeChange(v, setHtmlCode);
-                      }}
-                      options={{ lineNumbers: true, lineWrapping: true }}
-                    />
-                  )}
-                  {activeTab === "css" && (
-                    <CodeMirror
-                      key={`css-${editorKey}`}
-                      value={cssCode}
-                      height="100%"
-                      theme={vscodeDark}
-                      extensions={[css()]}
-                      onCreateEditor={(view) => { editorViewRef.current = view; }}
-                      onChange={(v) => {
-                        handleCodeChange(v, setCssCode);
-                      }}
-                      options={{ lineNumbers: true, lineWrapping: true }}
-                    />
-                  )}
-                  {activeTab === "js" && (
-                    <CodeMirror
-                      key={`js-${editorKey}`}
-                      value={jsCode}
-                      height="100%"
-                      theme={vscodeDark}
-                      extensions={[javascript()]}
-                      onCreateEditor={(view) => { editorViewRef.current = view; }}
-                      onChange={(v) => {
-                        handleCodeChange(v, setJsCode);
-                      }}
-                      options={{ lineNumbers: true, lineWrapping: true }}
-                    />
-                  )}
-                  {activeTab === "jsx" && (
-                    <CodeMirror
-                      key={`jsx-${editorKey}`}
-                      value={jsxCode}
-                      height="100%"
-                      theme={vscodeDark}
-                      extensions={[javascript({ jsx: true })]}
-                      onCreateEditor={(view) => { editorViewRef.current = view; }}
-                      onChange={(v) => {
-                        handleCodeChange(v, setJsxCode);
-                      }}
-                      options={{ lineNumbers: true, lineWrapping: true }}
-                    />
-                  )}
-                  {activeTab === "server" && (
-                    <CodeMirror
-                      key={`server-${editorKey}`}
-                      value={serverCode}
-                      height="100%"
-                      theme={vscodeDark}
-                      extensions={[javascript()]}
-                      onCreateEditor={(view) => { editorViewRef.current = view; }}
-                      onChange={(v) => {
-                        handleCodeChange(v, setServerCode);
-                      }}
-                      options={{ lineNumbers: true, lineWrapping: true }}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Right: Preview panel - single or dual (multiplayer) like MultiplayerGameStudio */}
-              <div className="min-w-[420px] w-[min(520px,45%)] flex flex-col border-l border-white/10 bg-slate-900/70 shrink-0 min-h-0">
-                {isMultiplayerModule ? (
-                  <>
-                    <div className="flex border-b border-white/10 bg-slate-900/50">
-                      <button
-                        onClick={() => setActivePreviewTab("server")}
-                        className={`flex-1 flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium ${
-                          activePreviewTab === "server" ? "bg-amber-500/20 text-amber-400 border-b-2 border-amber-400" : "text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        Server
-                      </button>
-                      <button
-                        onClick={() => setActivePreviewTab("player1")}
-                        className={`flex-1 flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium ${
-                          activePreviewTab === "player1" ? "bg-red-500/20 text-red-400 border-b-2 border-red-400" : "text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        <FaUser /> Client 1
-                      </button>
-                      <button
-                        onClick={() => setActivePreviewTab("player2")}
-                        className={`flex-1 flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium ${
-                          activePreviewTab === "player2" ? "bg-cyan-500/20 text-cyan-400 border-b-2 border-cyan-400" : "text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        <FaUser /> Client 2
-                      </button>
-                      <button
-                        onClick={() => setActivePreviewTab("split")}
-                        className={`flex-1 flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium ${
-                          activePreviewTab === "split" ? "bg-purple-500/20 text-purple-400 border-b-2 border-purple-400" : "text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        <FaColumns /> All 3
-                      </button>
-                    </div>
-                    <div className="flex-1 bg-gray-900 overflow-hidden">
-                      {activePreviewTab === "split" ? (
-                        <div className="grid grid-cols-3 h-full">
-                          <div className="border-r border-white/10 flex flex-col">
-                            <div className="px-2 py-1 bg-amber-500/10 text-amber-500 text-xs font-bold text-center">Server</div>
-                            <iframe
-                              key={`server-${serverPreviewKey}`}
-                              srcDoc={getPreviewContent("server")}
-                              className="flex-1 border-0 w-full h-full min-h-0"
-                              sandbox="allow-scripts allow-same-origin"
-                              title="Server"
-                            />
-                          </div>
-                          <div className="border-r border-white/10 flex flex-col">
-                            <div className="px-2 py-1 bg-red-500/10 text-red-500 text-xs font-bold text-center">Client 1</div>
-                            <iframe
-                              key={`p1-${player1PreviewKey}`}
-                              srcDoc={getPreviewContent("player1")}
-                              className="flex-1 border-0 w-full h-full min-h-0"
-                              sandbox="allow-scripts allow-same-origin"
-                              title="Client 1"
-                            />
-                          </div>
-                          <div className="flex flex-col">
-                            <div className="px-2 py-1 bg-cyan-500/10 text-cyan-500 text-xs font-bold text-center">Client 2</div>
-                            <iframe
-                              key={`p2-${player2PreviewKey}`}
-                              srcDoc={getPreviewContent("player2")}
-                              className="flex-1 border-0 w-full h-full min-h-0"
-                              sandbox="allow-scripts allow-same-origin"
-                              title="Client 2"
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <iframe
-                          key={
-                            activePreviewTab === "server"
-                              ? `server-${serverPreviewKey}`
-                              : activePreviewTab === "player1"
-                                ? `p1-${player1PreviewKey}`
-                                : `p2-${player2PreviewKey}`
-                          }
-                          srcDoc={getPreviewContent(activePreviewTab)}
-                          className="w-full h-full border-0"
-                          sandbox="allow-scripts allow-same-origin"
-                          title={activePreviewTab === "server" ? "Server" : `${activePreviewTab} Preview`}
-                        />
-                      )}
-                    </div>
-                    <div className="border-t border-white/10 bg-slate-950 flex flex-col shrink-0" style={{ maxHeight: consoleOpen ? 180 : 36 }}>
-                      <button
-                        onClick={() => setConsoleOpen(!consoleOpen)}
-                        className="flex items-center justify-between w-full px-4 py-2 text-left text-xs font-semibold text-slate-300 hover:bg-white/5 border-b border-white/10"
-                      >
-                        <span className="flex items-center gap-2">
-                          Console
-                          {consoleLogs.length > 0 && (
-                            <span className="rounded-full bg-slate-600 px-2 py-0.5 text-[10px]">{consoleLogs.length}</span>
-                          )}
-                        </span>
-                        {consoleOpen ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
-                      </button>
-                      {consoleOpen && (
-                        <>
-                          <div className="flex justify-end px-2 py-1 border-b border-white/10">
-                            <button onClick={clearConsole} className="text-[10px] text-slate-500 hover:text-slate-300 px-2 py-0.5 rounded">Clear</button>
-                          </div>
-                          <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 p-2 font-mono text-[11px] space-y-1 bg-slate-950">
-                            {consoleLogs.length === 0 ? (
-                              <p className="text-slate-500 italic">No console output yet.</p>
-                            ) : (
-                              consoleLogs.map((entry, i) => (
-                                <div
-                                  key={`${entry.timestamp}-${i}`}
-                                  className={`flex gap-2 py-0.5 px-2 rounded ${
-                                    entry.level === "error" ? "text-red-400 bg-red-500/10" : entry.level === "warn" ? "text-amber-400 bg-amber-500/10" : entry.level === "info" ? "text-cyan-400 bg-cyan-500/10" : "text-slate-300 bg-white/5"
-                                  }`}
-                                >
-                                  <span className="shrink-0 opacity-70">[{entry.level}]</span>
-                                  <span className="break-all flex-1">{entry.message}</span>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center justify-between border-b border-white/10 bg-slate-900/90 px-4 py-3">
-                      <h2 className="text-sm font-semibold text-white">Preview</h2>
-                      <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-200">
-                        Auto-refresh
-                      </span>
-                    </div>
-                    <iframe
-                      key={previewKey}
-                      className="flex-1 border-0 bg-gray-900 w-full min-h-0"
-                      title="preview"
-                      srcDoc={getPreviewContent()}
-                      sandbox="allow-scripts allow-same-origin"
-                    />
-                    <div className="border-t border-white/10 bg-slate-950 flex flex-col shrink-0" style={{ maxHeight: consoleOpen ? 180 : 36 }}>
-                      <button
-                        onClick={() => setConsoleOpen(!consoleOpen)}
-                        className="flex items-center justify-between w-full px-4 py-2 text-left text-xs font-semibold text-slate-300 hover:bg-white/5 border-b border-white/10"
-                      >
-                        <span className="flex items-center gap-2">
-                          Console
-                          {consoleLogs.length > 0 && (
-                            <span className="rounded-full bg-slate-600 px-2 py-0.5 text-[10px]">{consoleLogs.length}</span>
-                          )}
-                        </span>
-                        {consoleOpen ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
-                      </button>
-                      {consoleOpen && (
-                        <>
-                          <div className="flex justify-end px-2 py-1 border-b border-white/10">
-                            <button
-                              onClick={clearConsole}
-                              className="text-[10px] text-slate-500 hover:text-slate-300 px-2 py-0.5 rounded"
-                            >
-                              Clear
-                            </button>
-                          </div>
-                          <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 p-2 font-mono text-[11px] space-y-1 bg-slate-950">
-                            {consoleLogs.length === 0 ? (
-                              <p className="text-slate-500 italic">No console output yet. Use console.log() in your code.</p>
-                            ) : (
-                              consoleLogs.map((entry, i) => (
-                                <div
-                                  key={`${entry.timestamp}-${i}`}
-                                  className={`flex gap-2 py-0.5 px-2 rounded ${
-                                    entry.level === "error"
-                                      ? "text-red-400 bg-red-500/10"
-                                      : entry.level === "warn"
-                                        ? "text-amber-400 bg-amber-500/10"
-                                        : entry.level === "info"
-                                          ? "text-cyan-400 bg-cyan-500/10"
-                                          : "text-slate-300 bg-white/5"
-                                  }`}
-                                >
-                                  <span className="shrink-0 opacity-70">[{entry.level}]</span>
-                                  <span className="break-all flex-1">{entry.message}</span>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          {mainViewTab === "preview" && (
-            <div className="flex-1 flex flex-col bg-slate-900 min-h-0">
-              {isMultiplayerModule ? (
-                <div className="flex border-b border-white/10">
-                  <button
-                    onClick={() => setActivePreviewTab("server")}
-                    className={`flex-1 py-2 text-xs font-medium ${activePreviewTab === "server" ? "bg-amber-500/20 text-amber-400" : "text-slate-400"}`}
-                  >
-                    Server
-                  </button>
-                  <button
-                    onClick={() => setActivePreviewTab("player1")}
-                    className={`flex-1 py-2 text-xs font-medium ${activePreviewTab === "player1" ? "bg-red-500/20 text-red-400" : "text-slate-400"}`}
-                  >
-                    Client 1
-                  </button>
-                  <button
-                    onClick={() => setActivePreviewTab("player2")}
-                    className={`flex-1 py-2 text-xs font-medium ${activePreviewTab === "player2" ? "bg-cyan-500/20 text-cyan-400" : "text-slate-400"}`}
-                  >
-                    Client 2
-                  </button>
-                  <button
-                    onClick={() => setActivePreviewTab("split")}
-                    className={`flex-1 py-2 text-xs font-medium ${activePreviewTab === "split" ? "bg-purple-500/20 text-purple-400" : "text-slate-400"}`}
-                  >
-                    All 3
-                  </button>
-                </div>
-              ) : null}
-              <div className="flex-1 min-h-0">
-                {isMultiplayerModule && activePreviewTab === "split" ? (
-                  <div className="grid grid-cols-3 h-full">
-                    <iframe key={`lp-server-${serverPreviewKey}`} srcDoc={getPreviewContent("server")} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" title="Server" />
-                    <iframe key={`lp-p1-${player1PreviewKey}`} srcDoc={getPreviewContent("player1")} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" title="Client 1" />
-                    <iframe key={`lp-p2-${player2PreviewKey}`} srcDoc={getPreviewContent("player2")} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" title="Client 2" />
-                  </div>
-                ) : (
-                  <iframe
-                    key={`lp-${previewKey}`}
-                    className="w-full h-full border-0 bg-gray-900"
-                    title="Live Preview"
-                    srcDoc={getPreviewContent(isMultiplayerModule ? activePreviewTab : null)}
-                    sandbox="allow-scripts allow-same-origin"
-                  />
-                )}
-              </div>
-            </div>
-          )}
+        {/* Left panel resize handle */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          onMouseDown={handleResizeLeftStart}
+          className="w-1 flex-shrink-0 cursor-col-resize hover:bg-neon-cyan/20 active:bg-neon-cyan/30 transition-colors group"
+          title="Drag to resize"
+        >
+          <div className="w-0.5 h-full mx-auto bg-white/10 group-hover:bg-neon-cyan/50 transition-colors" />
         </div>
 
-        {/* Companion – overlay on top, does not cramp layout */}
-        {showTutorSidebar && (
-          <aside className="fixed top-14 right-0 bottom-0 w-80 max-w-[90vw] z-50 flex flex-col border-l border-white/20 bg-slate-900/95 backdrop-blur-sm shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 shrink-0">
-              <h2 className="text-sm font-semibold text-white">Companion</h2>
-              <button onClick={() => setShowTutorSidebar(false)} className="p-2 rounded text-slate-400 hover:text-white hover:bg-white/10">
-                <FaTimes />
+        {/* ─── CENTER: CODE EDITOR ─── */}
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 border-r border-white/10">
+          {/* File tabs */}
+          <div className="flex items-center border-b border-white/10 bg-game-night/50 shrink-0">
+            {moduleConfig.tabs.map((tab) => (
+              <button
+                key={tab}
+                className={`px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition border-b-2 ${
+                  activeTab === tab
+                    ? "border-neon-cyan text-neon-cyan bg-neon-cyan/5"
+                    : "border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5"
+                }`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab === "jsx" && <FaReact className="text-cyan-400 text-xs" />}
+                {tab === "server" && <FaServer className="text-amber-400 text-xs" />}
+                {tab === "server" ? "SERVER.JS" : tab.toUpperCase()}
               </button>
-            </div>
-            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide p-4 text-sm text-slate-300 space-y-4">
-              {/* Code explanation (highlight → Explain selection) */}
-              {(explainCodeResult || explainCodeLoading) && (
-                <div className="rounded-xl border border-violet-400/30 bg-violet-500/10 p-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-violet-200 mb-2">
-                    <FaMagic /> Code explanation
-                  </div>
-                  {explainCodeLoading ? (
-                    <div className="flex items-center gap-2 text-violet-200">
-                      <div className="h-4 w-4 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
-                      <span className="text-xs">Explaining selected code…</span>
+            ))}
+            {isReactModule && (
+              <span className="ml-auto mr-3 flex items-center gap-1 text-[10px] text-cyan-400/60">
+                <FaReact /> React
+              </span>
+            )}
+            {isMultiplayerModule && (
+              <span className="ml-auto mr-3 flex items-center gap-1 text-[10px] text-purple-400/60">
+                <FaUsers /> Multiplayer
+              </span>
+            )}
+          </div>
+          {/* Editor + floating step guide */}
+          <div className="flex-1 overflow-hidden bg-game-void relative">
+            {/* Floating step guide */}
+            <AnimatePresence>
+              {showStepGuide && currentStep && (
+                <motion.div
+                  key={`guide-${currentStepIndex}`}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 12 }}
+                  transition={{ type: "spring", damping: 22, stiffness: 300 }}
+                  className="absolute bottom-2 left-2 right-2 z-30 rounded-xl border border-neon-cyan/25 bg-game-night/95 backdrop-blur-lg shadow-xl shadow-neon-cyan/5 overflow-hidden"
+                >
+                  <div className="flex items-start gap-3 p-3">
+                    <div className="shrink-0 mt-0.5 w-7 h-7 rounded-lg bg-neon-cyan/15 flex items-center justify-center">
+                      <FaLightbulb className="text-neon-cyan text-xs" />
                     </div>
-                  ) : (
-                    <div className="text-xs text-slate-200 leading-relaxed">
-                      <MarkdownContent content={explainCodeResult} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="rounded-full bg-neon-cyan/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-neon-cyan">
+                          Step {currentStepIndex + 1}/{steps.length}
+                        </span>
+                        <span className="text-xs font-semibold text-white truncate">{currentStep.title}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 leading-relaxed mb-1.5">
+                        {currentStep.instruction || currentStep.title}
+                      </p>
+                      {currentStep.concept && (
+                        <p className="text-[10px] text-neon-cyan/70 italic border-l-2 border-neon-cyan/30 pl-2">
+                          {currentStep.concept}
+                        </p>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
-              <div>
-                <p className="text-xs uppercase tracking-wider text-slate-400 mb-2">Help mode</p>
-                <div className="flex flex-wrap gap-2">
-                  {HINT_STYLES.map((s) => (
                     <button
-                      key={s.value}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                        hintStyle === s.value ? "border-violet-400/50 bg-violet-500/10 text-violet-200" : "border-white/10 bg-slate-950/60 text-slate-300"
-                      }`}
-                      onClick={() => setHintStyle(s.value)}
-                      title={s.description}
+                      onClick={() => setShowStepGuide(false)}
+                      className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 transition"
                     >
-                      {s.label}
+                      <FaTimes className="text-[9px]" />
                     </button>
-                  ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {/* Re-show guide button (when dismissed) */}
+            {!showStepGuide && currentStep && !allStepsVerified && (
+              <button
+                onClick={() => setShowStepGuide(true)}
+                className="absolute bottom-2 right-2 z-30 flex items-center gap-1.5 rounded-lg border border-neon-cyan/20 bg-game-night/80 backdrop-blur px-2.5 py-1.5 text-[10px] font-semibold text-neon-cyan/80 hover:text-neon-cyan hover:bg-game-night/95 transition shadow-sm"
+                title="Show step guide"
+              >
+                <FaLightbulb className="text-[9px]" /> Step {currentStepIndex + 1}
+              </button>
+            )}
+            {activeTab === "html" && (
+              <CodeMirror
+                key={`html-${editorKey}`}
+                value={codeRefs.current.html}
+                height="100%"
+                theme={vscodeDark}
+                extensions={extHtml}
+                onCreateEditor={onEditorCreate}
+                onChange={onChangeHtml}
+                basicSetup={{ lineNumbers: true, completionKeymap: true }}
+              />
+            )}
+            {activeTab === "css" && (
+              <CodeMirror
+                key={`css-${editorKey}`}
+                value={codeRefs.current.css}
+                height="100%"
+                theme={vscodeDark}
+                extensions={extCss}
+                onCreateEditor={onEditorCreate}
+                onChange={onChangeCss}
+                basicSetup={{ lineNumbers: true, completionKeymap: true }}
+              />
+            )}
+            {activeTab === "js" && (
+              <CodeMirror
+                key={`js-${editorKey}`}
+                value={codeRefs.current.js}
+                height="100%"
+                theme={vscodeDark}
+                extensions={extJs}
+                onCreateEditor={onEditorCreate}
+                onChange={onChangeJs}
+                basicSetup={{ lineNumbers: true, completionKeymap: true }}
+              />
+            )}
+            {activeTab === "jsx" && (
+              <CodeMirror
+                key={`jsx-${editorKey}`}
+                value={codeRefs.current.jsx}
+                height="100%"
+                theme={vscodeDark}
+                extensions={extJsx}
+                onCreateEditor={onEditorCreate}
+                onChange={onChangeJsx}
+                basicSetup={{ lineNumbers: true, completionKeymap: true }}
+              />
+            )}
+            {activeTab === "server" && (
+              <CodeMirror
+                key={`server-${editorKey}`}
+                value={codeRefs.current.server}
+                height="100%"
+                theme={vscodeDark}
+                extensions={extServer}
+                onCreateEditor={onEditorCreate}
+                onChange={onChangeServer}
+                basicSetup={{ lineNumbers: true, completionKeymap: true }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Right panel resize handle */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          onMouseDown={handleResizeRightStart}
+          className="w-1 flex-shrink-0 cursor-col-resize hover:bg-neon-cyan/20 active:bg-neon-cyan/30 transition-colors group"
+          title="Drag to resize"
+        >
+          <div className="w-0.5 h-full mx-auto bg-white/10 group-hover:bg-neon-cyan/50 transition-colors" />
+        </div>
+
+        {/* ─── RIGHT: PREVIEW + CONSOLE (resizable) ─── */}
+        <div
+          className="flex flex-col bg-game-abyss shrink-0 min-h-0"
+          style={{ width: rightPanelWidth }}
+        >
+          {isMultiplayerModule ? (
+            <>
+              {/* Multiplayer preview tabs */}
+              <div className="flex border-b border-white/10 bg-game-night/50 shrink-0">
+                {[
+                  { key: "server", label: "Server", color: "amber" },
+                  { key: "player1", label: "Client 1", color: "red", icon: FaUser },
+                  { key: "player2", label: "Client 2", color: "cyan", icon: FaUser },
+                ].map(({ key, label, color, icon: Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => setActivePreviewTab(key)}
+                    className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 text-[10px] font-semibold transition border-b-2 ${
+                      activePreviewTab === key
+                        ? `border-${color}-400 text-${color}-400 bg-${color}-500/10`
+                        : "border-transparent text-slate-500 hover:text-slate-300"
+                    }`}
+                  >
+                    {Icon && <Icon className="text-[8px]" />} {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex-1 flex flex-col bg-gray-900 overflow-hidden min-h-0 relative">
+                {/* Keep all iframes mounted; use snapshot so code changes don't reload (new socket). Only Run/Reset update snapshot. */}
+                <iframe
+                  key={`server-${serverPreviewKey}`}
+                  srcDoc={multiplayerSnapshot?.server ?? getPreviewContent("server")}
+                  className={activePreviewTab === "server" ? "w-full flex-1 min-h-0 border-0" : "absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"}
+                  sandbox="allow-scripts allow-same-origin"
+                  title="Server"
+                />
+                <div className={activePreviewTab === "player1" ? "flex flex-col flex-1 min-h-0" : "absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"}>
+                  <div className="px-2 py-1 bg-red-500/10 text-red-500 text-[10px] font-bold text-center shrink-0">Client 1</div>
+                  <iframe
+                    key={`p1-${player1PreviewKey}`}
+                    srcDoc={multiplayerSnapshot?.player1 ?? getPreviewContent("player1")}
+                    className="flex-1 w-full min-h-0 border-0"
+                    sandbox="allow-scripts allow-same-origin"
+                    title="Client 1"
+                  />
+                </div>
+                <div className={activePreviewTab === "player2" ? "flex flex-col flex-1 min-h-0" : "absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"}>
+                  <div className="px-2 py-1 bg-cyan-500/10 text-cyan-500 text-[10px] font-bold text-center shrink-0">Client 2</div>
+                  <iframe
+                    key={`p2-${player2PreviewKey}`}
+                    srcDoc={multiplayerSnapshot?.player2 ?? getPreviewContent("player2")}
+                    className="flex-1 w-full min-h-0 border-0"
+                    sandbox="allow-scripts allow-same-origin"
+                    title="Client 2"
+                  />
                 </div>
               </div>
-              <form onSubmit={handleTutorSubmit} className="flex flex-col gap-2">
-                <label className="text-xs uppercase tracking-wider text-slate-400">Your question</label>
-                <textarea
-                  className="min-h-[100px] rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-100 outline-none"
-                  value={tutorQuestion}
-                  onChange={(e) => setTutorQuestion(e.target.value)}
-                  placeholder="Describe your problem or ask for a hint..."
-                />
-                <button
-                  type="submit"
-                  disabled={tutorLoading || !tutorQuestion.trim()}
-                  className="rounded-full bg-violet-500/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-violet-400 disabled:opacity-60"
-                >
-                  {tutorLoading ? "Thinking…" : "Ask companion"}
-                </button>
-              </form>
-              {tutorLoading && (
-                <div className="rounded-xl border border-violet-400/30 bg-violet-500/10 p-3 flex items-center gap-3 text-violet-200">
-                  <div className="h-5 w-5 shrink-0 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
-                  <span className="text-xs font-medium">Getting a hint…</span>
+            </>
+          ) : (
+            <>
+              {/* Standard preview */}
+              <div className="flex items-center justify-between border-b border-white/10 bg-game-night/50 px-3 py-2 shrink-0">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <FaPlay className="text-[8px] text-neon-green" /> Preview
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-neon-green/60 font-medium">Auto-refresh</span>
+                  <button
+                    onClick={openLivePreviewInNewTab}
+                    className="text-slate-500 hover:text-white text-[10px] transition"
+                    title="Open in new tab"
+                  >
+                    <FaExternalLinkAlt />
+                  </button>
                 </div>
-              )}
-              {tutorAnswer && !tutorLoading && (
-                <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-xs text-emerald-100">
-                  <div className="flex items-center justify-between text-xs font-semibold text-emerald-200 mb-2">
-                    Companion
-                    {tutorConfidence != null && (
-                      <span className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 text-[10px]">
-                        {tutorConfidence >= 0.6 ? "Targeted" : tutorConfidence >= 0.4 ? "General" : "Needs context"}
-                      </span>
-                    )}
-                  </div>
-                  <MarkdownContent content={tutorAnswer} />
-                  {tutorHistory.length > 0 && (
-                    <details className="mt-2 rounded border border-white/10 bg-slate-950/60 p-2 text-[10px]">
-                      <summary className="cursor-pointer">Previous replies ({tutorHistory.length})</summary>
-                      <div className="mt-2 space-y-1">
-                        {tutorHistory.slice().reverse().map((item, idx) => (
-                          <div key={idx} className="rounded px-2 py-1 bg-white/5">
-                            <span className="text-slate-500">{item.timestamp}</span>
-                            <p className="text-slate-300 truncate">{item.question}</p>
+              </div>
+              <iframe
+                key={previewKey}
+                className="flex-1 border-0 bg-gray-900 w-full min-h-0"
+                title="preview"
+                srcDoc={getPreviewContent()}
+                sandbox="allow-scripts allow-same-origin"
+              />
+            </>
+          )}
+          {/* Console resize handle (when open) */}
+          {consoleOpen && (
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              onMouseDown={handleResizeConsoleStart}
+              className="h-1.5 shrink-0 cursor-row-resize hover:bg-neon-cyan/20 active:bg-neon-cyan/30 transition-colors flex items-center justify-center border-t border-white/10 group"
+              title="Drag to resize console"
+            >
+              <div className="w-12 h-0.5 rounded-full bg-white/10 group-hover:bg-neon-cyan/50 transition-colors" />
+            </div>
+          )}
+          {/* Console (resizable height when open); separate Server / Clients for multiplayer */}
+          <div
+            className="border-t border-white/10 bg-game-void flex flex-col shrink-0"
+            style={{ height: consoleOpen ? consoleHeight : 32 }}
+          >
+            <button
+              onClick={() => setConsoleOpen(!consoleOpen)}
+              className="flex items-center justify-between w-full px-3 py-1.5 text-[11px] font-bold text-slate-400 hover:bg-white/5 transition shrink-0"
+            >
+              <span className="flex items-center gap-2">
+                Console
+                {consoleLogs.length > 0 && (
+                  <span className="rounded-full bg-white/10 px-1.5 py-0 text-[9px] font-semibold text-slate-300">{consoleLogs.length}</span>
+                )}
+              </span>
+              <div className="flex items-center gap-2">
+                {consoleOpen && !isMultiplayerModule && (
+                  <span onClick={(e) => { e.stopPropagation(); clearConsole(); }} className="text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer">Clear</span>
+                )}
+                {consoleOpen ? <FaChevronDown className="text-[8px]" /> : <FaChevronRight className="text-[8px]" />}
+              </div>
+            </button>
+            {consoleOpen && (
+              isMultiplayerModule ? (
+                <div className="flex-1 flex min-h-0 overflow-hidden">
+                  <div className="flex-1 flex flex-col min-w-0 border-r border-white/10">
+                    <div className="flex items-center justify-between px-2 py-1 bg-amber-500/10 border-b border-amber-500/20 shrink-0">
+                      <span className="text-[10px] font-bold text-amber-400">Server</span>
+                      <span onClick={(e) => { e.stopPropagation(); clearServerConsole(); }} className="text-[10px] text-slate-500 hover:text-amber-300 cursor-pointer">Clear</span>
+                    </div>
+                    <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 px-2 py-1 font-mono text-[11px] space-y-0.5">
+                      {serverLogs.length === 0 ? (
+                        <p className="text-slate-600 italic text-[10px] px-1">No server output yet.</p>
+                      ) : (
+                        serverLogs.map((entry, i) => (
+                          <div
+                            key={`s-${entry.timestamp}-${i}`}
+                            className={`flex gap-1.5 py-0.5 px-1.5 rounded ${
+                              entry.level === "error" ? "text-red-400 bg-red-500/10"
+                                : entry.level === "warn" ? "text-amber-400 bg-amber-500/10"
+                                  : entry.level === "info" ? "text-cyan-400 bg-cyan-500/10"
+                                    : "text-slate-400 bg-white/[0.03]"
+                            }`}
+                          >
+                            <span className="shrink-0 opacity-50 text-[10px]">[{entry.level}]</span>
+                            <span className="break-all flex-1">{entry.message}</span>
                           </div>
-                        ))}
+                        ))
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex items-center justify-between px-2 py-1 bg-slate-500/10 border-b border-white/10 shrink-0">
+                      <span className="text-[10px] font-bold text-slate-300">Clients</span>
+                      <span onClick={(e) => { e.stopPropagation(); clearClientConsole(); }} className="text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer">Clear</span>
+                    </div>
+                    <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 px-2 py-1 font-mono text-[11px] space-y-0.5">
+                      {clientLogs.length === 0 ? (
+                        <p className="text-slate-600 italic text-[10px] px-1">No client output yet.</p>
+                      ) : (
+                        clientLogs.map((entry, i) => (
+                          <div
+                            key={`c-${entry.timestamp}-${i}`}
+                            className={`flex gap-1.5 py-0.5 px-1.5 rounded ${
+                              entry.level === "error" ? "text-red-400 bg-red-500/10"
+                                : entry.level === "warn" ? "text-amber-400 bg-amber-500/10"
+                                  : entry.level === "info" ? "text-cyan-400 bg-cyan-500/10"
+                                    : "text-slate-400 bg-white/[0.03]"
+                            }`}
+                          >
+                            <span className="shrink-0 opacity-50 text-[10px]">[{entry.level}]</span>
+                            <span className="break-all flex-1">{entry.message}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 px-2 pb-2 font-mono text-[11px] space-y-0.5">
+                  {consoleLogs.length === 0 ? (
+                    <p className="text-slate-600 italic text-[10px] px-1">No console output yet.</p>
+                  ) : (
+                    consoleLogs.map((entry, i) => (
+                      <div
+                        key={`${entry.timestamp}-${i}`}
+                        className={`flex gap-1.5 py-0.5 px-1.5 rounded ${
+                          entry.level === "error" ? "text-red-400 bg-red-500/10"
+                            : entry.level === "warn" ? "text-amber-400 bg-amber-500/10"
+                              : entry.level === "info" ? "text-cyan-400 bg-cyan-500/10"
+                                : "text-slate-400 bg-white/[0.03]"
+                        }`}
+                      >
+                        <span className="shrink-0 opacity-50 text-[10px]">[{entry.level}]</span>
+                        <span className="break-all flex-1">{entry.message}</span>
                       </div>
-                    </details>
+                    ))
                   )}
                 </div>
-              )}
-            </div>
-          </aside>
-        )}
+              )
+            )}
+          </div>
+        </div>
+
+        {/* ─── AI COMPANION SLIDE-OUT ─── */}
+        <AnimatePresence>
+          {showTutorSidebar && (
+            <motion.aside
+              initial={{ x: 320 }}
+              animate={{ x: 0 }}
+              exit={{ x: 320 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed top-12 right-0 bottom-0 w-80 max-w-[90vw] z-50 flex flex-col border-l border-violet-500/20 bg-game-night/95 backdrop-blur-xl shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5 shrink-0">
+                <h2 className="text-xs font-bold text-white flex items-center gap-2">
+                  <FaMagic className="text-violet-400" /> AI Companion
+                </h2>
+                <button onClick={() => setShowTutorSidebar(false)} className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition">
+                  <FaTimes className="text-[10px]" />
+                </button>
+              </div>
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                {/* Recent errors */}
+                {recentErrors.length > 0 && (
+                  <div className="mx-3 mt-2 p-2.5 rounded-lg border border-red-400/20 bg-red-500/10 shrink-0">
+                    <p className="text-[9px] uppercase tracking-wider text-red-300/80 mb-1.5 font-bold">Errors</p>
+                    <ul className="space-y-1">
+                      {recentErrors.slice(-3).map((msg, i) => (
+                        <li key={`err-${i}`} className="flex items-start gap-1.5">
+                          <span className="text-[10px] text-red-200/80 break-words flex-1 min-w-0 line-clamp-2">{msg}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleExplainErrorClick(msg)}
+                            disabled={explainErrorLoading}
+                            className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold bg-red-500/30 text-red-100 hover:bg-red-500/50 disabled:opacity-50 transition"
+                          >
+                            Fix
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {/* Message thread */}
+                <div className="flex-1 overflow-y-auto scrollbar-hide p-3 space-y-2">
+                  {companionMessages.length === 0 && !explainCodeLoading && !tutorLoading && !explainErrorLoading && (
+                    <p className="text-[11px] text-slate-500 italic leading-relaxed">Ask a question, select code and click &quot;Explain&quot;, or paste an error message.</p>
+                  )}
+                  {companionMessages.map((msg) => (
+                    <div key={msg.id} className="rounded-xl border border-white/10 bg-game-void/60 overflow-hidden">
+                      <div className="px-3 py-1.5 border-b border-white/[0.06] text-[10px] font-semibold text-slate-500 flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-1">
+                          {msg.type === "explain" ? <><FaMagic className="inline text-violet-400" /> Code</> : "You"}
+                          {msg.type === "hint" && msg.userLabel !== "Step help" && <span className="text-slate-600 truncate max-w-[80px]" title={msg.userLabel}>: {msg.userLabel}</span>}
+                        </span>
+                        <span className="text-slate-600 shrink-0">{msg.timestamp}</span>
+                      </div>
+                      <div className="p-3 text-xs text-slate-200 leading-relaxed">
+                        <MarkdownContent content={msg.content} />
+                      </div>
+                      {msg.confidence != null && msg.type === "hint" && (
+                        <div className="px-3 pb-2">
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] text-slate-500">
+                            {msg.confidence >= 0.6 ? "Targeted" : msg.confidence >= 0.4 ? "General" : "Needs context"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {(explainCodeLoading || tutorLoading || explainErrorLoading) && (
+                    <div className="rounded-xl border border-violet-400/20 bg-violet-500/10 p-3 flex items-center gap-2 text-violet-200">
+                      <div className="h-3.5 w-3.5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
+                      <span className="text-[11px]">
+                        {explainCodeLoading ? "Explaining code..." : tutorLoading ? "Getting hint..." : "Explaining error..."}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {/* Quick actions + form */}
+                <div className="border-t border-white/10 p-3 space-y-2 shrink-0 bg-game-night/60">
+                  <div className="flex gap-1.5">
+                    {lastError && (
+                      <button
+                        type="button"
+                        onClick={handleExplainLastError}
+                        disabled={explainErrorLoading}
+                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-red-400/30 bg-red-500/15 text-red-200 text-[10px] font-semibold hover:bg-red-500/25 disabled:opacity-50 transition"
+                      >
+                        Explain error
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleExplainSelection}
+                      disabled={explainCodeLoading}
+                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-violet-400/30 bg-violet-500/15 text-violet-200 text-[10px] font-semibold hover:bg-violet-500/25 disabled:opacity-50 transition"
+                    >
+                      <FaMagic className="text-[8px]" /> Explain code
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {HINT_STYLES.map((s) => (
+                      <button
+                        key={s.value}
+                        type="button"
+                        className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold transition ${
+                          hintStyle === s.value
+                            ? "border-violet-400/40 bg-violet-500/15 text-violet-200"
+                            : "border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/5"
+                        }`}
+                        onClick={() => setHintStyle(s.value)}
+                        title={s.description}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                  <form onSubmit={handleTutorSubmit} className="flex gap-1.5">
+                    <textarea
+                      className="flex-1 min-h-[36px] max-h-[80px] rounded-lg border border-white/10 bg-game-void/70 p-2 text-[11px] text-slate-100 outline-none focus:ring-1 focus:ring-violet-400/40 resize-none"
+                      value={tutorQuestion}
+                      onChange={(e) => setTutorQuestion(e.target.value)}
+                      placeholder="Ask a question..."
+                      rows={1}
+                    />
+                    <button
+                      type="submit"
+                      disabled={tutorLoading || !tutorQuestion.trim()}
+                      className="shrink-0 w-9 h-9 rounded-lg bg-violet-500/80 text-white flex items-center justify-center hover:bg-violet-400 disabled:opacity-40 transition"
+                    >
+                      <FaChevronRight className="text-xs" />
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
       </div>
 
       <ConfirmModal

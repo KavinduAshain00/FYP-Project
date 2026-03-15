@@ -29,8 +29,10 @@ async function getUserAchievements(req, res) {
 }
 
 async function earn(req, res) {
+  const userId = req.user?._id?.toString();
   try {
     const { achievementId } = req.body;
+    console.log('[Achievements] earn', { userId, achievementId });
     const achievement = await Achievement.findOne({ id: achievementId });
     if (!achievement) {
       return res.status(404).json({ message: 'Achievement not found' });
@@ -44,6 +46,7 @@ async function earn(req, res) {
       user.totalPoints = (user.totalPoints || 0) + achievement.points;
       user.level = Math.max(1, Math.floor((user.totalPoints || 0) / XP_PER_LEVEL) + 1);
       await user.save();
+      console.log('[Achievements] earn success', { userId, achievementId, name: achievement?.name });
       return res.json({
         message: 'Achievement earned!',
         achievement,
@@ -76,10 +79,15 @@ async function getStats(req, res) {
 }
 
 async function check(req, res) {
+  const userId = req.user?._id?.toString();
   try {
+    console.log('[Achievements] check', { userId });
     const { newlyEarned, user } = await achievementService.checkProgress(req.user._id, req.body);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
+    }
+    if ((newlyEarned || []).length > 0) {
+      console.log('[Achievements] check newlyEarned', { userId, count: newlyEarned.length, ids: newlyEarned.map((a) => a?.id) });
     }
     return res.json({
       newlyEarned,
@@ -87,7 +95,7 @@ async function check(req, res) {
       earnedCount: user.earnedAchievements.length,
     });
   } catch (error) {
-    console.error('Check achievements error:', error);
+    console.error('[Achievements] check error', { userId, error: error.message });
     return res.status(500).json({ message: 'Server error' });
   }
 }

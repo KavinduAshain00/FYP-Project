@@ -1,5 +1,7 @@
 const User = require('../models/User');
+const Achievement = require('../models/Achievement');
 const { isAdminEmail } = require('../utils/admin');
+const { XP_PER_LEVEL } = require('../constants/levelRanks');
 
 const POPULATE_OPTS = [
   { path: 'completedModules.moduleId', select: 'title category' },
@@ -146,9 +148,70 @@ async function deleteUser(req, res) {
   }
 }
 
+/**
+ * POST /api/admin/users/:id/achievements - Grant an achievement to a user (admin only)
+ */
+async function grantAchievement(req, res) {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const achievementId = Number(req.body.achievementId);
+    if (!Number.isInteger(achievementId)) {
+      return res.status(400).json({ message: 'achievementId must be a number' });
+    }
+    const achievement = await Achievement.findOne({ id: achievementId, isActive: true });
+    if (!achievement) {
+      return res.status(404).json({ message: 'Achievement not found' });
+    }
+    if (!user.earnedAchievements) user.earnedAchievements = [];
+    if (user.earnedAchievements.includes(achievementId)) {
+      return res.status(400).json({ message: 'User already has this achievement' });
+    }
+    user.earnedAchievements.push(achievementId);
+    user.totalPoints = (user.totalPoints || 0) + (achievement.points || 0);
+    user.level = Math.max(1, Math.floor((user.totalPoints || 0) / XP_PER_LEVEL) + 1);
+    await user.save();
+    return res.json({ message: 'Achievement granted', user: toAdminUserView(user) });
+  } catch (error) {
+    console.error('Admin grant achievement error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+/**
+ * DELETE /api/admin/users/:id/achievements/:achievementId - Revoke an achievement (admin only)
+ */
+async function revokeAchievement(req, res) {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const achievementId = Number(req.params.achievementId);
+    if (!Number.isInteger(achievementId)) {
+      return res.status(400).json({ message: 'achievementId must be a number' });
+    }
+    const achievement = await Achievement.findOne({ id: achievementId });
+    const points = achievement ? (achievement.points || 0) : 0;
+    if (!user.earnedAchievements) user.earnedAchievements = [];
+    user.earnedAchievements = user.earnedAchievements.filter((id) => id !== achievementId);
+    user.totalPoints = Math.max(0, (user.totalPoints || 0) - points);
+    user.level = Math.max(1, Math.floor((user.totalPoints || 0) / XP_PER_LEVEL) + 1);
+    await user.save();
+    return res.json({ message: 'Achievement revoked', user: toAdminUserView(user) });
+  } catch (error) {
+    console.error('Admin revoke achievement error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
 module.exports = {
   listUsers,
   getUserById,
   updateUser,
   deleteUser,
+  grantAchievement,
+  revokeAchievement,
 };

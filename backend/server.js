@@ -42,13 +42,6 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use((req, res, next) => {
-  console.log(
-    `Incoming request: ${req.method} ${req.path} - origin: ${req.headers.origin || 'unknown'}`
-  );
-  next();
-});
-
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected successfully'))

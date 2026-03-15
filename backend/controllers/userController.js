@@ -103,7 +103,9 @@ async function getAvatars(req, res) {
 }
 
 async function getProfile(req, res) {
+  const userId = req.user?._id?.toString();
   try {
+    console.log('[User] getProfile', { userId });
     const user = await User.findById(req.user._id)
       .select('-password')
       .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
@@ -116,13 +118,15 @@ async function getProfile(req, res) {
 
     return res.json({ user: userPayload });
   } catch (error) {
-    console.error('Get profile error:', error);
+    console.error('[User] getProfile error', { userId: req.user?._id?.toString(), error: error.message });
     return res.status(500).json({ message: 'Server error' });
   }
 }
 
 async function getDashboard(req, res) {
+  const userId = req.user?._id?.toString();
   try {
+    console.log('[User] getDashboard', { userId });
     const user = await User.findById(req.user._id)
       .select('-password')
       .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
@@ -167,14 +171,16 @@ async function getDashboard(req, res) {
       achievements: learningAchievements,
     });
   } catch (error) {
-    console.error('Get dashboard error:', error);
+    console.error('[User] getDashboard error', { userId: req.user?._id?.toString(), error: error.message });
     return res.status(500).json({ message: 'Server error' });
   }
 }
 
 async function completeModule(req, res) {
+  const userId = req.user?._id?.toString();
+  const { moduleId, sessionStats = {} } = req.body;
   try {
-    const { moduleId, sessionStats = {} } = req.body;
+    console.log('[User] completeModule', { userId, moduleId });
     const user = await User.findById(req.user._id);
     const module = await Module.findById(moduleId);
     if (!module) return res.status(404).json({ message: 'Module not found' });
@@ -224,19 +230,22 @@ async function completeModule(req, res) {
 
     const payload = toProfileUser(updatedUser);
     payload.levelInfo = buildLevelInfo(updatedUser.totalPoints || 0, updatedUser.level || 1);
+    console.log('[User] completeModule success', { userId, moduleId, newlyEarned: (newlyEarned || []).length });
     return res.json({
       message: 'Module marked as completed',
       user: payload,
       newlyEarned: newlyEarned || [],
     });
   } catch (error) {
-    console.error('Complete module error:', error);
+    console.error('[User] completeModule error', { userId, moduleId, error: error.message });
     return res.status(500).json({ message: 'Server error' });
   }
 }
 
 async function setCurrentModule(req, res) {
+  const userId = req.user?._id?.toString();
   try {
+    console.log('[User] setCurrentModule', { userId, moduleId: req.body?.moduleId });
     const { moduleId } = req.body;
     const user = await User.findById(req.user._id);
     user.currentModule = moduleId;
@@ -257,7 +266,9 @@ async function setCurrentModule(req, res) {
 }
 
 async function updateProfile(req, res) {
+  const userId = req.user?._id?.toString();
   try {
+    console.log('[User] updateProfile', { userId, hasAiPrefs: Boolean(req.body?.aiPreferences) });
     const { name, avatarUrl, avatarPresetId, aiPreferences } = req.body;
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
