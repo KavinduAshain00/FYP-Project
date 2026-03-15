@@ -88,11 +88,17 @@ const Signup = () => {
     "w-full px-3 py-2 border-0 bg-transparent text-[#d8d0c4] placeholder-[#585048] focus:outline-none rounded-xl [&:-webkit-autofill]:!bg-[#161c28] [&:-webkit-autofill]:![-webkit-text-fill-color:#d8d0c4] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#161c28]";
   const labelClass = "block text-sm font-medium text-[#a09888] mb-1";
 
+  const authBgStyle = {
+    backgroundImage: `linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url(https://itchronicles.com/wp-content/uploads/2021/04/Optimized-Illustration-from-Adobe-Stock-for-ITC-Post-on-AI-in-Game-Development-2048x1152.jpeg)`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+  };
+
   if (step === 2) {
     return (
       <GameLayout showNavbar={false} showParticles={false}>
-        <div className="min-h-screen flex items-center justify-center px-4 py-12">
-          <div className="w-full max-w-lg border border-[#252c3a] bg-[#111620] p-6 rounded-2xl">
+        <div className="min-h-screen flex items-center justify-center px-4 py-12" style={authBgStyle}>
+          <div className="w-full max-w-lg border border-[#252c3a] bg-[#111620]/95 backdrop-blur-sm p-6 rounded-2xl shadow-xl">
           <div className="flex items-center justify-between mb-6">
             <button
               onClick={() => setStep(1)}
@@ -189,8 +195,8 @@ const Signup = () => {
 
   return (
     <GameLayout showNavbar={false} showParticles={false}>
-      <div className="min-h-screen flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md border border-[#252c3a] bg-[#111620] p-6 rounded-2xl">
+      <div className="min-h-screen flex items-center justify-center px-4 py-12" style={authBgStyle}>
+        <div className="w-full max-w-md border border-[#252c3a] bg-[#111620]/95 backdrop-blur-sm p-6 rounded-2xl shadow-xl">
         <div className="flex justify-center gap-2 mb-6">
           <span className="w-8 h-8 border-2 border-[#c8a040] bg-[#1c2230] flex items-center justify-center text-sm font-bold text-[#c8a040] rounded-lg">
             1

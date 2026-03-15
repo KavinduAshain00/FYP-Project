@@ -1,20 +1,69 @@
 const Module = require('../models/Module');
 const { getPathCategories } = require('../constants/learningPath');
 
+const SLIM_FIELDS = '_id title description difficulty category order';
+
 async function getAll(req, res) {
   try {
-    console.log('[Modules] getAll', { category: req.query?.category });
-    const { category } = req.query;
+    const { category, difficulty, meta } = req.query;
     const query = {};
     if (category && category !== 'all') {
       query.category = category;
     } else if (!category && req.user && req.user.learningPath && req.user.learningPath !== 'none') {
-      const pathCategories = getPathCategories(req.user.learningPath);
+      let pathCategories = getPathCategories(req.user.learningPath);
+
+      // Beginner: only show game-development and multiplayer after all javascript-basics are completed
+      if (req.user.learningPath === 'javascript-basics' && pathCategories.length > 0) {
+        const basicsModules = await Module.find({ category: 'javascript-basics' }).select('_id');
+        const basicsIds = new Set(basicsModules.map((m) => m._id.toString()));
+        const completedIds = (req.user.completedModules || []).map((m) => {
+          const id = m.moduleId && (m.moduleId._id || m.moduleId);
+          return id ? id.toString() : null;
+        }).filter(Boolean);
+        const allBasicsDone = basicsIds.size > 0 && [...basicsIds].every((id) => completedIds.includes(id));
+        if (allBasicsDone) {
+          pathCategories = ['javascript-basics', 'game-development', 'multiplayer'];
+        }
+      }
+
       if (pathCategories.length) {
         query.category = { $in: pathCategories };
       }
     }
-    const modules = await Module.find(query).sort({ order: 1, createdAt: 1 });
+    if (difficulty && difficulty !== 'all') {
+      query.difficulty = difficulty;
+    }
+
+    if (meta === '1') {
+      const [categories, difficulties] = await Promise.all([
+        Module.find(query).distinct('category'),
+        Module.find(query).distinct('difficulty'),
+      ]);
+      return res.json({
+        categories: categories.filter(Boolean).sort(),
+        difficulties: difficulties.filter(Boolean).sort(),
+      });
+    }
+
+    const page = req.query.page !== undefined && req.query.page !== null ? parseInt(req.query.page, 10) : null;
+    const limit = req.query.limit !== undefined && req.query.limit !== null ? parseInt(req.query.limit, 10) : null;
+    const usePagination = Number.isInteger(page) && Number.isInteger(limit) && page >= 1 && limit >= 1;
+
+    if (usePagination) {
+      const safeLimit = Math.min(100, Math.max(1, limit));
+      const skip = (page - 1) * safeLimit;
+      const [modules, total] = await Promise.all([
+        Module.find(query).select(SLIM_FIELDS).sort({ order: 1, createdAt: 1 }).skip(skip).limit(safeLimit).lean(),
+        Module.countDocuments(query),
+      ]);
+      const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+      return res.json({
+        modules,
+        pagination: { total, page, limit: safeLimit, totalPages },
+      });
+    }
+
+    const modules = await Module.find(query).select(SLIM_FIELDS).sort({ order: 1, createdAt: 1 }).lean();
     return res.json({ modules });
   } catch (error) {
     console.error('Get modules error:', error);

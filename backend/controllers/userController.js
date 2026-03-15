@@ -8,6 +8,24 @@ const { AVATAR_LIST, AVATAR_PRESETS } = require('../constants/avatars');
 const { getPathCategories } = require('../constants/learningPath');
 const { isAdmin } = require('../utils/admin');
 
+/** Beginner: only javascript-basics until all completed, then game-development + multiplayer. Advanced: all three from start. */
+async function getEffectivePathCategories(user) {
+  let pathCategories = getPathCategories(user.learningPath);
+  if (user.learningPath === 'javascript-basics' && pathCategories.length > 0) {
+    const basicsModules = await Module.find({ category: 'javascript-basics' }).select('_id');
+    const basicsIds = new Set(basicsModules.map((m) => m._id.toString()));
+    const completedIds = (user.completedModules || []).map((m) => {
+      const id = m.moduleId && (m.moduleId._id || m.moduleId);
+      return id ? id.toString() : null;
+    }).filter(Boolean);
+    const allBasicsDone = basicsIds.size > 0 && [...basicsIds].every((id) => completedIds.includes(id));
+    if (allBasicsDone) {
+      pathCategories = ['javascript-basics', 'game-development', 'multiplayer'];
+    }
+  }
+  return pathCategories;
+}
+
 const POPULATE_OPTS = [
   { path: 'completedModules.moduleId', select: 'title category' },
   { path: 'currentModule', select: 'title description' },
@@ -32,7 +50,6 @@ function toProfileUser(user) {
     currentModule: user.currentModule,
     totalPoints: user.totalPoints || 0,
     level: user.level || 1,
-    gameStudioEnabled: user.gameStudioEnabled || false,
     earnedAchievements: user.earnedAchievements || [],
     gameStats: user.gameStats || {},
     isAdmin: isAdmin(user),
@@ -114,7 +131,7 @@ async function getProfile(req, res) {
     const levelInfo = buildLevelInfo(user.totalPoints || 0, user.level || 1);
     const userPayload = toProfileUser(user);
     userPayload.levelInfo = levelInfo;
-    userPayload.pathCategories = getPathCategories(user.learningPath);
+    userPayload.pathCategories = await getEffectivePathCategories(user);
 
     return res.json({ user: userPayload });
   } catch (error) {
@@ -123,24 +140,29 @@ async function getProfile(req, res) {
   }
 }
 
+/** Dashboard-only user fields + populated refs for path/completion logic. */
+const DASHBOARD_USER_SELECT = 'name email avatarUrl totalPoints level learningPath earnedAchievements completedModules currentModule';
+
 async function getDashboard(req, res) {
   const userId = req.user?._id?.toString();
   try {
     console.log('[User] getDashboard', { userId });
     const user = await User.findById(req.user._id)
-      .select('-password')
-      .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
-      .populate(POPULATE_OPTS[1].path, POPULATE_OPTS[1].select);
+      .select(DASHBOARD_USER_SELECT)
+      .populate('completedModules.moduleId', '_id')
+      .populate('currentModule', '_id title')
+      .lean();
 
     const levelInfo = buildLevelInfo(user.totalPoints || 0, user.level || 1);
-    const userPayload = toProfileUser(user);
-    userPayload.levelInfo = levelInfo;
+    const pathCategories = await getEffectivePathCategories(user);
 
-    const pathCategories = getPathCategories(user.learningPath);
     const query = pathCategories.length
       ? { category: { $in: pathCategories } }
       : {};
-    const modules = await Module.find(query).sort({ order: 1, createdAt: 1 });
+    const modules = await Module.find(query)
+      .select('_id title description difficulty category order')
+      .sort({ order: 1, createdAt: 1 })
+      .lean();
 
     const completedModuleIds = (user.completedModules || []).map((m) => {
       const id = m.moduleId?._id || m.moduleId;
@@ -151,24 +173,40 @@ async function getDashboard(req, res) {
     const nextModule = modulePath.find((m) => !completedModuleIds.includes(m._id.toString()));
     const completionPercentage = modules.length > 0 ? Math.round((completedModuleIds.length / modules.length) * 100) : 0;
 
-    const allAchievements = await Achievement.find({ isActive: true }).sort({ id: 1 });
-    const achievements = allAchievements.map((ach) => ({
-      ...ach.toObject(),
-      earned: (user.earnedAchievements || []).includes(ach.id),
+    const learningAchievements = await Achievement.find({
+      isActive: true,
+      category: { $in: ['learning', 'general'] },
+    })
+      .select('id name icon')
+      .sort({ id: 1 })
+      .lean();
+    const earnedSet = new Set((user.earnedAchievements || []).map(String));
+    const achievements = learningAchievements.map((a) => ({
+      id: a.id,
+      name: a.name,
+      icon: a.icon,
+      earned: earnedSet.has(String(a.id)),
     }));
-    const learningAchievements = achievements.filter(
-      (a) => a.category === 'learning' || a.category === 'general'
-    );
+
+    const userPayload = {
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatarUrl || '',
+      levelInfo,
+      pathCategories,
+      learningPath: user.learningPath,
+      currentModule: user.currentModule ? { _id: user.currentModule._id, title: user.currentModule.title } : null,
+    };
 
     return res.json({
-      user: { ...userPayload, pathCategories },
+      user: userPayload,
       modules,
       completedModuleIds,
       nextModuleId: nextModule ? nextModule._id : null,
       nextModule: nextModule ? { _id: nextModule._id, title: nextModule.title } : null,
       completionPercentage,
       levelInfo,
-      achievements: learningAchievements,
+      achievements,
     });
   } catch (error) {
     console.error('[User] getDashboard error', { userId: req.user?._id?.toString(), error: error.message });
@@ -196,23 +234,6 @@ async function completeModule(req, res) {
         user.currentModule = undefined;
       }
       await user.save();
-    }
-
-    if (user.learningPath && user.learningPath !== 'none') {
-      const pathCategories = getPathCategories(user.learningPath);
-      if (pathCategories.length) {
-        const categoryQuery = { category: { $in: pathCategories } };
-        const modulesForPath = await Module.find(categoryQuery).select('_id');
-        const completedIds = user.completedModules.map((m) => {
-          const id = m.moduleId?._id || m.moduleId;
-          return id ? id.toString() : null;
-        }).filter(Boolean);
-        const allCompleted = modulesForPath.every((m) => completedIds.includes(m._id.toString()));
-        if (allCompleted && !user.gameStudioEnabled) {
-          user.gameStudioEnabled = true;
-          await user.save();
-        }
-      }
     }
 
     const completedCount = user.completedModules.length;

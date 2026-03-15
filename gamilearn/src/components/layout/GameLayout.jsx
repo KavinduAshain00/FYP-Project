@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import ConfirmModal from "../ui/ConfirmModal";
 import { AnimatePresence, motion as Motion } from "framer-motion";
 
-const ROUTE_ORDER = ["/dashboard", "/modules", "/profile", "/admin", "/editor", "/custom-game", "/game-planning", "/multiplayer-studio"];
+const ROUTE_ORDER = ["/dashboard", "/modules", "/profile", "/admin", "/editor"];
 
 const getRouteDepth = (pathname) => {
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return 0;

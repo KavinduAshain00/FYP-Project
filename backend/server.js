@@ -3,6 +3,17 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
+const { logError } = require('./utils/logger');
+
+// Log unhandled promise rejections and uncaught exceptions
+process.on('unhandledRejection', (reason, promise) => {
+  logError(reason instanceof Error ? reason : new Error(String(reason)), 'UnhandledRejection');
+});
+process.on('uncaughtException', (err) => {
+  logError(err, 'UncaughtException');
+  process.exit(1);
+});
+
 const { ALLOWED_ORIGINS, CORS_METHODS, CORS_HEADERS } = require('./constants/cors');
 
 const app = express();
@@ -59,7 +70,7 @@ mongoose
         }
         console.log('[Admin] Migrated', legacyAdmins.length, 'admin(s) to User.role');
       }
-    } catch (e) {
+    } catch {
       // No legacy admins collection
     }
     // Optional bootstrap: set first admin from env when no admins exist
@@ -74,7 +85,9 @@ mongoose
       }
     }
   })
-  .catch((err) => console.error('MongoDB connection error:', err));
+  .catch((err) => {
+    logError(err, 'MongoDB');
+  });
 
 // Routes
 // Authentication routes
@@ -87,10 +100,6 @@ app.use('/api/user', require('./routes/user'));
 app.use('/api/achievements', require('./routes/achievements'));
 // Tutor routes
 app.use('/api/tutor', require('./routes/tutor'));
-// Diagrams routes
-app.use('/api/diagrams', require('./routes/diagrams'));
-// Config (studio level, etc.)
-app.use('/api/config', require('./routes/config'));
 // Admin (user management, etc.) – requires auth + admin email
 app.use('/api/admin', require('./routes/admin'));
 

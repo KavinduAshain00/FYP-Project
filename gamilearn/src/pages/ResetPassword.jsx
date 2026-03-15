@@ -15,8 +15,15 @@ const ResetPassword = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const t = searchParams.get("token");
-    if (t) setToken(t);
+    const fromUrl = searchParams.get("token");
+    if (fromUrl) {
+      setToken(fromUrl);
+      return;
+    }
+    try {
+      const stored = sessionStorage.getItem('passwordResetToken');
+      if (stored) setToken(stored);
+    } catch (_) {}
   }, [searchParams]);
 
   const handleSubmit = async (e) => {
@@ -36,6 +43,9 @@ const ResetPassword = () => {
     setLoading(true);
     try {
       await authAPI.resetPassword(token.trim(), newPassword);
+      try {
+        sessionStorage.removeItem('passwordResetToken');
+      } catch (_) {}
       setSuccess(true);
       toast.success("Password reset. Sign in with your new password.");
       setTimeout(() => navigate("/login"), 2000);

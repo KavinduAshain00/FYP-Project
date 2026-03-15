@@ -16,9 +16,6 @@ import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Modules from "./pages/Modules";
 import CodeEditor from "./pages/CodeEditor";
-import CustomGameStudio from "./pages/CustomGameStudio";
-import MultiplayerGameStudio from "./pages/MultiplayerGameStudio";
-import GamePlanningBoard from "./pages/GamePlanningBoard";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
 
@@ -67,30 +64,6 @@ function AnimatedRoutes() {
               }
             />
             <Route
-              path="/custom-game"
-              element={
-                <ProtectedRoute requireGameStudio>
-                  <CustomGameStudio />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/game-planning"
-              element={
-                <ProtectedRoute requireGameStudio>
-                  <GamePlanningBoard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/multiplayer-studio"
-              element={
-                <ProtectedRoute requireGameStudio>
-                  <MultiplayerGameStudio />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/profile"
               element={
                 <ProtectedRoute>
@@ -116,7 +89,6 @@ function AnimatedRoutes() {
 }
 
 function App() {
-  console.log("API URL:", import.meta.env.VITE_API_URL);
   return (
     <Router>
       <AuthProvider>

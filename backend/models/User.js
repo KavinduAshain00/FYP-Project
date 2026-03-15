@@ -29,15 +29,7 @@ const userSchema = new mongoose.Schema(
     },
     learningPath: {
       type: String,
-      enum: [
-        'javascript-basics',
-        'game-development',
-        'react-basics',
-        'multiplayer',
-        'advanced-concepts',
-        'advanced',
-        'none',
-      ],
+      enum: ['javascript-basics', 'advanced', 'none'],
       default: 'none',
     },
     completedModules: [
@@ -74,11 +66,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['user', 'admin'],
       default: 'user',
-    },
-    // Whether the Game Studio is unlocked for this user
-    gameStudioEnabled: {
-      type: Boolean,
-      default: false,
     },
     gameStats: {
       totalEdits: { type: Number, default: 0 },

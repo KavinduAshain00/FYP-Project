@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from "react";
-import { authAPI, userAPI } from "../api/api";
+import { authAPI, userAPI, invalidateUserCaches } from "../api/api";
 
 export const AuthContext = createContext(null);
 
@@ -87,6 +87,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    try {
+      invalidateUserCaches();
+    } catch { /* ignore */ }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);

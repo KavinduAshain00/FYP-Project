@@ -7,6 +7,13 @@ const TUTOR_LIMIT = {
   message: { error: 'Too many tutor requests. Try again later.' },
 };
 
+/** Auth routes: limit login/signup/forgot-password to reduce brute-force and abuse */
+const AUTH_LIMIT = {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: { error: 'Too many attempts. Try again later.' },
+};
+
 const DIAGRAM_LIMIT = {
   windowMs: 60 * 1000,
   max: 15,
@@ -16,4 +23,5 @@ const DIAGRAM_LIMIT = {
 module.exports = {
   TUTOR_LIMIT,
   DIAGRAM_LIMIT,
+  AUTH_LIMIT,
 };

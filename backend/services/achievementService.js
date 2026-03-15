@@ -23,24 +23,7 @@ function mergeProgressWithUser(user, progressData) {
     streak,
     totalPoints: user.totalPoints || 0,
     completedModules: (user.completedModules && user.completedModules.length) || 0,
-    isMultiplayerGame: progressData.isMultiplayerGame || false,
-    multiplayerWins: progressData.multiplayerWins || 0,
-    multiplayerGames: progressData.multiplayerGames || 0,
-    createdRoom: progressData.createdRoom || false,
-    fullLobby: progressData.fullLobby || false,
-    filesCreated: progressData.filesCreated || 0,
-    packagesInstalled: progressData.packagesInstalled || 0,
-    terminalCommands: progressData.terminalCommands || 0,
-    planStep1: progressData.planStep1 || false,
-    planFlow: progressData.planFlow || false,
-    planInsights: progressData.planInsights || false,
-    planLaunch: progressData.planLaunch || false,
-    gameStudioEnabled: user.gameStudioEnabled === true,
     debugSession: progressData.debugSession || false,
-    publishFirstGame: progressData.publishFirstGame || false,
-    rematchAfterLoss: progressData.rematchAfterLoss || false,
-    implementStateSync: progressData.implementStateSync || false,
-    implementTurns: progressData.implementTurns || false,
   };
 
   return merged;
@@ -99,15 +82,6 @@ async function checkProgress(userId, progressData) {
       const allCompleted = basicsModules.length > 0 && basicsModules.every((m) => completedIds.includes(m._id.toString()));
       if (allCompleted) shouldEarn = true;
     }
-    else if (reqReq === 'complete_multiplayer_track') {
-      const mpModules = await Module.find({ category: 'multiplayer' }).select('_id');
-      const completedIds = (user.completedModules || []).map((m) => {
-        const id = m.moduleId && (m.moduleId._id || m.moduleId);
-        return id ? id.toString() : null;
-      }).filter(Boolean);
-      const allCompleted = mpModules.length > 0 && mpModules.every((m) => completedIds.includes(m._id.toString()));
-      if (allCompleted) shouldEarn = true;
-    }
     else if (reqReq === 'complete_setup_module') {
       const completedIds = (user.completedModules || []).map((m) => m.moduleId && (m.moduleId._id || m.moduleId)).filter(Boolean);
       const setupModule = await Module.findOne({
@@ -131,32 +105,6 @@ async function checkProgress(userId, progressData) {
     else if (reqReq === 'save_5_times' && merged.saveCount >= 5) shouldEarn = true;
     else if (reqReq === 'code_night' && hour >= 0 && hour < 6 && merged.totalEdits > 0) shouldEarn = true;
     else if (reqReq === 'debug_session' && merged.debugSession) shouldEarn = true;
-
-    // ─── Special ───
-    else if (reqReq === 'unlock_game_studio' && merged.gameStudioEnabled) shouldEarn = true;
-    else if (reqReq === 'publish_first_game' && merged.publishFirstGame) shouldEarn = true;
-
-    // ─── Multiplayer (from payload) ───
-    else if (reqReq === 'first_multiplayer_game' && merged.isMultiplayerGame) shouldEarn = true;
-    else if (reqReq === 'create_room' && merged.createdRoom) shouldEarn = true;
-    else if (reqReq === 'full_lobby' && merged.fullLobby) shouldEarn = true;
-    else if (reqReq === 'first_mp_win' && merged.multiplayerWins >= 1) shouldEarn = true;
-    else if (reqReq === 'mp_win_streak_3' && merged.streak >= 3 && merged.multiplayerWins > 0) shouldEarn = true;
-    else if (reqReq === 'mp_wins_10' && merged.multiplayerWins >= 10) shouldEarn = true;
-    else if (reqReq === 'mp_games_5' && merged.multiplayerGames >= 5) shouldEarn = true;
-    else if (reqReq === 'complete_match' && merged.multiplayerGames >= 1) shouldEarn = true;
-    else if (reqReq === 'rematch_after_loss' && merged.rematchAfterLoss) shouldEarn = true;
-    else if (reqReq === 'implement_state_sync' && merged.implementStateSync) shouldEarn = true;
-    else if (reqReq === 'implement_turns' && merged.implementTurns) shouldEarn = true;
-
-    // ─── Studio / planning (from payload) ───
-    else if (reqReq === 'files_created_5' && merged.filesCreated >= 5) shouldEarn = true;
-    else if (reqReq === 'packages_installed_3' && merged.packagesInstalled >= 3) shouldEarn = true;
-    else if (reqReq === 'terminal_commands_10' && merged.terminalCommands >= 10) shouldEarn = true;
-    else if (reqReq === 'plan_step_1' && merged.planStep1) shouldEarn = true;
-    else if (reqReq === 'plan_flow' && merged.planFlow) shouldEarn = true;
-    else if (reqReq === 'plan_insights' && merged.planInsights) shouldEarn = true;
-    else if (reqReq === 'plan_launch' && merged.planLaunch) shouldEarn = true;
 
     if (shouldEarn) {
       user.earnedAchievements.push(achievement.id);

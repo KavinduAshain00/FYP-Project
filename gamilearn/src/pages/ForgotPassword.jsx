@@ -20,7 +20,11 @@ const ForgotPassword = () => {
       const res = await authAPI.forgotPassword(email.trim().toLowerCase());
       setSent(true);
       if (res.data?.resetToken) {
-        setResetToken(res.data.resetToken);
+        const token = res.data.resetToken;
+        setResetToken(token);
+        try {
+          sessionStorage.setItem('passwordResetToken', token);
+        } catch (_) {}
       }
       toast.success(res.data?.message || "Check your email for reset instructions.");
     } catch (err) {

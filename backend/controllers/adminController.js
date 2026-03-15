@@ -20,7 +20,6 @@ function toAdminUserView(user) {
     currentModule: user.currentModule,
     totalPoints: user.totalPoints || 0,
     level: user.level || 1,
-    gameStudioEnabled: user.gameStudioEnabled ?? false,
     earnedAchievements: user.earnedAchievements || [],
     gameStats: user.gameStats || {},
     createdAt: user.createdAt,
@@ -29,19 +28,53 @@ function toAdminUserView(user) {
   };
 }
 
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
 /**
- * GET /api/admin/users - List all users (admin only)
+ * GET /api/admin/users - List users with pagination (admin only)
+ * Query: page (default 1), limit (default 20, max 100), search (name/email), learningPath (filter by path)
  */
 async function listUsers(req, res) {
   try {
-    const users = await User.find()
-      .select('-password')
-      .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
-      .populate(POPULATE_OPTS[1].path, POPULATE_OPTS[1].select)
-      .sort({ createdAt: -1 });
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(req.query.limit, 10) || DEFAULT_PAGE_SIZE));
+    const search = (req.query.search || '').trim().substring(0, 200);
+    const learningPath = req.query.learningPath || '';
+    const allowedSort = ['createdAt', 'name', 'email', 'learningPath', 'level', 'totalPoints', 'updatedAt'];
+    const sortBy = allowedSort.includes(req.query.sortBy) ? req.query.sortBy : 'createdAt';
+    const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+
+    const query = {};
+    if (search) {
+      const searchRegex = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+      query.$or = [{ name: searchRegex }, { email: searchRegex }];
+    }
+    if (learningPath && learningPath !== 'all') {
+      query.learningPath = learningPath === 'none' ? { $in: [null, '', 'none'] } : learningPath;
+    }
+
+    const sortOpt = { [sortBy]: sortOrder };
+    if (sortBy !== 'createdAt') sortOpt.createdAt = -1;
+
+    const [users, total] = await Promise.all([
+      User.find(query)
+        .select('-password')
+        .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
+        .populate(POPULATE_OPTS[1].path, POPULATE_OPTS[1].select)
+        .sort(sortOpt)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(query),
+    ]);
 
     const payload = users.map((u) => toAdminUserView(u));
-    return res.json({ users: payload });
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    return res.json({
+      users: payload,
+      pagination: { total, page, limit, totalPages },
+    });
   } catch (error) {
     console.error('Admin list users error:', error);
     return res.status(500).json({ message: 'Server error' });
@@ -70,7 +103,7 @@ async function getUserById(req, res) {
 
 /**
  * PUT /api/admin/users/:id - Update a user (admin only)
- * Allowed: name, email, learningPath, gameStudioEnabled, knowsJavaScript
+ * Allowed: name, email, learningPath, knowsJavaScript
  */
 async function updateUser(req, res) {
   try {
@@ -79,7 +112,7 @@ async function updateUser(req, res) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const { name, email, learningPath, gameStudioEnabled, knowsJavaScript } = req.body;
+    const { name, email, learningPath, knowsJavaScript } = req.body;
 
     if (typeof name === 'string' && name.trim()) {
       user.name = name.trim();
@@ -93,21 +126,10 @@ async function updateUser(req, res) {
       user.email = normalized;
     }
     if (learningPath !== undefined) {
-      const valid = [
-        'javascript-basics',
-        'game-development',
-        'react-basics',
-        'multiplayer',
-        'advanced-concepts',
-        'advanced',
-        'none',
-      ];
+      const valid = ['javascript-basics', 'advanced', 'none'];
       if (valid.includes(learningPath)) {
         user.learningPath = learningPath;
       }
-    }
-    if (typeof gameStudioEnabled === 'boolean') {
-      user.gameStudioEnabled = gameStudioEnabled;
     }
     if (typeof knowsJavaScript === 'boolean') {
       user.knowsJavaScript = knowsJavaScript;
@@ -358,6 +380,42 @@ async function revokeAdminFromUser(req, res) {
   }
 }
 
+/**
+ * GET /api/admin/stats - Aggregate stats for admin overview (no need to load all users)
+ */
+async function getStats(req, res) {
+  try {
+    const [totalUsers, aggregated, recentSignups] = await Promise.all([
+      User.countDocuments(),
+      User.aggregate([
+        { $group: { _id: null, totalXp: { $sum: { $ifNull: ['$totalPoints', 0] } }, totalLevel: { $sum: { $ifNull: ['$level', 1] } } } },
+        { $project: { totalXp: 1, totalLevel: 1, _id: 0 } },
+      ]).then((r) => r[0] || { totalXp: 0, totalLevel: 0 }),
+      User.aggregate([
+        { $match: { createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } },
+        { $sort: { createdAt: -1 } },
+        { $limit: 5 },
+        { $project: { name: 1, email: 1, createdAt: 1, learningPath: 1 } },
+      ]),
+    ]);
+    const totalCompleted = await User.aggregate([
+      { $project: { count: { $size: { $ifNull: ['$completedModules', []] } } } },
+      { $group: { _id: null, total: { $sum: '$count' } } },
+    ]).then((r) => (r[0] ? r[0].total : 0));
+    const avgLevel = totalUsers > 0 ? (aggregated.totalLevel / totalUsers).toFixed(1) : 0;
+    return res.json({
+      totalUsers,
+      totalXp: aggregated.totalXp || 0,
+      totalCompleted,
+      avgLevel: parseFloat(avgLevel, 10),
+      recentSignups,
+    });
+  } catch (error) {
+    console.error('Admin getStats error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
 module.exports = {
   listUsers,
   getUserById,
@@ -371,4 +429,5 @@ module.exports = {
   removeAdmin,
   grantAdminToUser,
   revokeAdminFromUser,
+  getStats,
 };

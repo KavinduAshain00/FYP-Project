@@ -5,7 +5,6 @@ import {
   FaCamera,
   FaCheckCircle,
   FaEdit,
-  FaRobot,
   FaSave,
   FaShieldAlt,
   FaTrophy,
@@ -24,39 +23,6 @@ const buildPromptUrl = (prompt) =>
   `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=768&height=768&seed=42&nologo=true`;
 
 const defaultAvatarPrompt = "Stylized hero portrait, simple avatar";
-
-const AI_PRESETS = {
-  learning: {
-    label: "Learning",
-    description: "Maximum support – friendly, detailed hints, extra follow-ups",
-    tone: "friendly",
-    hintDetail: "detailed",
-    assistanceFrequency: "high",
-  },
-  balanced: {
-    label: "Balanced",
-    description: "Default – friendly, moderate detail, one next step when relevant",
-    tone: "friendly",
-    hintDetail: "moderate",
-    assistanceFrequency: "normal",
-  },
-  quick: {
-    label: "Quick",
-    description: "Minimal – concise answers, short hints, no extra suggestions",
-    tone: "concise",
-    hintDetail: "minimal",
-    assistanceFrequency: "low",
-  },
-};
-
-const getPresetFromPrefs = (tone, hintDetail, assistanceFrequency) => {
-  for (const [key, p] of Object.entries(AI_PRESETS)) {
-    if (p.tone === tone && p.hintDetail === hintDetail && p.assistanceFrequency === assistanceFrequency) {
-      return key;
-    }
-  }
-  return "custom";
-};
 
 const groupAvatarsByUnlock = (avatars) => {
   const default_ = avatars.filter((a) => a.unlockType === "default");
@@ -80,11 +46,6 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [aiTone, setAiTone] = useState("friendly");
-  const [aiHintDetail, setAiHintDetail] = useState("moderate");
-  const [aiFrequency, setAiFrequency] = useState("normal");
-  const [aiPreset, setAiPreset] = useState("balanced");
-  const [savingAi, setSavingAi] = useState(false);
   const [changePasswordCurrent, setChangePasswordCurrent] = useState("");
   const [changePasswordNew, setChangePasswordNew] = useState("");
   const [changePasswordConfirm, setChangePasswordConfirm] = useState("");
@@ -102,14 +63,6 @@ const Profile = () => {
         setProfile(userData);
         setName(userData.name || "");
         setAvatarUrl(userData.avatarUrl || "");
-        const prefs = userData.aiPreferences || {};
-        const tone = prefs.tone || "friendly";
-        const hintDetail = prefs.hintDetail || "moderate";
-        const frequency = prefs.assistanceFrequency || "normal";
-        setAiTone(tone);
-        setAiHintDetail(hintDetail);
-        setAiFrequency(frequency);
-        setAiPreset(getPresetFromPrefs(tone, hintDetail, frequency));
         setAchievements(achievementsRes.data.achievements || []);
         setAvatars(avatarsRes.data.avatars || []);
       } catch (error) {
@@ -140,69 +93,6 @@ const Profile = () => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleSaveAiSettings = async () => {
-    setSavingAi(true);
-    try {
-      await userAPI.updateProfile({
-        aiPreferences: {
-          tone: aiTone,
-          hintDetail: aiHintDetail,
-          assistanceFrequency: aiFrequency,
-        },
-      });
-      await refreshProfile?.();
-      toast.success("AI Companion settings saved!");
-    } catch {
-      toast.error("Could not save AI settings. Please try again.");
-    } finally {
-      setSavingAi(false);
-    }
-  };
-
-  const applyPreset = (presetKey) => {
-    if (presetKey === "custom") return;
-    const p = AI_PRESETS[presetKey];
-    if (!p) return;
-    setAiTone(p.tone);
-    setAiHintDetail(p.hintDetail);
-    setAiFrequency(p.assistanceFrequency);
-    setAiPreset(presetKey);
-  };
-
-  const handlePresetApplyAndSave = async (presetKey) => {
-    applyPreset(presetKey);
-    setSavingAi(true);
-    try {
-      const p = AI_PRESETS[presetKey];
-      await userAPI.updateProfile({
-        aiPreferences: {
-          tone: p.tone,
-          hintDetail: p.hintDetail,
-          assistanceFrequency: p.assistanceFrequency,
-        },
-      });
-      await refreshProfile?.();
-      toast.success(`AI set to "${AI_PRESETS[presetKey].label}" and saved!`);
-    } catch {
-      toast.error("Could not save AI settings. Please try again.");
-    } finally {
-      setSavingAi(false);
-    }
-  };
-
-  const handleAiToneChange = (v) => {
-    setAiTone(v);
-    setAiPreset(getPresetFromPrefs(v, aiHintDetail, aiFrequency));
-  };
-  const handleAiHintDetailChange = (v) => {
-    setAiHintDetail(v);
-    setAiPreset(getPresetFromPrefs(aiTone, v, aiFrequency));
-  };
-  const handleAiFrequencyChange = (v) => {
-    setAiFrequency(v);
-    setAiPreset(getPresetFromPrefs(aiTone, aiHintDetail, v));
   };
 
   const handleChangePassword = async (e) => {
@@ -318,93 +208,6 @@ const Profile = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* AI Companion Settings */}
-        <div className="border border-[#252c3a] bg-[#111620] p-6 mb-6 rounded-2xl">
-          <h2 className="text-lg font-bold text-[#d8d0c4] flex items-center gap-2 mb-4">
-            <FaRobot className="text-[#8070b0]" /> AI Companion Settings
-          </h2>
-          <p className="text-sm text-[#706858] mb-4">
-            Use a preset to auto-apply tone, hint detail, and follow-up style in one click, or customize below.
-          </p>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {Object.entries(AI_PRESETS).map(([key, p]) => (
-              <div key={key} className="flex flex-col gap-1">
-                <button
-                  type="button"
-                  onClick={() => applyPreset(key)}
-                  className={`px-3 py-2 rounded-xl border text-left text-sm transition-colors ${
-                    aiPreset === key
-                      ? "border-[#8070b0]/40 bg-[#8070b0]/10 text-[#b0a8d0]"
-                      : "border-[#252c3a] bg-[#161c28] text-[#9a9080] hover:bg-[#1c2230]"
-                  }`}
-                >
-                  <span className="font-medium">{p.label}</span>
-                  <span className="block text-xs opacity-80 mt-0.5">{p.description}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePresetApplyAndSave(key)}
-                  disabled={savingAi}
-                  className="text-[10px] text-[#8070b0] hover:text-[#b0a8d0] disabled:opacity-50"
-                >
-                  Apply & save
-                </button>
-              </div>
-            ))}
-            {aiPreset === "custom" && (
-              <div className="px-3 py-2 rounded-xl border border-[#252c3a] bg-[#161c28] text-[#706858] text-sm">
-                Custom (edit below)
-              </div>
-            )}
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-[#a09888] mb-1">Tone</label>
-              <select
-                value={aiTone}
-                onChange={(e) => handleAiToneChange(e.target.value)}
-                className="w-full rounded-xl border border-[#252c3a] bg-[#161c28] px-3 py-2 text-sm text-[#d8d0c4] focus:outline-none focus:ring-2 focus:ring-[#8070b0]/30 focus:border-[#8070b0]/40"
-              >
-                <option value="friendly">Friendly – warm and encouraging</option>
-                <option value="formal">Formal – clear and professional</option>
-                <option value="concise">Concise – brief and to the point</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#a09888] mb-1">Hint detail</label>
-              <select
-                value={aiHintDetail}
-                onChange={(e) => handleAiHintDetailChange(e.target.value)}
-                className="w-full rounded-xl border border-[#252c3a] bg-[#161c28] px-3 py-2 text-sm text-[#d8d0c4] focus:outline-none focus:ring-2 focus:ring-[#8070b0]/30 focus:border-[#8070b0]/40"
-              >
-                <option value="minimal">Minimal – short hints only</option>
-                <option value="moderate">Moderate – one clear explanation</option>
-                <option value="detailed">Detailed – more explanation and examples</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#a09888] mb-1">Assistance frequency</label>
-              <select
-                value={aiFrequency}
-                onChange={(e) => handleAiFrequencyChange(e.target.value)}
-                className="w-full rounded-xl border border-[#252c3a] bg-[#161c28] px-3 py-2 text-sm text-[#d8d0c4] focus:outline-none focus:ring-2 focus:ring-[#8070b0]/30 focus:border-[#8070b0]/40"
-              >
-                <option value="low">Low – answer only what I ask</option>
-                <option value="normal">Normal – one natural next step if relevant</option>
-                <option value="high">High – suggest follow-ups and next steps</option>
-              </select>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleSaveAiSettings}
-            disabled={savingAi}
-            className="flex items-center gap-2 px-4 py-2 border border-[#8070b0]/30 bg-[#8070b0]/10 text-[#b0a8d0] text-sm font-medium hover:bg-[#8070b0]/20 disabled:opacity-50 rounded-xl transition-colors"
-          >
-            <FaSave /> {savingAi ? "Saving..." : "Save AI settings"}
-          </button>
         </div>
 
         {/* Edit profile panel */}

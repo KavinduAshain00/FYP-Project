@@ -46,7 +46,7 @@ console.log('Score:', 100);
 Print a welcome banner, your player name, starting HP, and a ready status.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Hello Console</title></head>\n<body>\n  <h1>Open the Console</h1>\n  <p>All output appears in the console panel below the editor.</p>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: #0f172a; color: #e2e8f0; }\nh1 { color: #38bdf8; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n}\nh1 {\n  color: #38bdf8;\n}',
       javascript: '// Welcome to GamiLearn!\n// Follow the steps on the left to complete this module.\n',
     },
     objectives: [
@@ -124,7 +124,7 @@ Use \`typeof\` to check a value's type: \`typeof 42\` → \`"number"\`.
 Declare variables for a player profile and log each value along with its type.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Variables</title></head>\n<body>\n  <h1>Variables &amp; Types</h1>\n  <p>Check the console for output.</p>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: #0f172a; color: #e2e8f0; }\nh1 { color: #a78bfa; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n}\nh1 {\n  color: #a78bfa;\n}',
       javascript: '// Declare your variables below and log them with typeof.\n',
     },
     objectives: [
@@ -210,7 +210,7 @@ isFlying || isSwimming // at least one true
 Calculate damage after armor, check if the player survives, and decide if a treasure chest can be opened.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Operators</title></head>\n<body>\n  <h1>Operators Lab</h1>\n  <p>Results appear in the console.</p>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: #0f172a; color: #e2e8f0; }\nh1 { color: #fb923c; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n}\nh1 {\n  color: #fb923c;\n}',
       javascript: '// Game variables — use these in your calculations\nconst attackPower = 30;\nconst armorRating = 12;\nlet health = 45;\nconst hasKey = true;\nconst isTrapped = false;\n',
     },
     objectives: [
@@ -292,7 +292,7 @@ const status = health > 0 ? 'alive' : 'dead';
 Write a function that assigns a threat level based on an enemy's power and distance, then display the appropriate warning.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Conditionals</title></head>\n<body>\n  <h1>Threat Detector</h1>\n  <div id="output" style="font-size:1.5rem;margin-top:1rem;"></div>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: #0f172a; color: #e2e8f0; }\nh1 { color: #f87171; }\n#output { padding: 1rem; border-radius: 0.5rem; background: #1e293b; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n}\nh1 {\n  color: #f87171;\n}\n#output {\n  padding: 1rem;\n  border-radius: 0.5rem;\n  background: #1e293b;\n}',
       javascript: '// Enemy stats\nconst enemyPower = 80;\nconst enemyDistance = 15;\nlet playerHealth = 60;\n\n// Write your threat-level logic here\n',
     },
     objectives: [
@@ -363,7 +363,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 Create utility functions a game engine would use: calculateDamage, applyHealing, and isInRange.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Functions</title></head>\n<body>\n  <h1>Utility Toolkit</h1>\n  <pre id="log"></pre>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: #0f172a; color: #e2e8f0; }\nh1 { color: #34d399; }\npre { background: #1e293b; padding: 1rem; border-radius: 0.5rem; font-size: 1rem; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n}\nh1 {\n  color: #34d399;\n}\npre {\n  background: #1e293b;\n  padding: 1rem;\n  border-radius: 0.5rem;\n  font-size: 1rem;\n}',
       javascript: '// Build your utility functions below.\n// Use the log helper to show results on the page.\nfunction log(text) {\n  document.getElementById("log").textContent += text + "\\n";\n  console.log(text);\n}\n',
     },
     objectives: [
@@ -437,7 +437,7 @@ console.log(inventory.length); // 3
 Build a simple inventory system: add items, remove items, and display the current list.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Arrays</title></head>\n<body>\n  <h1>Inventory</h1>\n  <ul id="list"></ul>\n  <button id="addBtn">Add Random Item</button>\n  <button id="useBtn">Use Last Item</button>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: #0f172a; color: #e2e8f0; }\nh1 { color: #facc15; }\nul { list-style: none; padding: 0; }\nli { padding: 0.5rem 1rem; margin: 0.25rem 0; background: #1e293b; border-radius: 0.375rem; }\nbutton { margin-right: 0.5rem; padding: 0.625rem 1.25rem; background: #6366f1; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 1rem; }\nbutton:hover { background: #4f46e5; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n}\nh1 {\n  color: #facc15;\n}\nul {\n  list-style: none;\n  padding: 0;\n}\nli {\n  padding: 0.5rem 1rem;\n  margin: 0.25rem 0;\n  background: #1e293b;\n  border-radius: 0.375rem;\n}\nbutton {\n  margin-right: 0.5rem;\n  padding: 0.625rem 1.25rem;\n  background: #6366f1;\n  color: white;\n  border: none;\n  border-radius: 0.375rem;\n  cursor: pointer;\n  font-size: 1rem;\n}\nbutton:hover {\n  background: #4f46e5;\n}',
       javascript: 'const inventory = [];\nconst lootTable = ["sword", "shield", "potion", "arrow", "gem", "scroll", "ring"];\n\n// Implement addItem, useItem, and render, then wire them to the buttons.\n',
     },
     objectives: [
@@ -519,7 +519,7 @@ while (stamina > 0) {
 Use loops to spawn a grid of enemies, filter items from an inventory, and simulate a battle countdown.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Loops</title></head>\n<body>\n  <h1>Loop Training</h1>\n  <div id="grid" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:1rem;"></div>\n  <pre id="log"></pre>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: #0f172a; color: #e2e8f0; }\nh1 { color: #f472b6; }\n.cell { width: 40px; height: 40px; border-radius: 0.25rem; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; }\npre { background: #1e293b; padding: 1rem; border-radius: 0.5rem; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n}\nh1 {\n  color: #f472b6;\n}\n.cell {\n  width: 40px;\n  height: 40px;\n  border-radius: 0.25rem;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 0.75rem;\n}\npre {\n  background: #1e293b;\n  padding: 1rem;\n  border-radius: 0.5rem;\n}',
       javascript: 'function log(text) {\n  document.getElementById("log").textContent += text + "\\n";\n  console.log(text);\n}\n\nconst grid = document.getElementById("grid");\n\n// Use loops to complete the steps.\n',
     },
     objectives: [
@@ -595,7 +595,7 @@ player['name']  // bracket notation
 Create a character sheet object, add methods for attacking and healing, and display it on the page.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Objects</title></head>\n<body>\n  <h1>Character Sheet</h1>\n  <div id="sheet"></div>\n  <button id="atkBtn">Attack Dummy</button>\n  <button id="healBtn">Heal</button>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: #0f172a; color: #e2e8f0; }\nh1 { color: #22d3ee; }\n#sheet { background: #1e293b; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 1.1rem; line-height: 1.8; }\nbutton { margin-right: 0.5rem; padding: 0.625rem 1.25rem; background: #6366f1; color: white; border: none; border-radius: 0.375rem; cursor: pointer; }\nbutton:hover { background: #4f46e5; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n}\nh1 {\n  color: #22d3ee;\n}\n#sheet {\n  background: #1e293b;\n  padding: 1rem;\n  border-radius: 0.5rem;\n  margin-bottom: 1rem;\n  font-size: 1.1rem;\n  line-height: 1.8;\n}\nbutton {\n  margin-right: 0.5rem;\n  padding: 0.625rem 1.25rem;\n  background: #6366f1;\n  color: white;\n  border: none;\n  border-radius: 0.375rem;\n  cursor: pointer;\n}\nbutton:hover {\n  background: #4f46e5;\n}',
       javascript: '// Create your character object and methods below.\n',
     },
     objectives: [
@@ -675,7 +675,7 @@ document.body.appendChild(card);
 Build a dynamic quest log that lets you add quests, mark them complete, and remove them.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>DOM</title></head>\n<body>\n  <h1>Quest Log</h1>\n  <div id="form">\n    <input id="questInput" placeholder="Enter a quest..." />\n    <button id="addBtn">Add Quest</button>\n  </div>\n  <ul id="quests"></ul>\n  <p id="count">Quests: 0</p>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: #0f172a; color: #e2e8f0; }\nh1 { color: #fbbf24; }\n#form { display: flex; gap: 0.5rem; margin-bottom: 1rem; }\ninput { flex: 1; padding: 0.5rem; border-radius: 0.375rem; border: 1px solid #475569; background: #1e293b; color: #e2e8f0; font-size: 1rem; }\nbutton { padding: 0.5rem 1rem; background: #6366f1; color: white; border: none; border-radius: 0.375rem; cursor: pointer; }\nul { list-style: none; padding: 0; }\nli { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; margin: 0.25rem 0; background: #1e293b; border-radius: 0.375rem; }\nli.done { text-decoration: line-through; opacity: 0.5; }\n.remove-btn { background: #ef4444; padding: 0.25rem 0.75rem; border-radius: 0.25rem; border: none; color: white; cursor: pointer; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n}\nh1 {\n  color: #fbbf24;\n}\n#form {\n  display: flex;\n  gap: 0.5rem;\n  margin-bottom: 1rem;\n}\ninput {\n  flex: 1;\n  padding: 0.5rem;\n  border-radius: 0.375rem;\n  border: 1px solid #475569;\n  background: #1e293b;\n  color: #e2e8f0;\n  font-size: 1rem;\n}\nbutton {\n  padding: 0.5rem 1rem;\n  background: #6366f1;\n  color: white;\n  border: none;\n  border-radius: 0.375rem;\n  cursor: pointer;\n}\nul {\n  list-style: none;\n  padding: 0;\n}\nli {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 0.75rem 1rem;\n  margin: 0.25rem 0;\n  background: #1e293b;\n  border-radius: 0.375rem;\n}\nli.done {\n  text-decoration: line-through;\n  opacity: 0.5;\n}\n.remove-btn {\n  background: #ef4444;\n  padding: 0.25rem 0.75rem;\n  border-radius: 0.25rem;\n  border: none;\n  color: white;\n  cursor: pointer;\n}',
       javascript: '// Wire up the quest log functionality below.\n',
     },
     objectives: [
@@ -753,7 +753,7 @@ canvas.addEventListener('mousemove', (e) => {
 Build a small interactive playground: a click counter, a key display, and a mouse-tracking spotlight.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Events</title></head>\n<body>\n  <h1>Event Playground</h1>\n  <div id="panels">\n    <div class="panel">\n      <h2>Clicks</h2>\n      <button id="clickBtn">Click Me</button>\n      <p id="clickCount">0</p>\n    </div>\n    <div class="panel">\n      <h2>Last Key</h2>\n      <p id="keyDisplay">Press any key…</p>\n    </div>\n    <div class="panel">\n      <h2>Mouse</h2>\n      <div id="tracker"></div>\n    </div>\n  </div>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: #0f172a; color: #e2e8f0; }\nh1 { color: #c084fc; }\n#panels { display: flex; gap: 1rem; flex-wrap: wrap; }\n.panel { flex: 1; min-width: 180px; background: #1e293b; padding: 1rem; border-radius: 0.5rem; text-align: center; }\nbutton { padding: 0.75rem 1.5rem; background: #6366f1; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 1rem; }\n#tracker { width: 100%; height: 120px; background: #0f172a; border-radius: 0.375rem; position: relative; overflow: hidden; }\n#dot { width: 20px; height: 20px; background: #c084fc; border-radius: 50%; position: absolute; pointer-events: none; transform: translate(-50%,-50%); transition: left 0.05s, top 0.05s; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n}\nh1 {\n  color: #c084fc;\n}\n#panels {\n  display: flex;\n  gap: 1rem;\n  flex-wrap: wrap;\n}\n.panel {\n  flex: 1;\n  min-width: 180px;\n  background: #1e293b;\n  padding: 1rem;\n  border-radius: 0.5rem;\n  text-align: center;\n}\nbutton {\n  padding: 0.75rem 1.5rem;\n  background: #6366f1;\n  color: white;\n  border: none;\n  border-radius: 0.375rem;\n  cursor: pointer;\n  font-size: 1rem;\n}\n#tracker {\n  width: 100%;\n  height: 120px;\n  background: #0f172a;\n  border-radius: 0.375rem;\n  position: relative;\n  overflow: hidden;\n}\n#dot {\n  width: 20px;\n  height: 20px;\n  background: #c084fc;\n  border-radius: 50%;\n  position: absolute;\n  pointer-events: none;\n  transform: translate(-50%,-50%);\n  transition: left 0.05s, top 0.05s;\n}',
       javascript: '// Wire up click, keydown, and mousemove events.\n',
     },
     objectives: [
@@ -830,7 +830,7 @@ const ctx = canvas.getContext('2d');
 Draw a night scene with a ground plane, a house (rectangles), a moon (circle), and some stars.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Canvas</title></head>\n<body>\n  <canvas id="game" width="800" height="500"></canvas>\n</body>\n</html>',
-      css: 'body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #111; }\ncanvas { border: 2px solid #333; }',
+      css: 'body {\n  margin: 0;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  background: #111;\n}\ncanvas {\n  border: 2px solid #333;\n}',
       javascript: 'const canvas = document.getElementById("game");\nconst ctx = canvas.getContext("2d");\n\n// Draw your scene below.\n',
     },
     objectives: [
@@ -904,7 +904,7 @@ It syncs to the display refresh rate and pauses automatically when the tab is hi
 Animate a ball that bounces back and forth across the canvas.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Game Loop</title></head>\n<body>\n  <canvas id="game" width="800" height="400"></canvas>\n</body>\n</html>',
-      css: 'body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #0a0a0a; }\ncanvas { border: 2px solid #1e293b; }',
+      css: 'body {\n  margin: 0;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  background: #0a0a0a;\n}\ncanvas {\n  border: 2px solid #1e293b;\n}',
       javascript: 'const canvas = document.getElementById("game");\nconst ctx = canvas.getContext("2d");\n\nlet ball = { x: 100, y: 200, radius: 20, vx: 4, vy: 3 };\n\n// Implement update(), draw(), and gameLoop().\n',
     },
     objectives: [
@@ -979,7 +979,7 @@ player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
 Create a controllable character that moves in four directions and stays within the canvas.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Movement</title></head>\n<body>\n  <canvas id="game" width="800" height="500"></canvas>\n  <p style="color:#94a3b8;text-align:center;font-family:sans-serif;">Arrow keys or WASD to move</p>\n</body>\n</html>',
-      css: 'body { margin: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #0a0a0a; }\ncanvas { border: 2px solid #1e293b; }',
+      css: 'body {\n  margin: 0;\n  display: flex;\n  flex-direction: column;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  background: #0a0a0a;\n}\ncanvas {\n  border: 2px solid #1e293b;\n}',
       javascript: 'const canvas = document.getElementById("game");\nconst ctx = canvas.getContext("2d");\n\nconst player = { x: 375, y: 225, size: 40, speed: 5, color: "#4ade80" };\nconst keys = {};\n\n// Add key listeners, update, draw, and game loop.\n',
     },
     objectives: [
@@ -1056,7 +1056,7 @@ function circlesCollide(a, b) {
 Build a coin-collection game. The player moves with arrow keys and collects coins that appear randomly.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Collision</title></head>\n<body>\n  <canvas id="game" width="800" height="500"></canvas>\n  <p id="hud" style="color:#fbbf24;text-align:center;font-family:sans-serif;font-size:1.25rem;">Score: 0</p>\n</body>\n</html>',
-      css: 'body { margin: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #0a0a0a; }\ncanvas { border: 2px solid #1e293b; }',
+      css: 'body {\n  margin: 0;\n  display: flex;\n  flex-direction: column;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  background: #0a0a0a;\n}\ncanvas {\n  border: 2px solid #1e293b;\n}',
       javascript: 'const canvas = document.getElementById("game");\nconst ctx = canvas.getContext("2d");\n\nconst player = { x: 380, y: 230, w: 36, h: 36, speed: 5 };\nlet coin = { x: 0, y: 0, w: 24, h: 24 };\nlet score = 0;\nconst keys = {};\n\nfunction spawnCoin() {\n  coin.x = Math.random() * (canvas.width - coin.w);\n  coin.y = Math.random() * (canvas.height - coin.h);\n}\nspawnCoin();\n\n// Implement rectsCollide, update, draw, and game loop.\n',
     },
     objectives: [
@@ -1127,7 +1127,7 @@ function gameLoop() {
 Create a game with four states: title menu, playing, paused, and game over. Each state shows different content and responds to different input.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Game States</title></head>\n<body>\n  <canvas id="game" width="800" height="500"></canvas>\n</body>\n</html>',
-      css: 'body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #0a0a0a; }\ncanvas { border: 2px solid #1e293b; }',
+      css: 'body {\n  margin: 0;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  background: #0a0a0a;\n}\ncanvas {\n  border: 2px solid #1e293b;\n}',
       javascript: 'const canvas = document.getElementById("game");\nconst ctx = canvas.getContext("2d");\n\nlet state = "menu";\nlet player = { x: 380, y: 230, w: 30, h: 30, speed: 4 };\nlet timer = 10;\nlet frameCount = 0;\nconst keys = {};\n\nwindow.addEventListener("keydown", e => keys[e.key] = true);\nwindow.addEventListener("keyup", e => keys[e.key] = false);\n\n// Build the state machine: menu, playing, paused, gameover.\n',
     },
     objectives: [
@@ -1204,7 +1204,7 @@ Track which direction the character faces and choose the appropriate frame set.
 Create a character that has idle and walking animations with visible frame changes.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Sprites</title></head>\n<body>\n  <canvas id="game" width="800" height="500"></canvas>\n  <p style="color:#94a3b8;text-align:center;font-family:sans-serif;">Arrow keys to walk</p>\n</body>\n</html>',
-      css: 'body { margin: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #0a0a0a; }\ncanvas { border: 2px solid #1e293b; }',
+      css: 'body {\n  margin: 0;\n  display: flex;\n  flex-direction: column;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  background: #0a0a0a;\n}\ncanvas {\n  border: 2px solid #1e293b;\n}',
       javascript: 'const canvas = document.getElementById("game");\nconst ctx = canvas.getContext("2d");\n\nconst player = {\n  x: 380, y: 230, size: 40, speed: 3,\n  frame: 0, maxFrames: 4, delay: 0, maxDelay: 8,\n  moving: false, direction: "right"\n};\nconst keys = {};\nwindow.addEventListener("keydown", e => keys[e.key] = true);\nwindow.addEventListener("keyup", e => keys[e.key] = false);\n\n// Implement frame advancing, direction tracking, and frame-based drawing.\n',
     },
     objectives: [
@@ -1278,7 +1278,7 @@ function playTone(freq, duration, type) {
 Create four distinct sound effects for common game events: jump, collect, damage, and victory.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Sound FX</title></head>\n<body>\n  <h1>Sound Lab</h1>\n  <div id="buttons"></div>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: linear-gradient(135deg, #312e81, #1e1b4b); color: #e2e8f0; text-align: center; }\nh1 { color: #818cf8; }\n#buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem; }\n.sfx-btn { padding: 1.25rem 2rem; font-size: 1.1rem; border: 2px solid #818cf8; background: rgba(129,140,248,0.15); color: #e2e8f0; border-radius: 0.75rem; cursor: pointer; transition: background 0.2s; }\n.sfx-btn:hover { background: rgba(129,140,248,0.3); }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: linear-gradient(135deg, #312e81, #1e1b4b);\n  color: #e2e8f0;\n  text-align: center;\n}\nh1 {\n  color: #818cf8;\n}\n#buttons {\n  display: flex;\n  gap: 1rem;\n  justify-content: center;\n  flex-wrap: wrap;\n  margin-top: 2rem;\n}\n.sfx-btn {\n  padding: 1.25rem 2rem;\n  font-size: 1.1rem;\n  border: 2px solid #818cf8;\n  background: rgba(129,140,248,0.15);\n  color: #e2e8f0;\n  border-radius: 0.75rem;\n  cursor: pointer;\n  transition: background 0.2s;\n}\n.sfx-btn:hover {\n  background: rgba(129,140,248,0.3);\n}',
       javascript: 'const audioCtx = new (window.AudioContext || window.webkitAudioContext)();\nconst buttons = document.getElementById("buttons");\n\n// Implement playTone and create four distinct sound buttons.\n',
     },
     objectives: [
@@ -1347,7 +1347,7 @@ const hud = { score: 0, lives: 3, time: 60 };
 Create a mini-game with a visible HUD: a score counter, heart-style lives, and a countdown timer. Collecting coins adds score; hitting obstacles loses a life.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>HUD</title></head>\n<body>\n  <canvas id="game" width="800" height="500"></canvas>\n</body>\n</html>',
-      css: 'body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #0a0a0a; }\ncanvas { border: 2px solid #1e293b; }',
+      css: 'body {\n  margin: 0;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  background: #0a0a0a;\n}\ncanvas {\n  border: 2px solid #1e293b;\n}',
       javascript: 'const canvas = document.getElementById("game");\nconst ctx = canvas.getContext("2d");\n\nconst hud = { score: 0, lives: 3, time: 30 };\nlet frameCount = 0;\nconst player = { x: 380, y: 430, w: 36, h: 36, speed: 5 };\nconst coins = [];\nconst obstacles = [];\nconst keys = {};\n\nwindow.addEventListener("keydown", e => keys[e.key] = true);\nwindow.addEventListener("keyup", e => keys[e.key] = false);\n\n// Spawn coins and obstacles, draw the HUD, and build the game loop.\n',
     },
     objectives: [
@@ -1425,7 +1425,7 @@ class Particle {
 Click the canvas to spawn colorful particle bursts that fade and fall with gravity.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Particles</title></head>\n<body>\n  <canvas id="game" width="800" height="500"></canvas>\n  <p style="color:#94a3b8;text-align:center;font-family:sans-serif;">Click anywhere to spawn particles</p>\n</body>\n</html>',
-      css: 'body { margin: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #000; }\ncanvas { border: 2px solid #1e293b; cursor: crosshair; }',
+      css: 'body {\n  margin: 0;\n  display: flex;\n  flex-direction: column;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  background: #000;\n}\ncanvas {\n  border: 2px solid #1e293b;\n  cursor: crosshair;\n}',
       javascript: 'const canvas = document.getElementById("game");\nconst ctx = canvas.getContext("2d");\nconst particles = [];\n\nconst colors = ["#f87171","#fb923c","#facc15","#4ade80","#38bdf8","#a78bfa","#f472b6"];\n\n// Implement Particle class, spawn on click, update/draw loop.\n',
     },
     objectives: [
@@ -1491,7 +1491,7 @@ You've learned canvas drawing, game loops, input, collision, state management, s
 Build the complete game from the starter code scaffolding.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head><title>Asteroid Dodger</title></head>\n<body>\n  <canvas id="game" width="800" height="600"></canvas>\n</body>\n</html>',
-      css: 'body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #000; }\ncanvas { border: 2px solid #1e293b; }',
+      css: 'body {\n  margin: 0;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  background: #000;\n}\ncanvas {\n  border: 2px solid #1e293b;\n}',
       javascript: 'const canvas = document.getElementById("game");\nconst ctx = canvas.getContext("2d");\nconst audioCtx = new (window.AudioContext || window.webkitAudioContext)();\n\nlet state = "menu";\nlet score = 0;\nlet highScore = 0;\nlet frameCount = 0;\n\nconst ship = { x: 380, y: 540, w: 40, h: 30, speed: 6 };\nconst asteroids = [];\nconst stars = [];\nconst particles = [];\nconst keys = {};\n\nwindow.addEventListener("keydown", e => { keys[e.key] = true; if (e.key === "Enter" && state !== "playing") startGame(); });\nwindow.addEventListener("keyup", e => keys[e.key] = false);\n\nfunction startGame() {\n  state = "playing";\n  score = 0;\n  frameCount = 0;\n  asteroids.length = 0;\n  stars.length = 0;\n  particles.length = 0;\n  ship.x = 380;\n}\n\n// Build: spawnAsteroid, spawnStar, Particle class, playTone,\n// update (movement, spawning, collision, scoring),\n// draw (background, ship, asteroids, stars, particles, HUD, menu/gameover),\n// and gameLoop.\n',
     },
     objectives: [
@@ -1571,7 +1571,7 @@ socket.on('welcome', (data) => {
 Set up a Socket.IO connection, send a join event, and display a live list of connected players.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Socket.IO Basics</title>\n  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>\n</head>\n<body>\n  <h1>Multiplayer Lobby</h1>\n  <div id="status">Connecting…</div>\n  <ul id="players"></ul>\n  <div id="log"></div>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: #0f172a; color: #e2e8f0; }\nh1 { color: #38bdf8; }\n#status { padding: 0.75rem 1rem; background: #1e293b; border-radius: 0.5rem; margin-bottom: 1rem; }\n#status.connected { border-left: 4px solid #4ade80; }\nul { list-style: none; padding: 0; }\nli { padding: 0.5rem 1rem; background: #1e293b; margin: 0.25rem 0; border-radius: 0.375rem; }\n#log { margin-top: 1rem; padding: 1rem; background: #0f0f23; border-radius: 0.5rem; font-family: monospace; font-size: 0.875rem; max-height: 200px; overflow-y: auto; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n}\nh1 {\n  color: #38bdf8;\n}\n#status {\n  padding: 0.75rem 1rem;\n  background: #1e293b;\n  border-radius: 0.5rem;\n  margin-bottom: 1rem;\n}\n#status.connected {\n  border-left: 4px solid #4ade80;\n}\nul {\n  list-style: none;\n  padding: 0;\n}\nli {\n  padding: 0.5rem 1rem;\n  background: #1e293b;\n  margin: 0.25rem 0;\n  border-radius: 0.375rem;\n}\n#log {\n  margin-top: 1rem;\n  padding: 1rem;\n  background: #0f0f23;\n  border-radius: 0.5rem;\n  font-family: monospace;\n  font-size: 0.875rem;\n  max-height: 200px;\n  overflow-y: auto;\n}',
       javascript: 'function addLog(msg) {\n  const el = document.getElementById("log");\n  const d = document.createElement("div");\n  d.textContent = "[" + new Date().toLocaleTimeString() + "] " + msg;\n  el.prepend(d);\n}\n\naddLog("Connecting to server…");\n\n// Implement socket connection, event handlers, and player list rendering.\n',
       serverJs: `const express = require("express");
 const http = require("http");
@@ -1670,7 +1670,7 @@ Client → receives state → draws all players
 Create a shared canvas where multiple players move around. Each client sends arrow-key inputs; the server updates positions and broadcasts state.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>State Sync</title>\n  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>\n</head>\n<body>\n  <canvas id="game" width="600" height="400"></canvas>\n  <p id="info" style="color:#94a3b8;text-align:center;font-family:sans-serif;">Players: <span id="count">0</span></p>\n</body>\n</html>',
-      css: 'body { margin: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #0a0a0a; }\ncanvas { border: 2px solid #334155; border-radius: 0.5rem; }',
+      css: 'body {\n  margin: 0;\n  display: flex;\n  flex-direction: column;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  background: #0a0a0a;\n}\ncanvas {\n  border: 2px solid #334155;\n  border-radius: 0.5rem;\n}',
       javascript: 'const canvas = document.getElementById("game");\nconst ctx = canvas.getContext("2d");\nlet gameState = { players: {} };\nlet myId = null;\nconst keys = {};\n\nconst socket = io();\n\nwindow.addEventListener("keydown", e => { keys[e.key] = true; });\nwindow.addEventListener("keyup", e => { keys[e.key] = false; });\n\nsocket.on("connect", () => {\n  myId = socket.id;\n  console.log("Connected as", myId);\n});\n\n// Implement: send inputs, receive state, draw all players.\n',
       serverJs: `const express = require("express");
 const http = require("http");
@@ -1774,7 +1774,7 @@ The server tracks whose turn it is. When a player sends a move:
 Build a networked tic-tac-toe game. Two players connect, the server assigns them X and O, and enforces the rules.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Tic-Tac-Toe</title>\n  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>\n</head>\n<body>\n  <h1>Tic-Tac-Toe</h1>\n  <div id="status">Waiting for players…</div>\n  <div id="board"></div>\n  <div id="scores">X: <span id="xScore">0</span> — O: <span id="oScore">0</span></div>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: #0f172a; color: #e2e8f0; text-align: center; }\nh1 { color: #818cf8; }\n#status { font-size: 1.25rem; padding: 0.75rem; background: #1e293b; border-radius: 0.5rem; margin-bottom: 1rem; }\n#board { display: inline-grid; grid-template-columns: repeat(3, 90px); gap: 6px; margin-bottom: 1rem; }\n.cell { width: 90px; height: 90px; background: #1e293b; border: 2px solid #334155; border-radius: 0.5rem; font-size: 2.5rem; font-weight: bold; cursor: pointer; color: #e2e8f0; transition: background 0.15s; }\n.cell:hover:not(.taken) { background: #334155; }\n.cell.taken { cursor: not-allowed; }\n.cell.x { color: #4ade80; }\n.cell.o { color: #f472b6; }\n#scores { font-size: 1.1rem; color: #94a3b8; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n  text-align: center;\n}\nh1 {\n  color: #818cf8;\n}\n#status {\n  font-size: 1.25rem;\n  padding: 0.75rem;\n  background: #1e293b;\n  border-radius: 0.5rem;\n  margin-bottom: 1rem;\n}\n#board {\n  display: inline-grid;\n  grid-template-columns: repeat(3, 90px);\n  gap: 6px;\n  margin-bottom: 1rem;\n}\n.cell {\n  width: 90px;\n  height: 90px;\n  background: #1e293b;\n  border: 2px solid #334155;\n  border-radius: 0.5rem;\n  font-size: 2.5rem;\n  font-weight: bold;\n  cursor: pointer;\n  color: #e2e8f0;\n  transition: background 0.15s;\n}\n.cell:hover:not(.taken) {\n  background: #334155;\n}\n.cell.taken {\n  cursor: not-allowed;\n}\n.cell.x {\n  color: #4ade80;\n}\n.cell.o {\n  color: #f472b6;\n}\n#scores {\n  font-size: 1.1rem;\n  color: #94a3b8;\n}',
       javascript: 'const socket = io();\nlet myRole = null;\nlet gameState = { board: Array(9).fill(null), turn: "X", scores: { X: 0, O: 0 }, over: false, winner: null };\n\nconst boardEl = document.getElementById("board");\nconst statusEl = document.getElementById("status");\n\nsocket.on("connect", () => console.log("Connected:", socket.id));\nsocket.on("role", (role) => { myRole = role; console.log("You are", role); });\n\n// Build the 3×3 board, handle clicks, receive state, and render.\n',
       serverJs: `const express = require("express");
 const http = require("http");
@@ -1907,7 +1907,7 @@ io.to(roomId).emit('roomUpdate', room);
 Build a lobby UI where players can create rooms, join by code, ready up, and see available rooms.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Game Lobby</title>\n  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>\n</head>\n<body>\n  <div id="lobby">\n    <h1>Game Lobby</h1>\n    <div id="actions">\n      <button id="createBtn">Create Room</button>\n      <input id="codeInput" placeholder="Room code…" />\n      <button id="joinBtn">Join Room</button>\n    </div>\n    <div id="roomView" style="display:none">\n      <h2>Room: <span id="roomId"></span></h2>\n      <div id="playerSlots"></div>\n      <button id="readyBtn">Ready Up</button>\n      <button id="leaveBtn">Leave</button>\n      <div id="startMsg"></div>\n    </div>\n    <div id="roomList">\n      <h3>Available Rooms</h3>\n      <div id="rooms"></div>\n    </div>\n  </div>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: linear-gradient(135deg, #0f172a, #1e1b4b); color: #e2e8f0; min-height: 100vh; }\n#lobby { max-width: 520px; margin: 0 auto; }\nh1 { color: #818cf8; }\n#actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }\ninput { flex: 1; padding: 0.625rem; border: 1px solid #475569; background: #1e293b; color: #e2e8f0; border-radius: 0.375rem; font-size: 1rem; }\nbutton { padding: 0.625rem 1.25rem; background: #6366f1; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 1rem; }\nbutton:hover { background: #4f46e5; }\n#roomView { background: #1e293b; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 1.5rem; }\n.slot { display: flex; justify-content: space-between; padding: 0.75rem; background: #0f172a; border-radius: 0.375rem; margin: 0.25rem 0; }\n.slot.ready { border-left: 4px solid #4ade80; }\n.room-card { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #1e293b; border-radius: 0.375rem; margin: 0.25rem 0; }\n#startMsg { font-size: 1.5rem; text-align: center; margin-top: 1rem; color: #4ade80; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: linear-gradient(135deg, #0f172a, #1e1b4b);\n  color: #e2e8f0;\n  min-height: 100vh;\n}\n#lobby {\n  max-width: 520px;\n  margin: 0 auto;\n}\nh1 {\n  color: #818cf8;\n}\n#actions {\n  display: flex;\n  gap: 0.5rem;\n  flex-wrap: wrap;\n  margin-bottom: 1.5rem;\n}\ninput {\n  flex: 1;\n  padding: 0.625rem;\n  border: 1px solid #475569;\n  background: #1e293b;\n  color: #e2e8f0;\n  border-radius: 0.375rem;\n  font-size: 1rem;\n}\nbutton {\n  padding: 0.625rem 1.25rem;\n  background: #6366f1;\n  color: white;\n  border: none;\n  border-radius: 0.375rem;\n  cursor: pointer;\n  font-size: 1rem;\n}\nbutton:hover {\n  background: #4f46e5;\n}\n#roomView {\n  background: #1e293b;\n  padding: 1.25rem;\n  border-radius: 0.75rem;\n  margin-bottom: 1.5rem;\n}\n.slot {\n  display: flex;\n  justify-content: space-between;\n  padding: 0.75rem;\n  background: #0f172a;\n  border-radius: 0.375rem;\n  margin: 0.25rem 0;\n}\n.slot.ready {\n  border-left: 4px solid #4ade80;\n}\n.room-card {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 0.75rem;\n  background: #1e293b;\n  border-radius: 0.375rem;\n  margin: 0.25rem 0;\n}\n#startMsg {\n  font-size: 1.5rem;\n  text-align: center;\n  margin-top: 1rem;\n  color: #4ade80;\n}',
       javascript: 'const socket = io();\nlet currentRoom = null;\n\nsocket.on("connect", () => console.log("Connected:", socket.id));\n\n// Implement: createRoom, joinRoom, toggleReady, leaveRoom,\n// and listeners for roomCreated, roomUpdate, gameStart, roomsList.\n',
       serverJs: `const express = require("express");
 const http = require("http");
@@ -2039,7 +2039,7 @@ The server should check for win conditions after every move. When a winner is fo
 Build a number-guessing race for two players. Each round, a target number is set. Players race to guess it. First to 3 wins takes the match. Rematch button resets everything.`,
     starterCode: {
       html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Guess Race</title>\n  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>\n</head>\n<body>\n  <div id="app">\n    <h1>Number Guess Race</h1>\n    <div id="scores">\n      <span class="p1">P1: <b id="s1">0</b></span>\n      <span class="vs">vs</span>\n      <span class="p2">P2: <b id="s2">0</b></span>\n    </div>\n    <div id="round">Round <span id="roundNum">1</span></div>\n    <div id="hint"></div>\n    <div id="guessArea">\n      <input id="guessInput" type="number" placeholder="1–100" />\n      <button id="guessBtn">Guess</button>\n    </div>\n    <div id="feedback"></div>\n  </div>\n  <div id="modal" style="display:none">\n    <div id="modalBox">\n      <h2 id="modalTitle"></h2>\n      <p id="modalMsg"></p>\n      <button id="rematchBtn">Rematch</button>\n    </div>\n  </div>\n</body>\n</html>',
-      css: 'body { font-family: system-ui, sans-serif; padding: 2rem; background: #0f172a; color: #e2e8f0; text-align: center; }\nh1 { color: #fbbf24; }\n#scores { font-size: 1.5rem; margin: 1rem 0; }\n.p1 { color: #4ade80; }\n.p2 { color: #f472b6; }\n.vs { margin: 0 1rem; color: #64748b; }\n#round { color: #94a3b8; margin-bottom: 0.5rem; }\n#hint { font-size: 1.1rem; color: #818cf8; margin-bottom: 1rem; }\n#guessArea { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 1rem; }\ninput[type="number"] { width: 100px; padding: 0.625rem; border: 1px solid #475569; background: #1e293b; color: #e2e8f0; border-radius: 0.375rem; font-size: 1.1rem; text-align: center; }\nbutton { padding: 0.625rem 1.5rem; background: #6366f1; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 1rem; }\n#feedback { font-size: 1.1rem; min-height: 1.5rem; }\n#modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; }\n#modalBox { background: #1e293b; padding: 2.5rem; border-radius: 1rem; border: 2px solid #818cf8; min-width: 300px; }\n#modalBox h2 { font-size: 2rem; margin-bottom: 0.5rem; }\n#modalBox p { color: #94a3b8; margin-bottom: 1.5rem; }',
+      css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n  text-align: center;\n}\nh1 {\n  color: #fbbf24;\n}\n#scores {\n  font-size: 1.5rem;\n  margin: 1rem 0;\n}\n.p1 {\n  color: #4ade80;\n}\n.p2 {\n  color: #f472b6;\n}\n.vs {\n  margin: 0 1rem;\n  color: #64748b;\n}\n#round {\n  color: #94a3b8;\n  margin-bottom: 0.5rem;\n}\n#hint {\n  font-size: 1.1rem;\n  color: #818cf8;\n  margin-bottom: 1rem;\n}\n#guessArea {\n  display: flex;\n  justify-content: center;\n  gap: 0.5rem;\n  margin-bottom: 1rem;\n}\ninput[type="number"] {\n  width: 100px;\n  padding: 0.625rem;\n  border: 1px solid #475569;\n  background: #1e293b;\n  color: #e2e8f0;\n  border-radius: 0.375rem;\n  font-size: 1.1rem;\n  text-align: center;\n}\nbutton {\n  padding: 0.625rem 1.5rem;\n  background: #6366f1;\n  color: white;\n  border: none;\n  border-radius: 0.375rem;\n  cursor: pointer;\n  font-size: 1rem;\n}\n#feedback {\n  font-size: 1.1rem;\n  min-height: 1.5rem;\n}\n#modal {\n  position: fixed;\n  inset: 0;\n  background: rgba(0,0,0,0.7);\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}\n#modalBox {\n  background: #1e293b;\n  padding: 2.5rem;\n  border-radius: 1rem;\n  border: 2px solid #818cf8;\n  min-width: 300px;\n}\n#modalBox h2 {\n  font-size: 2rem;\n  margin-bottom: 0.5rem;\n}\n#modalBox p {\n  color: #94a3b8;\n  margin-bottom: 1.5rem;\n}',
       javascript: 'const socket = io();\nlet myRole = null;\n\nsocket.on("connect", () => console.log("Connected:", socket.id));\nsocket.on("role", (r) => { myRole = r; console.log("You are", r); });\n\n// Implement: send guesses, receive feedback, update scores,\n// show win modal, and handle rematch.\n',
       serverJs: `const express = require("express");
 const http = require("http");
