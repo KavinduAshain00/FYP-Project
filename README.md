@@ -16,12 +16,14 @@ A full-stack web application for learning game development through interactive c
 ## Tech Stack
 
 ### Backend
+
 - Node.js + Express
 - MongoDB with Mongoose
 - JWT Authentication
 - bcryptjs for password hashing
 
 ### Frontend
+
 - React 19
 - React Router for navigation
 - CodeMirror for code editing
@@ -37,6 +39,7 @@ A full-stack web application for learning game development through interactive c
 ## Installation
 
 ### 1. Clone the repository
+
 ```bash
 git clone <repository-url>
 cd FYP-Project
@@ -50,6 +53,7 @@ npm install
 ```
 
 Create a `.env` file in the backend directory (already created):
+
 ```env
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/gamilearn
@@ -60,11 +64,13 @@ GEMINI_MODEL=gemini-1.5
 ```
 
 Seed the database with sample learning modules:
+
 ```bash
 npm run seed
 ```
 
 Start the backend server:
+
 ```bash
 npm start
 ```
@@ -79,6 +85,7 @@ npm install
 ```
 
 Start the frontend development server:
+
 ```bash
 npm run dev
 ```
@@ -93,7 +100,7 @@ The frontend will run on `http://localhost:5173`
    - If NO: You'll start with JavaScript basics modules
 3. **Dashboard**: View your profile, progress, and available learning modules
 4. **Start Learning**: Click on any module to open the code editor
-5. **Code Editor**: 
+5. **Code Editor**:
    - Write HTML, CSS, and JavaScript in separate tabs
    - See live preview on the right side
    - Read instructions and objectives on the left
@@ -102,15 +109,18 @@ The frontend will run on `http://localhost:5173`
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/signup` - Register new user
 - `POST /api/auth/login` - Login user
 
 ### User
+
 - `GET /api/user/profile` - Get user profile (Protected)
 - `PUT /api/user/module/complete` - Mark module as completed (Protected)
 - `PUT /api/user/module/current` - Set current module (Protected)
 
 ### Modules
+
 - `GET /api/modules` - Get all modules (Protected)
 - `GET /api/modules/:id` - Get single module (Protected)
 - `POST /api/modules` - Create new module (Protected)

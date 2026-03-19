@@ -1,50 +1,68 @@
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+/**
+ * Preprocess markdown to fix common AI output issues:
+ * - Strip wrapping ```markdown or ``` (AI often wraps output in code fences)
+ * - Stray backticks/quotes on their own lines
+ * - Single-word fenced code blocks → convert to inline
+ */
+function preprocessMarkdown(text) {
+  if (!text || typeof text !== 'string') return text;
+  let out = text.trim();
+  // Strip wrapping code fences (AI often returns ```markdown\n...\n```)
+  if (out.startsWith('```')) {
+    const end = out.indexOf('\n```', 3);
+    if (end !== -1) out = out.slice(out.indexOf('\n') + 1, end).trim();
+    else if (out.endsWith('```')) out = out.replace(/^```\w*\n?/, '').replace(/\n?```\s*$/, '').trim();
+  }
+  return out
+    .replace(/^\s*[`']\s*$/gm, '') // Remove lines that are only ` or '
+    .replace(/\n{3,}/g, '\n\n') // Collapse excessive newlines
+    .replace(/^```\w*\s*\n([^\n]{1,60})\s*\n```/gm, '`$1`') // Single short line in code block → inline
+    .trim();
+}
 
 /**
  * Renders markdown as user-friendly formatted content (headings, code blocks, lists).
- * Code blocks are shown as styled code, not raw ``` markdown.
+ * Clean, readable typography with consistent spacing.
  */
-const MarkdownContent = ({
-  content,
-  className = "",
-  proseClass = "prose-invert prose-sm",
-}) => {
-  if (!content || typeof content !== "string") return null;
+const MarkdownContent = ({ content, className = '', proseClass = 'prose-invert prose-sm' }) => {
+  if (!content || typeof content !== 'string') return null;
+
+  const cleaned = preprocessMarkdown(content);
 
   return (
     <div
       className={`markdown-content ${proseClass} ${className}`}
-      style={{
-        // Base styles for markdown output
-        wordBreak: "break-word",
-      }}
+      style={{ wordBreak: 'break-word' }}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          // Headings: clear hierarchy, no raw ##
           h1: ({ children }) => (
-            <h1 className="text-lg font-bold text-white mt-4 mb-2 first:mt-0">
+            <h1 className="text-xl font-bold text-white mt-6 mb-3 first:mt-0 tracking-tight leading-tight">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-base font-semibold text-slate-100 mt-3 mb-2">
+            <h2 className="text-lg font-semibold text-slate-100 mt-5 mb-2.5 pb-1 border-b border-white/10">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-sm font-semibold text-slate-200 mt-2 mb-1">
+            <h3 className="text-base font-medium text-slate-200 mt-4 mb-2">
               {children}
             </h3>
           ),
-          // Code: inline and block — render as actual code, not raw ```
-          code: ({ inline, children, ...props }) => {
-            if (inline) {
+          code: ({ inline, children, className: langClass, ...props }) => {
+            const str = String(children ?? '').trim();
+            const isShortBlock = !inline && str.length > 0 && str.length < 80 && !str.includes('\n');
+            const lang = langClass?.replace(/^language-/, '') || '';
+            if (inline || isShortBlock) {
               return (
                 <code
-                  className="px-1.5 py-0.5 rounded bg-slate-700/80 text-cyan-200 font-mono text-xs"
+                  className="inline px-1.5 py-0.5 rounded bg-slate-700/80 text-cyan-300 font-mono text-[13px]"
                   {...props}
                 >
                   {children}
@@ -52,36 +70,47 @@ const MarkdownContent = ({
               );
             }
             return (
-              <code
-                className="block p-3 rounded-lg bg-slate-900 text-slate-200 font-mono text-xs overflow-x-auto my-2 border border-white/10"
-                {...props}
-              >
-                {children}
-              </code>
+              <div className="my-4 rounded-lg overflow-hidden border border-white/10 bg-slate-900/90">
+                {lang && (
+                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-slate-800/80 border-b border-white/10">
+                    {lang}
+                  </div>
+                )}
+                <div className="p-4 overflow-x-auto">
+                  <code
+                    className="block text-slate-200 font-mono text-[13px] leading-[1.5] whitespace-pre"
+                    {...props}
+                  >
+                    {children}
+                  </code>
+                </div>
+              </div>
             );
           },
           pre: ({ children }) => (
-            <pre className="my-2 p-0 bg-transparent border-0 overflow-x-auto">
+            <pre className="my-0 p-0 bg-transparent border-0 min-w-0 overflow-visible">
               {children}
             </pre>
           ),
           p: ({ children }) => (
-            <p className="text-slate-300 text-sm my-2 leading-relaxed">
+            <p className="text-slate-300 text-[15px] my-3 leading-[1.6]">
               {children}
             </p>
           ),
           ul: ({ children }) => (
-            <ul className="list-disc list-inside text-slate-300 text-sm my-2 space-y-1">
+            <ul className="list-disc pl-5 my-3 space-y-2 text-slate-300 marker:text-neon-cyan/60">
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal list-inside text-slate-300 text-sm my-2 space-y-1">
+            <ol className="list-decimal pl-5 my-3 space-y-2 text-slate-300 marker:text-neon-cyan/60 marker:font-medium">
               {children}
             </ol>
           ),
           li: ({ children }) => (
-            <li className="text-slate-300 text-sm">{children}</li>
+            <li className="text-[15px] leading-[1.6] pl-1">
+              {children}
+            </li>
           ),
           strong: ({ children }) => (
             <strong className="font-semibold text-white">{children}</strong>
@@ -91,16 +120,17 @@ const MarkdownContent = ({
               href={href}
               target="_blank"
               rel="noreferrer"
-              className="text-cyan-400 hover:underline"
+              className="text-cyan-400 hover:text-cyan-300 hover:underline underline-offset-2"
             >
               {children}
             </a>
           ),
           blockquote: ({ children }) => (
-            <blockquote className="border-l-2 border-cyan-500/50 pl-3 my-2 text-slate-400 text-sm italic">
+            <blockquote className="border-l-4 border-neon-cyan/50 pl-4 my-4 py-1 text-slate-400 text-[15px] italic bg-white/5 rounded-r">
               {children}
             </blockquote>
           ),
+          hr: () => <hr className="border-0 border-t border-white/15 my-5" />,
           table: ({ children }) => (
             <div className="overflow-x-auto my-3">
               <table className="min-w-full text-xs border border-white/10 rounded-lg overflow-hidden">
@@ -114,16 +144,12 @@ const MarkdownContent = ({
           tbody: ({ children }) => (
             <tbody className="bg-slate-900/50 text-slate-300">{children}</tbody>
           ),
-          tr: ({ children }) => (
-            <tr className="border-b border-white/10">{children}</tr>
-          ),
-          th: ({ children }) => (
-            <th className="px-3 py-2 text-left font-semibold">{children}</th>
-          ),
+          tr: ({ children }) => <tr className="border-b border-white/10">{children}</tr>,
+          th: ({ children }) => <th className="px-3 py-2 text-left font-semibold">{children}</th>,
           td: ({ children }) => <td className="px-3 py-2">{children}</td>,
         }}
       >
-        {content}
+        {cleaned}
       </ReactMarkdown>
     </div>
   );

@@ -7,12 +7,12 @@
  * @param {Error|unknown} err
  * @param {string} [context] - e.g. 'Auth', 'MongoDB', 'UnhandledRejection'
  */
-function logError(err, context = '') {
-  const prefix = context ? `[${context}] ` : '';
+function logError(err, context = "") {
+  const prefix = context ? `[${context}] ` : "";
   const message = err instanceof Error ? err.message : String(err);
   const stack = err instanceof Error ? err.stack : undefined;
   console.error(`${prefix}ERROR:`, message);
-  if (stack && process.env.NODE_ENV !== 'production') {
+  if (stack && process.env.NODE_ENV !== "production") {
     console.error(stack);
   }
 }

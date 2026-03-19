@@ -1,21 +1,26 @@
-import { useMemo, useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { modulesAPI, userAPI } from "../api/api";
-import { FaCheckCircle, FaPlay, FaFilter, FaLock } from "react-icons/fa";
-import { GameLayout } from "../components/layout/GameLayout";
-import LoadingScreen from "../components/ui/LoadingScreen";
-import { toModuleId } from "../utils/ids";
+import { useMemo, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { modulesAPI, userAPI } from '../api/api';
+import { FaCheckCircle, FaPlay, FaFilter, FaLock } from 'react-icons/fa';
+import { GameLayout } from '../components/layout/GameLayout';
+import LoadingScreen from '../components/ui/LoadingScreen';
+import { toModuleId } from '../utils/ids';
 
 const MODULES_PER_PAGE = 12;
 
 const Modules = () => {
   const [gridModules, setGridModules] = useState([]);
-  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: MODULES_PER_PAGE, totalPages: 1 });
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: MODULES_PER_PAGE,
+    totalPages: 1,
+  });
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [filterCategory, setFilterCategory] = useState("all");
-  const [filterDifficulty, setFilterDifficulty] = useState("all");
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [questPage, setQuestPage] = useState(1);
   const { refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -27,7 +32,7 @@ const Modules = () => {
         const res = await userAPI.getDashboard();
         setDashboard(res.data);
       } catch (error) {
-        console.error("Error fetching dashboard:", error);
+        console.error('Error fetching dashboard:', error);
         setDashboard({ modules: [], user: null, completedModuleIds: [], nextModule: null });
         setLoading(false);
       }
@@ -42,13 +47,20 @@ const Modules = () => {
       setLoading(true);
       try {
         const params = { page: questPage, limit: MODULES_PER_PAGE };
-        if (filterCategory !== "all") params.category = filterCategory;
-        if (filterDifficulty !== "all") params.difficulty = filterDifficulty;
-        const res = await modulesAPI.getAll("all", params);
+        if (filterCategory !== 'all') params.category = filterCategory;
+        if (filterDifficulty !== 'all') params.difficulty = filterDifficulty;
+        const res = await modulesAPI.getAll('all', params);
         setGridModules(res.data.modules || []);
-        setPagination(res.data.pagination || { total: 0, page: questPage, limit: MODULES_PER_PAGE, totalPages: 1 });
+        setPagination(
+          res.data.pagination || {
+            total: 0,
+            page: questPage,
+            limit: MODULES_PER_PAGE,
+            totalPages: 1,
+          }
+        );
       } catch (error) {
-        console.error("Error fetching modules:", error);
+        console.error('Error fetching modules:', error);
         setGridModules([]);
       } finally {
         setLoading(false);
@@ -63,7 +75,7 @@ const Modules = () => {
       if (refreshProfile) await refreshProfile();
       navigate(`/editor/${moduleId}`);
     } catch (error) {
-      console.error("Error starting module:", error);
+      console.error('Error starting module:', error);
     }
   };
 
@@ -79,25 +91,52 @@ const Modules = () => {
   }, [pathModules]);
 
   const getModuleImageUrl = (module, width = 400, height = 250) => {
-    const seed = (module._id || module.title || "").toString().replace(/\s/g, "");
-    return `https://picsum.photos/seed/${seed || "module"}/${width}/${height}`;
+    const seed = (module._id || module.title || '').toString().replace(/\s/g, '');
+    return `https://picsum.photos/seed/${seed || 'module'}/${width}/${height}`;
   };
 
-  const nextModule = dashboard?.nextModule ?? (modulePath.find(
-    (m) => !completedModuleIds.includes(toModuleId(m._id)),
-  ));
+  const nextModule =
+    dashboard?.nextModule ??
+    modulePath.find((m) => !completedModuleIds.includes(toModuleId(m._id)));
 
-  // Beginner path (javascript-basics): lock all modules except the first; unlock next when previous is completed
-  const lockedModuleIds = useMemo(() => {
-    if (profile?.learningPath !== "javascript-basics") return new Set();
-    const pathIds = modulePath.map((m) => toModuleId(m._id));
+  // Beginner path (javascript-basics):
+  // - lock the JS basics sequence (next unlocks when previous is completed)
+  // - AND lock every non-JS-basics module until ALL JS basics modules are completed
+  const jsBasics = useMemo(() => {
+    return [...pathModules]
+      .filter((m) => m?.category === 'javascript-basics')
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [pathModules]);
+  const jsBasicsIds = useMemo(
+    () => new Set(jsBasics.map((m) => toModuleId(m._id)).filter(Boolean)),
+    [jsBasics]
+  );
+  const jsBasicsComplete = useMemo(() => {
+    if (profile?.learningPath !== 'javascript-basics') return true;
+    if (jsBasicsIds.size === 0) return false;
+    for (const id of jsBasicsIds) {
+      if (!completedModuleIds.includes(id)) return false;
+    }
+    return true;
+  }, [profile?.learningPath, jsBasicsIds, completedModuleIds]);
+  const lockedJsBasicsIds = useMemo(() => {
+    if (profile?.learningPath !== 'javascript-basics') return new Set();
+    const pathIds = jsBasics.map((m) => toModuleId(m._id));
     const locked = new Set();
     for (let i = 1; i < pathIds.length; i++) {
       if (!completedModuleIds.includes(pathIds[i - 1])) locked.add(pathIds[i]);
     }
     return locked;
-  }, [profile?.learningPath, modulePath, completedModuleIds]);
-  const isModuleLocked = (moduleId) => lockedModuleIds.has(toModuleId(moduleId));
+  }, [profile?.learningPath, jsBasics, completedModuleIds]);
+  const isModuleLocked = (module) => {
+    if (profile?.learningPath !== 'javascript-basics') return false;
+    if (!module) return false;
+    const id = toModuleId(module._id);
+    const isJsBasics = module.category === 'javascript-basics' || jsBasicsIds.has(id);
+    if (!jsBasicsComplete && !isJsBasics) return true;
+    if (isJsBasics) return lockedJsBasicsIds.has(id);
+    return false;
+  };
 
   const filterOptions = useMemo(() => {
     const categories = [...new Set(pathModules.map((m) => m.category).filter(Boolean))].sort();
@@ -127,17 +166,15 @@ const Modules = () => {
   }
 
   const difficultyStyles = {
-    easy: "bg-[#5c9650]/15 text-[#5c9650] border-[#5c9650]/30",
-    medium: "bg-[#c8a040]/15 text-[#c8a040] border-[#c8a040]/30",
-    hard: "bg-[#c04848]/15 text-[#c04848] border-[#c04848]/30",
+    easy: 'bg-[#5c9650]/15 text-[#5c9650] border-[#5c9650]/30',
+    medium: 'bg-[#c8a040]/15 text-[#c8a040] border-[#c8a040]/30',
+    hard: 'bg-[#c04848]/15 text-[#c04848] border-[#c04848]/30',
   };
   const getDifficultyClass = (d) =>
-    difficultyStyles[d?.toLowerCase()] || "bg-[#585048]/15 text-[#9a9080] border-[#585048]/30";
+    difficultyStyles[d?.toLowerCase()] || 'bg-[#585048]/15 text-[#9a9080] border-[#585048]/30';
 
   const toTitleCase = (str) =>
-    (str || "")
-      .replace(/-/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase());
+    (str || '').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
     <GameLayout>
@@ -147,7 +184,7 @@ const Modules = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-[#d8d0c4] tracking-tight">
-                Quests
+                Modules
               </h1>
               <p className="text-[#706858] text-sm mt-0.5">
                 {completedModuleIds.length} of {totalPathModules} completed
@@ -192,7 +229,10 @@ const Modules = () => {
             <div className="flex flex-wrap gap-2">
               <select
                 value={filterCategory}
-                onChange={(e) => { setFilterCategory(e.target.value); setQuestPage(1); }}
+                onChange={(e) => {
+                  setFilterCategory(e.target.value);
+                  setQuestPage(1);
+                }}
                 className="px-3 py-2 rounded-xl border border-[#252c3a] bg-[#111620] text-[#d8d0c4] text-sm focus:outline-none focus:ring-2 focus:ring-[#4e9a8e]/30 focus:border-[#4e9a8e]/40 transition-shadow"
               >
                 <option value="all">All categories</option>
@@ -204,7 +244,10 @@ const Modules = () => {
               </select>
               <select
                 value={filterDifficulty}
-                onChange={(e) => { setFilterDifficulty(e.target.value); setQuestPage(1); }}
+                onChange={(e) => {
+                  setFilterDifficulty(e.target.value);
+                  setQuestPage(1);
+                }}
                 className="px-3 py-2 rounded-xl border border-[#252c3a] bg-[#111620] text-[#d8d0c4] text-sm focus:outline-none focus:ring-2 focus:ring-[#4e9a8e]/30 focus:border-[#4e9a8e]/40 transition-shadow"
               >
                 <option value="all">All difficulties</option>
@@ -214,14 +257,14 @@ const Modules = () => {
                   </option>
                 ))}
               </select>
-              {(filterCategory !== "all" || filterDifficulty !== "all") && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFilterCategory("all");
-                      setFilterDifficulty("all");
-                      setQuestPage(1);
-                    }}
+              {(filterCategory !== 'all' || filterDifficulty !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterCategory('all');
+                    setFilterDifficulty('all');
+                    setQuestPage(1);
+                  }}
                   className="px-3 py-2 rounded-xl text-sm text-[#9a9080] hover:text-[#d8d0c4] border border-[#2e3648] hover:border-[#3a4258] transition-colors"
                 >
                   Clear
@@ -238,18 +281,18 @@ const Modules = () => {
               const moduleIdStr = toModuleId(module._id);
               const done = completedModuleIds.includes(moduleIdStr);
               const isNext = nextModule ? toModuleId(nextModule._id) === moduleIdStr : false;
-              const isLocked = isModuleLocked(module._id);
+              const isLocked = isModuleLocked(module);
               return (
                 <article
                   key={module._id}
                   className={`group relative overflow-hidden rounded-2xl border bg-[#111620] transition-all duration-300 hover:shadow-lg hover:shadow-black/20 hover:-translate-y-0.5 ${
                     isLocked
-                      ? "border-[#252c3a] opacity-75"
+                      ? 'border-[#252c3a] opacity-75'
                       : done
-                        ? "border-[#5c9650]/30"
+                        ? 'border-[#5c9650]/30'
                         : isNext
-                          ? "border-[#4e9a8e]/40"
-                          : "border-[#252c3a] hover:border-[#3a4258]"
+                          ? 'border-[#4e9a8e]/40'
+                          : 'border-[#252c3a] hover:border-[#3a4258]'
                   }`}
                 >
                   <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#1c2230]">
@@ -278,7 +321,16 @@ const Modules = () => {
                       </div>
                     )}
                     {isLocked && !done && (
-                      <div className="absolute top-3 right-3 rounded-full bg-[#1c2230] border border-[#2e3648] p-1.5" title="Complete the previous quest first">
+                      <div
+                        className="absolute top-3 right-3 rounded-full bg-[#1c2230] border border-[#2e3648] p-1.5"
+                        title={
+                          profile?.learningPath === 'javascript-basics' &&
+                          !jsBasicsComplete &&
+                          module.category !== 'javascript-basics'
+                            ? 'Complete all JavaScript basics modules to unlock other modules'
+                            : 'Complete the previous module first'
+                        }
+                      >
                         <FaLock className="text-[#585048] w-4 h-4" />
                       </div>
                     )}
@@ -312,18 +364,23 @@ const Modules = () => {
                         disabled
                         className="w-full px-4 py-2.5 rounded-xl text-sm font-semibold border border-[#252c3a] bg-[#161c28] text-[#585048] cursor-not-allowed flex items-center justify-center gap-2"
                       >
-                        <FaLock className="text-xs" /> Complete previous quest first
+                        <FaLock className="text-xs" />
+                        {profile?.learningPath === 'javascript-basics' &&
+                        !jsBasicsComplete &&
+                        module.category !== 'javascript-basics'
+                          ? 'Finish JavaScript basics to unlock'
+                          : 'Complete previous module first'}
                       </button>
                     ) : (
                       <button
                         onClick={() => handleStartModule(module._id)}
                         className={`w-full px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                           isNext
-                            ? "bg-[#4e9a8e]/10 text-[#4e9a8e] border border-[#4e9a8e]/30 hover:bg-[#4e9a8e]/20"
-                            : "bg-[#1c2230] text-[#d8d0c4] border border-[#2e3648] hover:bg-[#242c3c] hover:border-[#3a4258]"
+                            ? 'bg-[#4e9a8e]/10 text-[#4e9a8e] border border-[#4e9a8e]/30 hover:bg-[#4e9a8e]/20'
+                            : 'bg-[#1c2230] text-[#d8d0c4] border border-[#2e3648] hover:bg-[#242c3c] hover:border-[#3a4258]'
                         }`}
                       >
-                        {isNext ? "Continue quest" : "Start quest"}
+                        {isNext ? 'Continue module' : 'Start module'}
                       </button>
                     )}
                   </div>
@@ -334,7 +391,7 @@ const Modules = () => {
 
           {gridModules.length === 0 && !loading && (
             <div className="rounded-2xl border border-[#252c3a] bg-[#111620] py-16 text-center">
-              <p className="text-[#706858] text-sm">No quests match your filters.</p>
+              <p className="text-[#706858] text-sm">No modules match your filters.</p>
             </div>
           )}
           {totalQuestPages > 1 && gridModules.length > 0 && (

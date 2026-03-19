@@ -1,21 +1,21 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { FaLock, FaGamepad, FaArrowLeft } from "react-icons/fa";
-import { toast } from "react-toastify";
-import { GameLayout } from "../components/layout/GameLayout";
-import { authAPI } from "../api/api";
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { FaLock, FaGamepad, FaArrowLeft } from 'react-icons/fa';
+import { toast } from 'react-toastify';
+import { GameLayout } from '../components/layout/GameLayout';
+import { authAPI } from '../api/api';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
-  const [token, setToken] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [token, setToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fromUrl = searchParams.get("token");
+    const fromUrl = searchParams.get('token');
     if (fromUrl) {
       setToken(fromUrl);
       return;
@@ -23,21 +23,23 @@ const ResetPassword = () => {
     try {
       const stored = sessionStorage.getItem('passwordResetToken');
       if (stored) setToken(stored);
-    } catch (_) {}
+    } catch {
+      // ignore storage failures (private browsing, etc.)
+    }
   }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match.");
+      toast.error('Passwords do not match.');
       return;
     }
     if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters.");
+      toast.error('Password must be at least 6 characters.');
       return;
     }
     if (!token.trim()) {
-      toast.error("Reset link is invalid or expired. Request a new one.");
+      toast.error('Reset link is invalid or expired. Request a new one.');
       return;
     }
     setLoading(true);
@@ -45,20 +47,22 @@ const ResetPassword = () => {
       await authAPI.resetPassword(token.trim(), newPassword);
       try {
         sessionStorage.removeItem('passwordResetToken');
-      } catch (_) {}
+      } catch {
+        // ignore storage failures (private browsing, etc.)
+      }
       setSuccess(true);
-      toast.success("Password reset. Sign in with your new password.");
-      setTimeout(() => navigate("/login"), 2000);
+      toast.success('Password reset. Sign in with your new password.');
+      setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Reset failed. Request a new link.");
+      toast.error(err.response?.data?.message || 'Reset failed. Request a new link.');
     } finally {
       setLoading(false);
     }
   };
 
   const inputClass =
-    "w-full px-3 py-2 border-0 bg-transparent text-[#d8d0c4] placeholder-[#585048] focus:outline-none rounded-xl [&:-webkit-autofill]:!bg-[#161c28] [&:-webkit-autofill]:![-webkit-text-fill-color:#d8d0c4] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#161c28]";
-  const labelClass = "block text-sm font-medium text-[#a09888] mb-1";
+    'w-full px-3 py-2 border-0 bg-transparent text-[#d8d0c4] placeholder-[#585048] focus:outline-none rounded-xl [&:-webkit-autofill]:!bg-[#161c28] [&:-webkit-autofill]:![-webkit-text-fill-color:#d8d0c4] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#161c28]';
+  const labelClass = 'block text-sm font-medium text-[#a09888] mb-1';
 
   if (success) {
     return (
@@ -90,7 +94,7 @@ const ResetPassword = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!searchParams.get("token") && (
+            {!searchParams.get('token') && (
               <div>
                 <label className={labelClass}>Reset token</label>
                 <div className="flex items-center gap-2 border border-[#252c3a] bg-[#161c28] rounded-xl focus-within:border-[#3a4258]">
@@ -143,12 +147,15 @@ const ResetPassword = () => {
               disabled={loading}
               className="w-full py-3 border border-[#3a4258] bg-[#1c2230] text-[#d8d0c4] font-medium hover:bg-[#242c3c] rounded-xl disabled:opacity-50 transition-colors"
             >
-              {loading ? "Updating…" : "Update password"}
+              {loading ? 'Updating…' : 'Update password'}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-[#706858]">
-            <Link to="/login" className="inline-flex items-center gap-2 font-medium text-[#c8a040] hover:underline">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 font-medium text-[#c8a040] hover:underline"
+            >
               <FaArrowLeft className="text-xs" /> Back to sign in
             </Link>
           </p>

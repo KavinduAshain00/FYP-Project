@@ -8,8 +8,8 @@
  *   At signup, JS basics are auto-completed so the user can continue from intermediate/multiplayer modules.
  */
 const LEARNING_PATH_TO_CATEGORIES = {
-  'javascript-basics': ['javascript-basics'],
-  advanced: ['javascript-basics', 'game-development', 'multiplayer'],
+  "javascript-basics": ["javascript-basics"],
+  advanced: ["javascript-basics", "game-development", "multiplayer"],
 };
 
 /**
@@ -17,7 +17,7 @@ const LEARNING_PATH_TO_CATEGORIES = {
  * @returns {string[]} Module category values to filter by (empty if none)
  */
 function getPathCategories(learningPath) {
-  if (!learningPath || learningPath === 'none') return [];
+  if (!learningPath || learningPath === "none") return [];
   const cat = LEARNING_PATH_TO_CATEGORIES[learningPath];
   if (Array.isArray(cat)) return cat;
   if (cat) return [cat];

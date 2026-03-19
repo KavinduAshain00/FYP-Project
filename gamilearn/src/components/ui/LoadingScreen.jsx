@@ -3,10 +3,10 @@
  * Use for initial page load, auth check, or section loading.
  */
 const LoadingScreen = ({
-  message = "Loading…",
+  message = 'Loading…',
   subMessage = null,
   inline = false,
-  className = "",
+  className = '',
 }) => {
   const content = (
     <>
@@ -16,9 +16,7 @@ const LoadingScreen = ({
       />
       <p className="text-sm font-medium text-[#d8d0c4] mt-3">{message}</p>
       {subMessage && (
-        <p className="text-xs text-[#706858] mt-1 max-w-xs text-center">
-          {subMessage}
-        </p>
+        <p className="text-xs text-[#706858] mt-1 max-w-xs text-center">{subMessage}</p>
       )}
     </>
   );

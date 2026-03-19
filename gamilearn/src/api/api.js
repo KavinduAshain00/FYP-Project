@@ -45,7 +45,9 @@ const AVATARS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 export function invalidateAvatarsCache() {
   try {
     localStorage.removeItem(AVATARS_CACHE_KEY);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 // User API
@@ -54,19 +56,35 @@ export const userAPI = {
   getDashboard: () => api.get('/user/dashboard'),
   /** Fetches avatars once and caches in localStorage; use invalidateAvatarsCache() on logout or when level/achievements change. */
   async getAvatars() {
+    let cached = null;
     try {
       const raw = localStorage.getItem(AVATARS_CACHE_KEY);
       if (raw) {
-        const { data, timestamp } = JSON.parse(raw);
-        if (timestamp && Date.now() - timestamp < AVATARS_CACHE_TTL_MS && data)
-          return { data };
+        const { data, timestamp, etag } = JSON.parse(raw);
+        if (timestamp && Date.now() - timestamp < AVATARS_CACHE_TTL_MS && data) return { data };
+        cached = { data, timestamp, etag };
       }
-    } catch { /* ignore */ }
-    const res = await api.get('/user/avatars');
+    } catch {
+      /* ignore */
+    }
+    const res = await api.get('/user/avatars', {
+      headers: {
+        ...(cached?.etag ? { 'If-None-Match': cached.etag } : {}),
+      },
+      validateStatus: (s) => (s >= 200 && s < 300) || s === 304,
+    });
+    if (res.status === 304 && cached?.data) {
+      return { data: cached.data };
+    }
     const data = res.data;
     try {
-      localStorage.setItem(AVATARS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
-    } catch { /* ignore */ }
+      localStorage.setItem(
+        AVATARS_CACHE_KEY,
+        JSON.stringify({ data, timestamp: Date.now(), etag: res.headers?.etag || null })
+      );
+    } catch {
+      /* ignore */
+    }
     return { data };
   },
   updateProfile: (payload) => api.put('/user/profile', payload),
@@ -74,7 +92,11 @@ export const userAPI = {
     api.put('/user/password', { currentPassword, newPassword }),
   completeModule: (moduleId, sessionStats = {}) =>
     api.put('/user/module/complete', { moduleId, sessionStats }),
-  setCurrentModule: (moduleId) => api.put('/user/module/current', { moduleId }),
+  setCurrentModule: (moduleId, currentStepIndex) =>
+    api.put('/user/module/current', {
+      moduleId,
+      ...(typeof currentStepIndex === 'number' ? { currentStepIndex } : {}),
+    }),
 };
 
 // Modules API
@@ -111,7 +133,9 @@ export function invalidateAchievementsCache() {
   try {
     localStorage.removeItem(ACHIEVEMENTS_CACHE_KEY);
     localStorage.removeItem(ACHIEVEMENTS_CATALOG_CACHE_KEY);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 export function invalidateUserCaches() {
@@ -130,29 +154,53 @@ export const achievementsAPI = {
         if (timestamp && Date.now() - timestamp < ACHIEVEMENTS_CACHE_TTL_MS && data)
           return { data };
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     const res = await api.get('/achievements');
     const data = res.data;
     try {
-      localStorage.setItem(ACHIEVEMENTS_CATALOG_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
-    } catch { /* ignore */ }
+      localStorage.setItem(
+        ACHIEVEMENTS_CATALOG_CACHE_KEY,
+        JSON.stringify({ data, timestamp: Date.now() })
+      );
+    } catch {
+      /* ignore */
+    }
     return { data };
   },
   /** Fetches user achievements once and caches in localStorage; use invalidateAchievementsCache() on logout or after earning. */
   async getUserAchievements() {
+    let cached = null;
     try {
       const raw = localStorage.getItem(ACHIEVEMENTS_CACHE_KEY);
       if (raw) {
-        const { data, timestamp } = JSON.parse(raw);
+        const { data, timestamp, etag } = JSON.parse(raw);
         if (timestamp && Date.now() - timestamp < ACHIEVEMENTS_CACHE_TTL_MS && data)
           return { data };
+        cached = { data, timestamp, etag };
       }
-    } catch { /* ignore */ }
-    const res = await api.get('/achievements/user');
+    } catch {
+      /* ignore */
+    }
+    const res = await api.get('/achievements/user', {
+      headers: {
+        ...(cached?.etag ? { 'If-None-Match': cached.etag } : {}),
+      },
+      validateStatus: (s) => (s >= 200 && s < 300) || s === 304,
+    });
+    if (res.status === 304 && cached?.data) {
+      return { data: cached.data };
+    }
     const data = res.data;
     try {
-      localStorage.setItem(ACHIEVEMENTS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
-    } catch { /* ignore */ }
+      localStorage.setItem(
+        ACHIEVEMENTS_CACHE_KEY,
+        JSON.stringify({ data, timestamp: Date.now(), etag: res.headers?.etag || null })
+      );
+    } catch {
+      /* ignore */
+    }
     return { data };
   },
   earnAchievement: (achievementId) => api.post('/achievements/earn', { achievementId }),
@@ -168,7 +216,13 @@ export const tutorAPI = {
   verifyMCQ: (payload) => api.post('/tutor/mcq/verify', payload),
   explainCode: (code, language) => api.post('/tutor/explain-code', { code, language }),
   explainError: (errorMessage, codeSnippet, language) =>
-    api.post('/tutor/explain-error', { errorMessage, codeSnippet: codeSnippet || '', language: language || 'javascript' }),
+    api.post('/tutor/explain-error', {
+      errorMessage,
+      codeSnippet: codeSnippet || '',
+      language: language || 'javascript',
+    }),
+  /** Generate lecture notes from module learning overview (on popup open) */
+  generateLectureNotes: (payload) => api.post('/tutor/lecture-notes', payload),
 };
 
 export default api;

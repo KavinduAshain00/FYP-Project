@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Module = require('../models/Module');
 const Achievement = require('../models/Achievement');
+const crypto = require('crypto');
 const { buildLevelInfo } = require('../utils/levelSystem');
 const { XP_PER_LEVEL } = require('../constants/levelRanks');
 const achievementService = require('../services/achievementService');
@@ -14,11 +15,14 @@ async function getEffectivePathCategories(user) {
   if (user.learningPath === 'javascript-basics' && pathCategories.length > 0) {
     const basicsModules = await Module.find({ category: 'javascript-basics' }).select('_id');
     const basicsIds = new Set(basicsModules.map((m) => m._id.toString()));
-    const completedIds = (user.completedModules || []).map((m) => {
-      const id = m.moduleId && (m.moduleId._id || m.moduleId);
-      return id ? id.toString() : null;
-    }).filter(Boolean);
-    const allBasicsDone = basicsIds.size > 0 && [...basicsIds].every((id) => completedIds.includes(id));
+    const completedIds = (user.completedModules || [])
+      .map((m) => {
+        const id = m.moduleId && (m.moduleId._id || m.moduleId);
+        return id ? id.toString() : null;
+      })
+      .filter(Boolean);
+    const allBasicsDone =
+      basicsIds.size > 0 && [...basicsIds].every((id) => completedIds.includes(id));
     if (allBasicsDone) {
       pathCategories = ['javascript-basics', 'game-development', 'multiplayer'];
     }
@@ -55,8 +59,14 @@ function toProfileUser(user) {
     isAdmin: isAdmin(user),
     aiPreferences: {
       tone: AI_PREFERENCE_KEYS.tone.includes(aiPrefs.tone) ? aiPrefs.tone : 'friendly',
-      hintDetail: AI_PREFERENCE_KEYS.hintDetail.includes(aiPrefs.hintDetail) ? aiPrefs.hintDetail : 'moderate',
-      assistanceFrequency: AI_PREFERENCE_KEYS.assistanceFrequency.includes(aiPrefs.assistanceFrequency) ? aiPrefs.assistanceFrequency : 'normal',
+      hintDetail: AI_PREFERENCE_KEYS.hintDetail.includes(aiPrefs.hintDetail)
+        ? aiPrefs.hintDetail
+        : 'moderate',
+      assistanceFrequency: AI_PREFERENCE_KEYS.assistanceFrequency.includes(
+        aiPrefs.assistanceFrequency
+      )
+        ? aiPrefs.assistanceFrequency
+        : 'normal',
     },
   };
 }
@@ -72,6 +82,13 @@ async function getAvatars(req, res) {
 
     const level = user.level || 1;
     const earnedSet = new Set((user.earnedAchievements || []).map((id) => Number(id)));
+
+    const etagBase = `${level}|${[...earnedSet].sort((a, b) => a - b).join(',')}`;
+    const etag = `"${crypto.createHash('sha1').update(etagBase).digest('hex')}"`;
+    res.set('ETag', etag);
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
+    }
 
     const achievements = await Achievement.find({ isActive: true }).select('id name');
     const achievementNames = Object.fromEntries(achievements.map((a) => [a.id, a.name]));
@@ -135,13 +152,17 @@ async function getProfile(req, res) {
 
     return res.json({ user: userPayload });
   } catch (error) {
-    console.error('[User] getProfile error', { userId: req.user?._id?.toString(), error: error.message });
+    console.error('[User] getProfile error', {
+      userId: req.user?._id?.toString(),
+      error: error.message,
+    });
     return res.status(500).json({ message: 'Server error' });
   }
 }
 
 /** Dashboard-only user fields + populated refs for path/completion logic. */
-const DASHBOARD_USER_SELECT = 'name email avatarUrl totalPoints level learningPath earnedAchievements completedModules currentModule';
+const DASHBOARD_USER_SELECT =
+  'name email avatarUrl totalPoints level learningPath earnedAchievements completedModules currentModule';
 
 async function getDashboard(req, res) {
   const userId = req.user?._id?.toString();
@@ -156,22 +177,23 @@ async function getDashboard(req, res) {
     const levelInfo = buildLevelInfo(user.totalPoints || 0, user.level || 1);
     const pathCategories = await getEffectivePathCategories(user);
 
-    const query = pathCategories.length
-      ? { category: { $in: pathCategories } }
-      : {};
+    const query = pathCategories.length ? { category: { $in: pathCategories } } : {};
     const modules = await Module.find(query)
       .select('_id title description difficulty category order')
       .sort({ order: 1, createdAt: 1 })
       .lean();
 
-    const completedModuleIds = (user.completedModules || []).map((m) => {
-      const id = m.moduleId?._id || m.moduleId;
-      return id ? id.toString() : null;
-    }).filter(Boolean);
+    const completedModuleIds = (user.completedModules || [])
+      .map((m) => {
+        const id = m.moduleId?._id || m.moduleId;
+        return id ? id.toString() : null;
+      })
+      .filter(Boolean);
 
     const modulePath = [...modules].sort((a, b) => (a.order || 0) - (b.order || 0));
     const nextModule = modulePath.find((m) => !completedModuleIds.includes(m._id.toString()));
-    const completionPercentage = modules.length > 0 ? Math.round((completedModuleIds.length / modules.length) * 100) : 0;
+    const completionPercentage =
+      modules.length > 0 ? Math.round((completedModuleIds.length / modules.length) * 100) : 0;
 
     const learningAchievements = await Achievement.find({
       isActive: true,
@@ -195,7 +217,9 @@ async function getDashboard(req, res) {
       levelInfo,
       pathCategories,
       learningPath: user.learningPath,
-      currentModule: user.currentModule ? { _id: user.currentModule._id, title: user.currentModule.title } : null,
+      currentModule: user.currentModule
+        ? { _id: user.currentModule._id, title: user.currentModule.title }
+        : null,
     };
 
     return res.json({
@@ -209,7 +233,10 @@ async function getDashboard(req, res) {
       achievements,
     });
   } catch (error) {
-    console.error('[User] getDashboard error', { userId: req.user?._id?.toString(), error: error.message });
+    console.error('[User] getDashboard error', {
+      userId: req.user?._id?.toString(),
+      error: error.message,
+    });
     return res.status(500).json({ message: 'Server error' });
   }
 }
@@ -222,6 +249,16 @@ async function completeModule(req, res) {
     const user = await User.findById(req.user._id);
     const module = await Module.findById(moduleId);
     if (!module) return res.status(404).json({ message: 'Module not found' });
+
+    const before = {
+      totalPoints: user.totalPoints || 0,
+      level: user.level || 1,
+      currentModule: user.currentModule ? user.currentModule.toString() : null,
+      completedCount: (user.completedModules || []).length,
+      earnedAchievements: Array.isArray(user.earnedAchievements)
+        ? [...user.earnedAchievements]
+        : [],
+    };
 
     const alreadyCompleted = user.completedModules.some((m) => m.moduleId.toString() === moduleId);
 
@@ -244,17 +281,46 @@ async function completeModule(req, res) {
     };
     const { newlyEarned } = await achievementService.checkProgress(req.user._id, progressData);
 
-    const updatedUser = await User.findById(req.user._id)
-      .select('-password')
-      .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
-      .populate(POPULATE_OPTS[1].path, POPULATE_OPTS[1].select);
+    const afterUser = await User.findById(req.user._id)
+      .select('totalPoints level currentModule completedModules earnedAchievements')
+      .lean();
+    const after = {
+      totalPoints: afterUser?.totalPoints || 0,
+      level: afterUser?.level || 1,
+      currentModule: afterUser?.currentModule ? afterUser.currentModule.toString() : null,
+      completedCount: (afterUser?.completedModules || []).length,
+      earnedAchievements: Array.isArray(afterUser?.earnedAchievements)
+        ? [...afterUser.earnedAchievements]
+        : [],
+    };
 
-    const payload = toProfileUser(updatedUser);
-    payload.levelInfo = buildLevelInfo(updatedUser.totalPoints || 0, updatedUser.level || 1);
-    console.log('[User] completeModule success', { userId, moduleId, newlyEarned: (newlyEarned || []).length });
+    const delta = {};
+    if (!alreadyCompleted) {
+      delta.completedModulesAdd = [moduleId];
+      delta.completedModulesCount = after.completedCount;
+    }
+    if (after.totalPoints !== before.totalPoints) delta.totalPoints = after.totalPoints;
+    if (after.level !== before.level) delta.level = after.level;
+    if (before.currentModule !== after.currentModule) delta.currentModule = after.currentModule;
+    if ((newlyEarned || []).length > 0) {
+      const beforeSet = new Set(before.earnedAchievements.map(Number));
+      const added = (newlyEarned || [])
+        .map((a) => a?.id)
+        .filter((id) => typeof id === 'number' && !beforeSet.has(id));
+      if (added.length > 0) delta.earnedAchievementsAdd = added;
+    }
+    if (Object.keys(delta).length > 0) {
+      delta.levelInfo = buildLevelInfo(after.totalPoints || 0, after.level || 1);
+    }
+
+    console.log('[User] completeModule success', {
+      userId,
+      moduleId,
+      newlyEarned: (newlyEarned || []).length,
+    });
     return res.json({
       message: 'Module marked as completed',
-      user: payload,
+      delta,
       newlyEarned: newlyEarned || [],
     });
   } catch (error) {
@@ -268,18 +334,61 @@ async function setCurrentModule(req, res) {
   try {
     console.log('[User] setCurrentModule', { userId, moduleId: req.body?.moduleId });
     const { moduleId } = req.body;
-    const user = await User.findById(req.user._id);
+    if (!moduleId) return res.status(400).json({ message: 'moduleId is required' });
+    const [user, module] = await Promise.all([
+      User.findById(req.user._id),
+      Module.findById(moduleId).select('_id category order'),
+    ]);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!module) return res.status(404).json({ message: 'Module not found' });
+
+    const beforeCurrent = user.currentModule ? user.currentModule.toString() : null;
+
+    // Enforce beginner path gating server-side (prevents URL / API bypass)
+    if (user.learningPath === 'javascript-basics') {
+      const completedIds = (user.completedModules || [])
+        .map((m) => {
+          const id = m.moduleId && (m.moduleId._id || m.moduleId);
+          return id ? id.toString() : null;
+        })
+        .filter(Boolean);
+
+      const basicsModules = await Module.find({ category: 'javascript-basics' })
+        .select('_id order')
+        .sort({ order: 1, createdAt: 1 })
+        .lean();
+      const basicsIds = basicsModules.map((m) => m._id.toString());
+      const allBasicsDone =
+        basicsIds.length > 0 && basicsIds.every((id) => completedIds.includes(id));
+
+      // Lock all non-JS modules until all JS basics are completed
+      if (module.category !== 'javascript-basics' && !allBasicsDone) {
+        return res
+          .status(403)
+          .json({ message: 'Complete all JavaScript basics modules to unlock other modules' });
+      }
+
+      // Within JS basics, prevent skipping ahead (must complete previous module first)
+      if (module.category === 'javascript-basics') {
+        const idx = basicsIds.indexOf(module._id.toString());
+        if (idx > 0) {
+          const prevId = basicsIds[idx - 1];
+          if (!completedIds.includes(prevId)) {
+            return res
+              .status(403)
+              .json({ message: 'Complete the previous JavaScript basics module first' });
+          }
+        }
+      }
+    }
+
     user.currentModule = moduleId;
     await user.save();
 
-    const updatedUser = await User.findById(req.user._id)
-      .select('-password')
-      .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
-      .populate(POPULATE_OPTS[1].path, POPULATE_OPTS[1].select);
-
-    const payload = toProfileUser(updatedUser);
-    payload.levelInfo = buildLevelInfo(updatedUser.totalPoints || 0, updatedUser.level || 1);
-    return res.json({ message: 'Current module updated', user: payload });
+    const afterCurrent = moduleId?.toString?.() || String(moduleId);
+    const delta = {};
+    if (beforeCurrent !== afterCurrent) delta.currentModule = afterCurrent;
+    return res.json({ message: 'Current module updated', delta });
   } catch (error) {
     console.error('Set current module error:', error);
     return res.status(500).json({ message: 'Server error' });
@@ -294,13 +403,23 @@ async function updateProfile(req, res) {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    const before = {
+      name: user.name,
+      avatarUrl: user.avatarUrl || '',
+      aiPreferences: user.aiPreferences ? { ...user.aiPreferences } : null,
+    };
+
     if (typeof name === 'string' && name.trim()) {
       user.name = name.trim();
     }
     // Avatar: custom URL takes precedence, then preset by index
     if (typeof avatarUrl === 'string' && avatarUrl.trim()) {
       user.avatarUrl = avatarUrl.trim();
-    } else if (typeof avatarPresetId === 'number' && avatarPresetId >= 0 && avatarPresetId < AVATAR_PRESETS.length) {
+    } else if (
+      typeof avatarPresetId === 'number' &&
+      avatarPresetId >= 0 &&
+      avatarPresetId < AVATAR_PRESETS.length
+    ) {
       user.avatarUrl = AVATAR_PRESETS[avatarPresetId];
     } else if (avatarPresetId !== undefined && typeof avatarPresetId === 'string') {
       const idx = parseInt(avatarPresetId, 10);
@@ -323,14 +442,18 @@ async function updateProfile(req, res) {
     }
     await user.save();
 
-    const updatedUser = await User.findById(req.user._id)
-      .select('-password')
-      .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
-      .populate(POPULATE_OPTS[1].path, POPULATE_OPTS[1].select);
+    const after = {
+      name: user.name,
+      avatarUrl: user.avatarUrl || '',
+      aiPreferences: user.aiPreferences ? { ...user.aiPreferences } : null,
+    };
+    const delta = {};
+    if (after.name !== before.name) delta.name = after.name;
+    if (after.avatarUrl !== before.avatarUrl) delta.avatarUrl = after.avatarUrl;
+    if (JSON.stringify(after.aiPreferences) !== JSON.stringify(before.aiPreferences))
+      delta.aiPreferences = after.aiPreferences;
 
-    const payload = toProfileUser(updatedUser);
-    payload.levelInfo = buildLevelInfo(updatedUser.totalPoints || 0, updatedUser.level || 1);
-    return res.json({ message: 'Profile updated', user: payload });
+    return res.json({ message: 'Profile updated', delta });
   } catch (error) {
     console.error('Update profile error:', error);
     return res.status(500).json({ message: 'Server error' });

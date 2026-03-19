@@ -1,7 +1,7 @@
-import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { toast } from "react-toastify";
-import LoadingScreen from "./ui/LoadingScreen";
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
+import LoadingScreen from './ui/LoadingScreen';
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { user, loading } = useAuth();
@@ -23,7 +23,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   }
 
   if (requireAdmin && !user?.isAdmin) {
-    toast.error("You need admin access to view this page.");
+    toast.error('You need admin access to view this page.');
     return <Navigate to="/dashboard" replace />;
   }
 

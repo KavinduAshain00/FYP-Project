@@ -162,7 +162,9 @@ async function resetPassword(req, res) {
     try {
       payload = verifyPasswordResetToken(token);
     } catch {
-      return res.status(400).json({ message: 'Invalid or expired reset link. Please request a new one.' });
+      return res
+        .status(400)
+        .json({ message: 'Invalid or expired reset link. Please request a new one.' });
     }
     const user = await User.findOne({ email: payload.email });
     if (!user) {
@@ -170,7 +172,9 @@ async function resetPassword(req, res) {
     }
     user.password = newPassword;
     await user.save();
-    return res.json({ message: 'Password reset successfully. You can sign in with your new password.' });
+    return res.json({
+      message: 'Password reset successfully. You can sign in with your new password.',
+    });
   } catch (error) {
     console.error('[Auth] resetPassword error', error.message);
     return res.status(500).json({ message: 'Server error' });

@@ -44,9 +44,25 @@ function buildLevelInfo(totalPoints, _level) {
   return {
     level: lvl,
     totalPoints: total,
-    rank: { name: rank.name, title: rank.title, color: rank.color, bgColor: rank.bgColor, borderColor: rank.borderColor, description: rank.description },
-    xpProgress: { currentXP: xpProgress.currentXP, xpNeeded: xpProgress.xpNeeded, percentage: xpProgress.percentage, xpToNext: xpProgress.xpToNext },
-    rankProgress: { currentLevelInRank: rankProgress.currentLevelInRank, levelsInRank: rankProgress.levelsInRank, percentage: rankProgress.percentage },
+    rank: {
+      name: rank.name,
+      title: rank.title,
+      color: rank.color,
+      bgColor: rank.bgColor,
+      borderColor: rank.borderColor,
+      description: rank.description,
+    },
+    xpProgress: {
+      currentXP: xpProgress.currentXP,
+      xpNeeded: xpProgress.xpNeeded,
+      percentage: xpProgress.percentage,
+      xpToNext: xpProgress.xpToNext,
+    },
+    rankProgress: {
+      currentLevelInRank: rankProgress.currentLevelInRank,
+      levelsInRank: rankProgress.levelsInRank,
+      percentage: rankProgress.percentage,
+    },
   };
 }
 

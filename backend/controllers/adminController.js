@@ -38,10 +38,21 @@ const MAX_PAGE_SIZE = 100;
 async function listUsers(req, res) {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(req.query.limit, 10) || DEFAULT_PAGE_SIZE));
+    const limit = Math.min(
+      MAX_PAGE_SIZE,
+      Math.max(1, parseInt(req.query.limit, 10) || DEFAULT_PAGE_SIZE)
+    );
     const search = (req.query.search || '').trim().substring(0, 200);
     const learningPath = req.query.learningPath || '';
-    const allowedSort = ['createdAt', 'name', 'email', 'learningPath', 'level', 'totalPoints', 'updatedAt'];
+    const allowedSort = [
+      'createdAt',
+      'name',
+      'email',
+      'learningPath',
+      'level',
+      'totalPoints',
+      'updatedAt',
+    ];
     const sortBy = allowedSort.includes(req.query.sortBy) ? req.query.sortBy : 'createdAt';
     const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
 
@@ -216,7 +227,7 @@ async function revokeAchievement(req, res) {
       return res.status(400).json({ message: 'achievementId must be a number' });
     }
     const achievement = await Achievement.findOne({ id: achievementId });
-    const points = achievement ? (achievement.points || 0) : 0;
+    const points = achievement ? achievement.points || 0 : 0;
     if (!user.earnedAchievements) user.earnedAchievements = [];
     user.earnedAchievements = user.earnedAchievements.filter((id) => id !== achievementId);
     user.totalPoints = Math.max(0, (user.totalPoints || 0) - points);
@@ -247,11 +258,7 @@ async function bootstrap(req, res) {
     if (!email || !email.includes('@')) {
       return res.status(400).json({ message: 'Valid email required' });
     }
-    const user = await User.findOneAndUpdate(
-      { email },
-      { role: 'admin' },
-      { new: true }
-    );
+    const user = await User.findOneAndUpdate({ email }, { role: 'admin' }, { new: true });
     if (!user) {
       return res.status(404).json({ message: 'No user found with this email' });
     }
@@ -305,7 +312,9 @@ async function addAdmin(req, res) {
  */
 async function removeAdmin(req, res) {
   try {
-    const email = decodeURIComponent(req.params.email || '').trim().toLowerCase();
+    const email = decodeURIComponent(req.params.email || '')
+      .trim()
+      .toLowerCase();
     if (!email) {
       return res.status(400).json({ message: 'Email required' });
     }
@@ -388,7 +397,13 @@ async function getStats(req, res) {
     const [totalUsers, aggregated, recentSignups] = await Promise.all([
       User.countDocuments(),
       User.aggregate([
-        { $group: { _id: null, totalXp: { $sum: { $ifNull: ['$totalPoints', 0] } }, totalLevel: { $sum: { $ifNull: ['$level', 1] } } } },
+        {
+          $group: {
+            _id: null,
+            totalXp: { $sum: { $ifNull: ['$totalPoints', 0] } },
+            totalLevel: { $sum: { $ifNull: ['$level', 1] } },
+          },
+        },
         { $project: { totalXp: 1, totalLevel: 1, _id: 0 } },
       ]).then((r) => r[0] || { totalXp: 0, totalLevel: 0 }),
       User.aggregate([

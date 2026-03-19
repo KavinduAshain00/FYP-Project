@@ -1,32 +1,32 @@
-import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import ConfirmModal from "../ui/ConfirmModal";
-import { AnimatePresence, motion as Motion } from "framer-motion";
+import { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import ConfirmModal from '../ui/ConfirmModal';
+import { AnimatePresence, motion as Motion } from 'framer-motion';
 
-const ROUTE_ORDER = ["/dashboard", "/modules", "/profile", "/admin", "/editor"];
+const ROUTE_ORDER = ['/dashboard', '/modules', '/profile', '/admin', '/editor'];
 
 const getRouteDepth = (pathname) => {
-  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return 0;
-  if (pathname === "/modules" || pathname === "/profile" || pathname === "/admin") return 1;
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) return 0;
+  if (pathname === '/modules' || pathname === '/profile' || pathname === '/admin') return 1;
   return 2;
 };
 
 const getRouteOrderIndex = (pathname) => {
-  const base = pathname.split("/").slice(0, 2).join("/") || pathname;
-  const idx = ROUTE_ORDER.findIndex((p) => base === p || pathname.startsWith(p + "/"));
+  const base = pathname.split('/').slice(0, 2).join('/') || pathname;
+  const idx = ROUTE_ORDER.findIndex((p) => base === p || pathname.startsWith(p + '/'));
   return idx >= 0 ? idx : ROUTE_ORDER.length;
 };
 
 const getNavigationDirection = (currentPath, targetPath) => {
   const currentDepth = getRouteDepth(currentPath);
   const targetDepth = getRouteDepth(targetPath);
-  if (targetDepth < currentDepth) return "back";
-  if (targetDepth > currentDepth) return "forward";
+  if (targetDepth < currentDepth) return 'back';
+  if (targetDepth > currentDepth) return 'forward';
   const currentOrder = getRouteOrderIndex(currentPath);
   const targetOrder = getRouteOrderIndex(targetPath);
-  return targetOrder < currentOrder ? "back" : "forward";
+  return targetOrder < currentOrder ? 'back' : 'forward';
 };
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from '../../context/AuthContext';
 import {
   FaBars,
   FaBolt,
@@ -40,12 +40,8 @@ import {
   FaTimes,
   FaTrophy,
   FaUser,
-} from "react-icons/fa";
-import {
-  ParticleBackground,
-  XPBar,
-  GameAvatar,
-} from "../ui/GameUI";
+} from 'react-icons/fa';
+import { ParticleBackground, XPBar, GameAvatar } from '../ui/GameUI';
 
 export const GameNavbar = () => {
   const location = useLocation();
@@ -55,10 +51,10 @@ export const GameNavbar = () => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const navLinks = [
-    { path: "/dashboard", label: "Dashboard", icon: FaHome },
-    { path: "/modules", label: "Quests", icon: FaLayerGroup },
-    { path: "/profile", label: "Profile", icon: FaUser },
-    ...(user?.isAdmin ? [{ path: "/admin", label: "Admin", icon: FaShieldAlt }] : []),
+    { path: '/dashboard', label: 'Dashboard', icon: FaHome },
+    { path: '/modules', label: 'Modules', icon: FaLayerGroup },
+    { path: '/profile', label: 'Profile', icon: FaUser },
+    ...(user?.isAdmin ? [{ path: '/admin', label: 'Admin', icon: FaShieldAlt }] : []),
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -73,7 +69,7 @@ export const GameNavbar = () => {
     setShowLogoutConfirm(false);
     logout();
     setMobileMenuOpen(false);
-    navigate("/login");
+    navigate('/login');
   };
 
   return (
@@ -87,9 +83,7 @@ export const GameNavbar = () => {
             <span className="w-8 h-8 flex items-center justify-center bg-[#1c2230] border border-[#2e3648] text-[#9a9080] rounded-lg">
               <FaGamepad className="text-sm" />
             </span>
-            <span className="font-semibold text-[15px] tracking-tight">
-              GamiLearn
-            </span>
+            <span className="font-semibold text-[15px] tracking-tight">GamiLearn</span>
           </Link>
 
           <div className="hidden md:flex items-center gap-0.5">
@@ -100,8 +94,8 @@ export const GameNavbar = () => {
                 onClick={() => handleNavClick(link.path)}
                 className={`flex items-center gap-2 px-3 py-2 text-[13px] font-medium transition-colors rounded-lg ${
                   isActive(link.path)
-                    ? "bg-[#1c2230] text-white"
-                    : "text-[#9a9080] hover:text-[#d8d0c4] hover:bg-[#161c28]"
+                    ? 'bg-[#1c2230] text-white'
+                    : 'text-[#9a9080] hover:text-[#d8d0c4] hover:bg-[#161c28]'
                 }`}
               >
                 <link.icon className="text-[11px] opacity-80" />
@@ -145,7 +139,7 @@ export const GameNavbar = () => {
         {mobileMenuOpen && (
           <Motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
+            animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
             className="md:hidden border-t border-[#252c3a] bg-[#111620]"
@@ -161,8 +155,8 @@ export const GameNavbar = () => {
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium rounded-lg text-left ${
                     isActive(link.path)
-                      ? "bg-[#1c2230] text-white"
-                      : "text-[#9a9080] hover:bg-[#161c28]"
+                      ? 'bg-[#1c2230] text-white'
+                      : 'text-[#9a9080] hover:bg-[#161c28]'
                   }`}
                 >
                   <link.icon className="text-[11px] opacity-80" />
@@ -213,9 +207,7 @@ export const GameSidebar = ({
             className="!rounded-lg border border-[#2e3648]"
           />
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[#d8d0c4] text-sm truncate">
-              {user?.name || "User"}
-            </p>
+            <p className="font-semibold text-[#d8d0c4] text-sm truncate">{user?.name || 'User'}</p>
             <p className="text-[11px] text-[#706858] truncate">{user?.email}</p>
           </div>
         </div>
@@ -246,16 +238,12 @@ export const GameSidebar = ({
             <p className="text-sm font-semibold text-[#d8d0c4]">{level}</p>
           </div>
           <div className="p-2.5 bg-[#161c28] border border-[#252c3a] rounded-lg">
-            <p className="text-[10px] text-[#706858] uppercase">Quests</p>
-            <p className="text-sm font-semibold text-[#d8d0c4]">
-              {stats.completedModules ?? 0}
-            </p>
+            <p className="text-[10px] text-[#706858] uppercase">Modules</p>
+            <p className="text-sm font-semibold text-[#d8d0c4]">{stats.completedModules ?? 0}</p>
           </div>
           <div className="p-2.5 bg-[#161c28] border border-[#252c3a] rounded-lg">
             <p className="text-[10px] text-[#706858] uppercase">Badges</p>
-            <p className="text-sm font-semibold text-[#d8d0c4]">
-              {stats.achievements ?? 0}
-            </p>
+            <p className="text-sm font-semibold text-[#d8d0c4]">{stats.achievements ?? 0}</p>
           </div>
         </div>
       </div>
@@ -275,12 +263,8 @@ export const GameSidebar = ({
                   <FaTrophy className="text-[10px]" />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-medium text-[#d8d0c4] truncate">
-                    {ach.name}
-                  </p>
-                  <p className="text-[10px] text-[#706858] truncate">
-                    {ach.description}
-                  </p>
+                  <p className="text-[12px] font-medium text-[#d8d0c4] truncate">{ach.name}</p>
+                  <p className="text-[10px] text-[#706858] truncate">{ach.description}</p>
                 </div>
               </div>
             ))}
@@ -297,13 +281,13 @@ export const GameLayout = ({
   showParticles = false,
   showSidebar = false,
   sidebarProps = {},
-  className = "",
+  className = '',
 }) => {
   return (
     <div className="min-h-screen bg-[#0d1017] text-[#d8d0c4]">
       {showParticles && <ParticleBackground count={12} />}
       {showNavbar && <GameNavbar />}
-      <main className={showNavbar ? "" : ""}>
+      <main className={showNavbar ? '' : ''}>
         {showSidebar ? (
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
             <div className="flex gap-6">
@@ -319,18 +303,9 @@ export const GameLayout = ({
   );
 };
 
-export const PageHeader = ({
-  title,
-  subtitle,
-  icon: Icon,
-  badge,
-  actions,
-  className = "",
-}) => {
+export const PageHeader = ({ title, subtitle, icon: Icon, badge, actions, className = '' }) => {
   return (
-    <div
-      className={`border-b border-[#252c3a] bg-[#111620] ${className}`}
-    >
+    <div className={`border-b border-[#252c3a] bg-[#111620] ${className}`}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -345,12 +320,8 @@ export const PageHeader = ({
                   {badge}
                 </span>
               )}
-              <h1 className="text-xl font-semibold text-[#d8d0c4] tracking-tight">
-                {title}
-              </h1>
-              {subtitle && (
-                <p className="mt-0.5 text-[13px] text-[#706858]">{subtitle}</p>
-              )}
+              <h1 className="text-xl font-semibold text-[#d8d0c4] tracking-tight">{title}</h1>
+              {subtitle && <p className="mt-0.5 text-[13px] text-[#706858]">{subtitle}</p>}
             </div>
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}

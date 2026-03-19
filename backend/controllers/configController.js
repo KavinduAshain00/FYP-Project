@@ -1,4 +1,4 @@
-const { AVATAR_PRESETS } = require('../constants/avatars');
+const { AVATAR_PRESETS } = require("../constants/avatars");
 
 /**
  * GET /api/config/avatars
@@ -8,8 +8,8 @@ async function getAvatars(req, res) {
   try {
     return res.json({ avatars: AVATAR_PRESETS });
   } catch (error) {
-    console.error('Get avatars error:', error);
-    return res.status(500).json({ message: 'Server error' });
+    console.error("Get avatars error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 }
 

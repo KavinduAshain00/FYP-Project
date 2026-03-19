@@ -4,20 +4,20 @@
 const TUTOR_LIMIT = {
   windowMs: 60 * 1000, // 1 minute
   max: 15,
-  message: { error: 'Too many tutor requests. Try again later.' },
+  message: { error: "Too many tutor requests. Try again later." },
 };
 
 /** Auth routes: limit login/signup/forgot-password to reduce brute-force and abuse */
 const AUTH_LIMIT = {
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20,
-  message: { error: 'Too many attempts. Try again later.' },
+  message: { error: "Too many attempts. Try again later." },
 };
 
 const DIAGRAM_LIMIT = {
   windowMs: 60 * 1000,
   max: 15,
-  message: { error: 'Too many diagram requests. Try again later.' },
+  message: { error: "Too many diagram requests. Try again later." },
 };
 
 module.exports = {

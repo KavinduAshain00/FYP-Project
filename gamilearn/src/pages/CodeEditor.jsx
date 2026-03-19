@@ -1,14 +1,13 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import CodeMirror from "@uiw/react-codemirror";
-import { html } from "@codemirror/lang-html";
-import { css } from "@codemirror/lang-css";
-import { javascript } from "@codemirror/lang-javascript";
-import { vscodeDark } from "@uiw/codemirror-theme-vscode";
-import { modulesAPI, userAPI, tutorAPI, achievementsAPI, invalidateUserCaches } from "../api/api";
-// eslint-disable-next-line no-unused-vars -- motion used in JSX as motion.div, motion.span, motion.aside
-import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "../context/AuthContext";
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import CodeMirror from '@uiw/react-codemirror';
+import { html } from '@codemirror/lang-html';
+import { css } from '@codemirror/lang-css';
+import { javascript } from '@codemirror/lang-javascript';
+import { vscodeDark } from '@uiw/codemirror-theme-vscode';
+import { modulesAPI, userAPI, tutorAPI, achievementsAPI, invalidateUserCaches } from '../api/api';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 import {
   FaBookOpen,
   FaPlay,
@@ -21,6 +20,7 @@ import {
   FaReact,
   FaUsers,
   FaChevronRight,
+  FaChevronLeft,
   FaChevronDown,
   FaChevronUp,
   FaTimes,
@@ -34,28 +34,56 @@ import {
   FaLightbulb,
   FaExclamationTriangle,
   FaCheckCircle,
-} from "react-icons/fa";
-import { toast } from "react-toastify";
-import ConfirmModal from "../components/ui/ConfirmModal";
-import MarkdownContent from "../components/ui/MarkdownContent";
-import { loadEditorDraft, saveEditorDraft } from "../utils/draftStorage";
-import { buildServerPreviewHtml, buildClientPreviewHtml } from "../utils/multiplayerRuntime";
+} from 'react-icons/fa';
+import { toast } from 'react-toastify';
+import ConfirmModal from '../components/ui/ConfirmModal';
+import MarkdownContent from '../components/ui/MarkdownContent';
+import { loadEditorDraft, saveEditorDraft } from '../utils/draftStorage';
+import { buildServerPreviewHtml, buildClientPreviewHtml } from '../utils/multiplayerRuntime';
 
 // Module type configurations (multiplayer uses HTML/CSS/JS only, no React)
 const MODULE_TYPES = {
-  "javascript-basics": { tabs: ["html", "css", "js"], defaultTab: "html" },
-  "game-development": { tabs: ["html", "css", "js"], defaultTab: "js" },
-  "react-basics": { tabs: ["jsx", "css"], defaultTab: "jsx" },
-  multiplayer: { tabs: ["server", "html", "css", "js"], defaultTab: "server" },
-  "advanced-concepts": { tabs: ["jsx", "css", "js"], defaultTab: "jsx" },
+  'javascript-basics': { tabs: ['html', 'css', 'js'], defaultTab: 'html' },
+  'game-development': { tabs: ['html', 'css', 'js'], defaultTab: 'js' },
+  'react-basics': { tabs: ['jsx', 'css'], defaultTab: 'jsx' },
+  multiplayer: { tabs: ['server', 'html', 'css', 'js'], defaultTab: 'server' },
+  'advanced-concepts': { tabs: ['jsx', 'css', 'js'], defaultTab: 'jsx' },
 };
+
+// Context-relevant images for lecture slides: { keywords, url }
+const SLIDE_IMAGES = [
+  { keywords: ['console', 'log', 'print', 'output', 'debug'], url: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&h=400&fit=crop' },
+  { keywords: ['variable', 'const', 'let', 'var', 'assign', 'data type'], url: 'https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800&h=400&fit=crop' },
+  { keywords: ['loop', 'for', 'while', 'iterate', 'array'], url: 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=800&h=400&fit=crop' },
+  { keywords: ['function', 'call', 'return', 'parameter'], url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&h=400&fit=crop' },
+  { keywords: ['game', 'canvas', 'sprite', 'player', 'score'], url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=400&fit=crop' },
+  { keywords: ['react', 'component', 'jsx', 'hook'], url: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&h=400&fit=crop' },
+  { keywords: ['state', 'usestate', 'event', 'click'], url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop' },
+  { keywords: ['multiplayer', 'server', 'socket', 'network'], url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=400&fit=crop' },
+  { keywords: ['condition', 'if', 'else', 'switch'], url: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=400&fit=crop' },
+  { keywords: ['html', 'css', 'dom', 'element'], url: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&h=400&fit=crop' },
+];
+const DEFAULT_SLIDE_IMAGE = 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&h=400&fit=crop';
+
+function getSlideImage(slideContent, moduleTitle, category) {
+  const text = `${(slideContent || '').toLowerCase()} ${(moduleTitle || '').toLowerCase()} ${(category || '').toLowerCase()}`;
+  let best = { score: 0, url: DEFAULT_SLIDE_IMAGE };
+  for (const { keywords, url } of SLIDE_IMAGES) {
+    let score = 0;
+    for (const kw of keywords) {
+      if (text.includes(kw)) score += 1;
+    }
+    if (score > best.score) best = { score, url };
+  }
+  return best.url;
+}
 
 const CodeEditor = () => {
   const { moduleId } = useParams();
   const navigate = useNavigate();
 
   const [module, setModule] = useState(null);
-  const [activeTab, setActiveTab] = useState("html");
+  const [activeTab, setActiveTab] = useState('html');
   const [loading, setLoading] = useState(true);
   const [previewKey, setPreviewKey] = useState(0);
   const [editorKey, setEditorKey] = useState(0); // Force editor remount when needed
@@ -68,12 +96,27 @@ const CodeEditor = () => {
         id: i,
         title: s.title,
         instruction: s.instruction || s.title,
-        concept: s.concept || "",
+        concept: s.concept || '',
         verified: false,
       }));
     }
-    if (!module?.objectives?.length) return [{ id: 0, title: "Complete the lesson", instruction: "Complete the lesson", concept: "", verified: false }];
-    return module.objectives.map((obj, i) => ({ id: i, title: obj, instruction: obj, concept: "", verified: false }));
+    if (!module?.objectives?.length)
+      return [
+        {
+          id: 0,
+          title: 'Complete the lesson',
+          instruction: 'Complete the lesson',
+          concept: '',
+          verified: false,
+        },
+      ];
+    return module.objectives.map((obj, i) => ({
+      id: i,
+      title: obj,
+      instruction: obj,
+      concept: '',
+      verified: false,
+    }));
   }, [module]);
   const [stepsVerified, setStepsVerified] = useState([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -95,17 +138,18 @@ const CodeEditor = () => {
   const [mcqLoading, setMcqLoading] = useState(false);
   const [mcqVerifyLoading, setMcqVerifyLoading] = useState(false);
   const [mcqResult, setMcqResult] = useState(null);
+  const [mcqErrorsByQuestion, setMcqErrorsByQuestion] = useState({});
   const [mcqPassedCount, setMcqPassedCount] = useState(0);
 
   // Refs for live code (avoids re-render on every keystroke; state only on load/draft/reset)
   const codeRefs = useRef({
-    html: "",
-    css: "",
-    js: "",
-    jsx: "",
-    server: "",
+    html: '',
+    css: '',
+    js: '',
+    jsx: '',
+    server: '',
   });
-  const CODE_REF_KEYS = { html: "html", css: "css", js: "js", jsx: "jsx", server: "server" };
+  const CODE_REF_KEYS = { html: 'html', css: 'css', js: 'js', jsx: 'jsx', server: 'server' };
 
   // Stable timer refs (avoid window globals that leak across hot-reloads)
   const codeChangeTimerRef = useRef(null);
@@ -121,19 +165,33 @@ const CodeEditor = () => {
   const codeChangesRef = useRef(0);
   /** Code change count at time of last Run; Run awards points only when codeChanges > this (i.e. user edited since last run) */
   const lastRunCodeChangeCountRef = useRef(0);
-  useEffect(() => { isLoadingDraftRef.current = isLoadingDraft; }, [isLoadingDraft]);
+  useEffect(() => {
+    isLoadingDraftRef.current = isLoadingDraft;
+  }, [isLoadingDraft]);
   useEffect(() => {
     stepsVerifiedRef.current = stepsVerified;
     currentStepIndexRef.current = currentStepIndex;
   }, [stepsVerified, currentStepIndex]);
-  useEffect(() => () => {
-    isMountedRef.current = false;
-    if (codeChangeTimerRef.current) clearTimeout(codeChangeTimerRef.current);
-    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
-    if (runFeedbackTidRef.current) clearTimeout(runFeedbackTidRef.current);
-    if (runFeedbackClearTidRef.current) clearTimeout(runFeedbackClearTidRef.current);
-    if (lastVerifiedStepClearTidRef.current) clearTimeout(lastVerifiedStepClearTidRef.current);
-  }, []);
+
+  // Persist "current step" to backend so Dashboard/Modules can resume accurately.
+  useEffect(() => {
+    if (!moduleId || !module || isLoadingDraft) return;
+    const tid = setTimeout(() => {
+      userAPI.setCurrentModule(moduleId, currentStepIndex).catch(() => {});
+    }, 600);
+    return () => clearTimeout(tid);
+  }, [moduleId, module, currentStepIndex, isLoadingDraft]);
+  useEffect(
+    () => () => {
+      isMountedRef.current = false;
+      if (codeChangeTimerRef.current) clearTimeout(codeChangeTimerRef.current);
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+      if (runFeedbackTidRef.current) clearTimeout(runFeedbackTidRef.current);
+      if (runFeedbackClearTidRef.current) clearTimeout(runFeedbackClearTidRef.current);
+      if (lastVerifiedStepClearTidRef.current) clearTimeout(lastVerifiedStepClearTidRef.current);
+    },
+    []
+  );
 
   // Explain selection (highlight code → ask for explanation)
   const editorViewRef = useRef(null);
@@ -147,7 +205,9 @@ const CodeEditor = () => {
   const [streak, setStreak] = useState(0);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  useEffect(() => { codeChangesRef.current = codeChanges; }, [codeChanges]);
+  useEffect(() => {
+    codeChangesRef.current = codeChanges;
+  }, [codeChanges]);
 
   // Achievements
   const [achievements, setAchievements] = useState([]);
@@ -163,16 +223,30 @@ const CodeEditor = () => {
   const [showOverview, setShowOverview] = useState(true);
   const [showOverviewPopup, setShowOverviewPopup] = useState(false);
   const shownOverviewPopupRef = useRef({});
+  /** AI-generated lecture notes for Learning Overview popup; cached in localStorage per module */
+  const [lectureNotes, setLectureNotes] = useState(null);
+  const [lectureNotesLoading, setLectureNotesLoading] = useState(false);
+  const [lectureNotesError, setLectureNotesError] = useState(null);
+  const LECTURE_NOTES_STORAGE_KEY = 'gamilearn_lecture_notes';
   const [showTutorSidebar, setShowTutorSidebar] = useState(false);
+  /** Current slide index in lecture popup (0-based); reset when popup opens */
+  const [lectureSlideIndex, setLectureSlideIndex] = useState(0);
 
   // Resizable panel dimensions (px)
   const [leftPanelWidth, setLeftPanelWidth] = useState(320);
   const [rightPanelWidth, setRightPanelWidth] = useState(480);
   const [consoleHeight, setConsoleHeight] = useState(180);
-  const resizeRef = useRef({ active: null, startX: 0, startY: 0, startLeft: 0, startRight: 0, startConsole: 0 });
-  const [tutorQuestion, setTutorQuestion] = useState("");
+  const resizeRef = useRef({
+    active: null,
+    startX: 0,
+    startY: 0,
+    startLeft: 0,
+    startRight: 0,
+    startConsole: 0,
+  });
+  const [tutorQuestion, setTutorQuestion] = useState('');
   const [tutorLoading, setTutorLoading] = useState(false);
-  const [hintStyle, setHintStyle] = useState("general");
+  const [hintStyle, setHintStyle] = useState('general');
   // Unified thread: explain + hint Q&A in one list
   const [companionMessages, setCompanionMessages] = useState([]);
 
@@ -180,7 +254,7 @@ const CodeEditor = () => {
   const [player1PreviewKey, setPlayer1PreviewKey] = useState(0);
   const [player2PreviewKey, setPlayer2PreviewKey] = useState(0);
   const [serverPreviewKey, setServerPreviewKey] = useState(0);
-  const [activePreviewTab, setActivePreviewTab] = useState("server");
+  const [activePreviewTab, setActivePreviewTab] = useState('server');
   /** Multiplayer: frozen preview HTML so iframes don't reload on every code change (only on Run/Reset) */
   const [multiplayerSnapshot, setMultiplayerSnapshot] = useState(null);
   const [consoleLogs, setConsoleLogs] = useState([]);
@@ -193,13 +267,17 @@ const CodeEditor = () => {
   const [showAllClear, setShowAllClear] = useState(false);
 
   const recentErrors = useMemo(
-    () => consoleLogs.filter((e) => e.level === "error").slice(-5).map((e) => e.message),
+    () =>
+      consoleLogs
+        .filter((e) => e.level === 'error')
+        .slice(-5)
+        .map((e) => e.message),
     [consoleLogs]
   );
   const lastError = recentErrors.length > 0 ? recentErrors[recentErrors.length - 1] : null;
 
   useEffect(() => {
-    errorCountRef.current = consoleLogs.filter((e) => e.level === "error").length;
+    errorCountRef.current = consoleLogs.filter((e) => e.level === 'error').length;
   }, [consoleLogs]);
 
   const addFloatingMessage = useCallback((type, text, points = null) => {
@@ -211,36 +289,46 @@ const CodeEditor = () => {
     return () => clearTimeout(tid);
   }, []);
 
-  const { refreshProfile } = useAuth();
+  const { user, refreshProfile } = useAuth();
 
   useEffect(() => {
     const handler = (e) => {
-      if (e.data?.type === "console") {
+      if (e.data?.type === 'console') {
         const source = e.data.source || null; // 'server' | 'player1' | 'player2' | null (preview)
-        const message = source ? (source === "server" ? "[Server] " : "[" + source + "] ") + (e.data.message || "") : e.data.message;
-        setConsoleLogs((prev) => [...prev.slice(-199), { source, level: e.data.level, message, timestamp: e.data.timestamp || Date.now() }]);
+        const message = source
+          ? (source === 'server' ? '[Server] ' : '[' + source + '] ') + (e.data.message || '')
+          : e.data.message;
+        setConsoleLogs((prev) => [
+          ...prev.slice(-199),
+          { source, level: e.data.level, message, timestamp: e.data.timestamp || Date.now() },
+        ]);
       }
     };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
   }, []);
 
   const clearConsole = () => setConsoleLogs([]);
-  const serverLogs = useMemo(() => consoleLogs.filter((e) => e.source === "server"), [consoleLogs]);
-  const clientLogs = useMemo(() => consoleLogs.filter((e) => e.source === "player1" || e.source === "player2"), [consoleLogs]);
-  const clearServerConsole = () => setConsoleLogs((prev) => prev.filter((e) => e.source !== "server"));
-  const clearClientConsole = () => setConsoleLogs((prev) => prev.filter((e) => e.source !== "player1" && e.source !== "player2"));
+  const serverLogs = useMemo(() => consoleLogs.filter((e) => e.source === 'server'), [consoleLogs]);
+  const clientLogs = useMemo(
+    () => consoleLogs.filter((e) => e.source === 'player1' || e.source === 'player2'),
+    [consoleLogs]
+  );
+  const clearServerConsole = () =>
+    setConsoleLogs((prev) => prev.filter((e) => e.source !== 'server'));
+  const clearClientConsole = () =>
+    setConsoleLogs((prev) => prev.filter((e) => e.source !== 'player1' && e.source !== 'player2'));
 
   const moduleConfig = useMemo(() => {
-    if (!module) return MODULE_TYPES["javascript-basics"];
-    return MODULE_TYPES[module.category] || MODULE_TYPES["javascript-basics"];
+    if (!module) return MODULE_TYPES['javascript-basics'];
+    return MODULE_TYPES[module.category] || MODULE_TYPES['javascript-basics'];
   }, [module]);
 
   const isReactModule = useMemo(
-    () => module?.category !== "multiplayer" && moduleConfig.tabs.includes("jsx"),
+    () => module?.category !== 'multiplayer' && moduleConfig.tabs.includes('jsx'),
     [moduleConfig, module?.category]
   );
-  const isMultiplayerModule = useMemo(() => module?.category === "multiplayer", [module]);
+  const isMultiplayerModule = useMemo(() => module?.category === 'multiplayer', [module]);
 
   const multiplayerSnapshotSetRef = useRef(false);
   useEffect(() => {
@@ -252,9 +340,9 @@ const CodeEditor = () => {
     if (multiplayerSnapshotSetRef.current) return;
     multiplayerSnapshotSetRef.current = true;
     setMultiplayerSnapshot({
-      server: getPreviewContent("server"),
-      player1: getPreviewContent("player1"),
-      player2: getPreviewContent("player2"),
+      server: getPreviewContent('server'),
+      player1: getPreviewContent('player1'),
+      player2: getPreviewContent('player2'),
     });
   }, [module?.id, isMultiplayerModule, isLoadingDraft]); // eslint-disable-line react-hooks/exhaustive-deps -- snapshot set once per module when draft ready
 
@@ -263,17 +351,21 @@ const CodeEditor = () => {
   }, [isMultiplayerModule]);
 
   const difficultyStyles = {
-    beginner: "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40",
-    intermediate: "bg-amber-500/20 text-amber-200 border border-amber-400/40",
-    advanced: "bg-rose-500/20 text-rose-200 border border-rose-400/40",
+    beginner: 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/40',
+    intermediate: 'bg-amber-500/20 text-amber-200 border border-amber-400/40',
+    advanced: 'bg-rose-500/20 text-rose-200 border border-rose-400/40',
   };
 
   const HINT_STYLES = [
-    { value: "general", label: "General Hint", description: "Get a helpful nudge" },
-    { value: "error-explanation", label: "Explain Error", description: "Understand error messages" },
-    { value: "logic-guidance", label: "Logic Help", description: "Trace through code" },
-    { value: "concept-reminder", label: "Concept Recap", description: "Review a concept" },
-    { value: "visual-gameloop", label: "Game/Animation", description: "Game loops and animations" },
+    { value: 'general', label: 'General Hint', description: 'Get a helpful nudge' },
+    {
+      value: 'error-explanation',
+      label: 'Explain Error',
+      description: 'Understand error messages',
+    },
+    { value: 'logic-guidance', label: 'Logic Help', description: 'Trace through code' },
+    { value: 'concept-reminder', label: 'Concept Recap', description: 'Review a concept' },
+    { value: 'visual-gameloop', label: 'Game/Animation', description: 'Game loops and animations' },
   ];
 
   const STORAGE_KEY = `codeEditorProgress_${moduleId}`;
@@ -288,13 +380,19 @@ const CodeEditor = () => {
         if (fetchAbortedRef.current) return;
         const moduleData = response.data.module;
         setModule(moduleData);
-        const initialHtml = moduleData.starterCode?.html || "";
-        const initialCss = moduleData.starterCode?.css || "";
-        const initialJs = moduleData.starterCode?.javascript || "";
-        const initialJsx = moduleData.starterCode?.jsx || moduleData.starterCode?.javascript || "";
-        const initialServer = moduleData.starterCode?.serverJs || "";
-        codeRefs.current = { html: initialHtml, css: initialCss, js: initialJs, jsx: initialJsx, server: initialServer };
-        const config = MODULE_TYPES[moduleData.category] || MODULE_TYPES["javascript-basics"];
+        const initialHtml = moduleData.starterCode?.html || '';
+        const initialCss = moduleData.starterCode?.css || '';
+        const initialJs = moduleData.starterCode?.javascript || '';
+        const initialJsx = moduleData.starterCode?.jsx || moduleData.starterCode?.javascript || '';
+        const initialServer = moduleData.starterCode?.serverJs || '';
+        codeRefs.current = {
+          html: initialHtml,
+          css: initialCss,
+          js: initialJs,
+          jsx: initialJsx,
+          server: initialServer,
+        };
+        const config = MODULE_TYPES[moduleData.category] || MODULE_TYPES['javascript-basics'];
         setActiveTab(config.defaultTab);
         setVerifyFeedback(null);
         setVerifyPassed(false);
@@ -309,7 +407,11 @@ const CodeEditor = () => {
           const saved = sessionStorage.getItem(STORAGE_KEY);
           if (saved) {
             const { stepsVerified: savedVerified, currentStepIndex: savedStep } = JSON.parse(saved);
-            if (Array.isArray(savedVerified) && savedVerified.length === stepCount && typeof savedStep === "number") {
+            if (
+              Array.isArray(savedVerified) &&
+              savedVerified.length === stepCount &&
+              typeof savedStep === 'number'
+            ) {
               setStepsVerified(savedVerified);
               setCurrentStepIndex(Math.min(savedStep, stepCount - 1));
               usedSession = true;
@@ -322,14 +424,17 @@ const CodeEditor = () => {
               const draft = await loadEditorDraft(moduleId);
               if (fetchAbortedRef.current) return;
               if (!usedSession) {
-                if (draft?.stepsVerified?.length === stepCount && typeof draft.currentStepIndex === "number") {
+                if (
+                  draft?.stepsVerified?.length === stepCount &&
+                  typeof draft.currentStepIndex === 'number'
+                ) {
                   setStepsVerified(draft.stepsVerified);
                   setCurrentStepIndex(Math.min(draft.currentStepIndex, stepCount - 1));
                 } else {
                   setStepsVerified([]);
                   setCurrentStepIndex(0);
                 }
-                if (draft?.code && typeof draft.code === "object") {
+                if (draft?.code && typeof draft.code === 'object') {
                   const c = draft.code;
                   codeRefs.current = {
                     html: c.html != null ? c.html : initialHtml,
@@ -338,19 +443,19 @@ const CodeEditor = () => {
                     jsx: c.jsx != null ? c.jsx : initialJsx,
                     server: c.serverJs != null ? c.serverJs : initialServer,
                   };
-                  setEditorKey(prev => prev + 1);
+                  setEditorKey((prev) => prev + 1);
                 }
               } else {
-                if (draft?.code && typeof draft.code === "object") {
+                if (draft?.code && typeof draft.code === 'object') {
                   const c = draft.code;
                   codeRefs.current = {
-                    html: c.html != null ? c.html : "",
-                    css: c.css != null ? c.css : "",
-                    js: c.javascript != null ? c.javascript : "",
-                    jsx: c.jsx != null ? c.jsx : "",
-                    server: c.serverJs != null ? c.serverJs : "",
+                    html: c.html != null ? c.html : '',
+                    css: c.css != null ? c.css : '',
+                    js: c.javascript != null ? c.javascript : '',
+                    jsx: c.jsx != null ? c.jsx : '',
+                    server: c.serverJs != null ? c.serverJs : '',
                   };
-                  setEditorKey(prev => prev + 1);
+                  setEditorKey((prev) => prev + 1);
                 }
               }
             } catch (draftError) {
@@ -369,9 +474,9 @@ const CodeEditor = () => {
         if (!fetchAbortedRef.current) setLoading(false);
       } catch (error) {
         if (fetchAbortedRef.current) return;
-        console.error("Error fetching module:", error);
+        console.error('Error fetching module:', error);
         toast.error("We couldn't load this lesson. Please try again from your dashboard.");
-        navigate("/dashboard");
+        navigate('/dashboard');
       }
     };
     fetchModule();
@@ -398,8 +503,146 @@ const CodeEditor = () => {
     if (!shownOverviewPopupRef.current[moduleId]) {
       shownOverviewPopupRef.current[moduleId] = true;
       setShowOverviewPopup(true);
+      setLectureSlideIndex(0);
     }
   }, [module, moduleId, loading, isLoadingDraft]);
+
+  /** Split lecture/overview content into 2–4 slides by ## sections or by paragraphs */
+  const lectureSlides = useMemo(() => {
+    const raw = lectureNotes || module?.content || '';
+    if (!raw.trim()) return [];
+    let parts = raw.split(/(?=^##\s+.+$)/gm).filter((p) => p.trim());
+    const minSlides = 2;
+    const maxSlides = 4;
+    if (parts.length < minSlides) {
+      // No ## headings: split by double newline into ~3 chunks
+      parts = raw.split(/\n{2,}/).filter((p) => p.trim());
+    }
+    if (parts.length <= maxSlides && parts.length >= minSlides) {
+      return parts.map((p) => p.trim()).filter(Boolean);
+    }
+    if (parts.length > maxSlides) {
+      const slides = [];
+      const chunkSize = Math.ceil(parts.length / maxSlides);
+      for (let i = 0; i < maxSlides; i++) {
+        const start = i * chunkSize;
+        const end = Math.min(start + chunkSize, parts.length);
+        const merged = parts.slice(start, end).join('\n\n').trim();
+        if (merged) slides.push(merged);
+      }
+      return slides;
+    }
+    if (parts.length === 1) {
+      // Single block: split by rough char length into 2-3 slides
+      const len = parts[0].length;
+      const targetSlides = 3;
+      const chunkLen = Math.ceil(len / targetSlides);
+      const slides = [];
+      let pos = 0;
+      while (pos < len && slides.length < maxSlides) {
+        let end = Math.min(pos + chunkLen, len);
+        if (end < len) {
+          const nextNewline = parts[0].indexOf('\n\n', end);
+          end = nextNewline > end ? nextNewline + 2 : end;
+        }
+        slides.push(parts[0].slice(pos, end).trim());
+        pos = end;
+      }
+      return slides.filter(Boolean);
+    }
+    return [raw.trim()];
+  }, [lectureNotes, module?.content]);
+
+  const hasSlides = lectureSlides.length >= 2;
+
+  // Reset lecture notes when switching modules
+  useEffect(() => {
+    if (!moduleId) return;
+    setLectureNotes(null);
+    setLectureNotesError(null);
+  }, [moduleId]);
+
+  // Generate or load lecture notes when Learning Overview popup opens
+  useEffect(() => {
+    if (!showOverviewPopup || !module || !moduleId) return;
+
+    const loadFromStorage = () => {
+      try {
+        const raw = localStorage.getItem(LECTURE_NOTES_STORAGE_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        return data?.[moduleId] ?? null;
+      } catch {
+        return null;
+      }
+    };
+
+    const saveToStorage = (notes) => {
+      try {
+        const raw = localStorage.getItem(LECTURE_NOTES_STORAGE_KEY) || '{}';
+        const data = JSON.parse(raw);
+        data[moduleId] = notes;
+        localStorage.setItem(LECTURE_NOTES_STORAGE_KEY, JSON.stringify(data));
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const cached = loadFromStorage();
+    if (cached && typeof cached === 'string' && cached.trim()) {
+      setLectureNotes(cached);
+      setLectureNotesLoading(false);
+      setLectureNotesError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLectureNotesLoading(true);
+    setLectureNotesError(null);
+
+    const payload = {
+      overview: module.content || '',
+      moduleTitle: module.title || '',
+      difficulty: module.difficulty || 'beginner',
+      category: module.category || '',
+      steps: module.steps?.length
+        ? module.steps.map((s) => ({
+            title: s.title,
+            instruction: s.instruction || s.title,
+            concept: s.concept || '',
+          }))
+        : undefined,
+      objectives: !module.steps?.length && module.objectives?.length ? module.objectives : undefined,
+      userLevel: user?.level ? `Level ${user.level}` : user?.levelInfo?.rank?.name || '',
+    };
+
+    tutorAPI
+      .generateLectureNotes(payload)
+      .then((res) => {
+        const notes = res.data?.lectureNotes;
+        if (cancelled) return;
+        if (notes && typeof notes === 'string' && notes.trim()) {
+          setLectureNotes(notes.trim());
+          saveToStorage(notes.trim());
+          setLectureNotesError(null);
+        } else {
+          setLectureNotesError('Could not generate lecture notes');
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const msg = err.response?.data?.error || err.message || 'Generation failed';
+        setLectureNotesError(msg);
+        setLectureNotes(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLectureNotesLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showOverviewPopup, module, moduleId, user?.level, user?.levelInfo?.rank?.name]);
 
   // Auto-show floating step guide on step change
   useEffect(() => {
@@ -410,39 +653,50 @@ const CodeEditor = () => {
   }, [currentStepIndex]);
 
   // Resize handlers for draggable panels
-  const handleResizeLeftStart = useCallback((e) => {
-    e.preventDefault();
-    resizeRef.current = { active: "left", startX: e.clientX, startLeft: leftPanelWidth };
-  }, [leftPanelWidth]);
-  const handleResizeRightStart = useCallback((e) => {
-    e.preventDefault();
-    resizeRef.current = { active: "right", startX: e.clientX, startRight: rightPanelWidth };
-  }, [rightPanelWidth]);
-  const handleResizeConsoleStart = useCallback((e) => {
-    e.preventDefault();
-    resizeRef.current = { active: "console", startY: e.clientY, startConsole: consoleHeight };
-  }, [consoleHeight]);
+  const handleResizeLeftStart = useCallback(
+    (e) => {
+      e.preventDefault();
+      resizeRef.current = { active: 'left', startX: e.clientX, startLeft: leftPanelWidth };
+    },
+    [leftPanelWidth]
+  );
+  const handleResizeRightStart = useCallback(
+    (e) => {
+      e.preventDefault();
+      resizeRef.current = { active: 'right', startX: e.clientX, startRight: rightPanelWidth };
+    },
+    [rightPanelWidth]
+  );
+  const handleResizeConsoleStart = useCallback(
+    (e) => {
+      e.preventDefault();
+      resizeRef.current = { active: 'console', startY: e.clientY, startConsole: consoleHeight };
+    },
+    [consoleHeight]
+  );
 
   useEffect(() => {
     const move = (e) => {
       const { active, startX, startLeft, startRight, startY, startConsole } = resizeRef.current;
-      if (active === "left") {
+      if (active === 'left') {
         const delta = e.clientX - startX;
         setLeftPanelWidth(Math.min(500, Math.max(240, startLeft + delta)));
-      } else if (active === "right") {
+      } else if (active === 'right') {
         const delta = e.clientX - startX;
         setRightPanelWidth(Math.min(800, Math.max(320, startRight - delta)));
-      } else if (active === "console") {
+      } else if (active === 'console') {
         const delta = e.clientY - startY;
         setConsoleHeight(Math.min(500, Math.max(80, startConsole - delta)));
       }
     };
-    const up = () => { resizeRef.current.active = null; };
-    document.addEventListener("mousemove", move);
-    document.addEventListener("mouseup", up);
+    const up = () => {
+      resizeRef.current.active = null;
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
     return () => {
-      document.removeEventListener("mousemove", move);
-      document.removeEventListener("mouseup", up);
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
     };
   }, []);
 
@@ -455,10 +709,12 @@ const CodeEditor = () => {
         const data = res.data?.achievements || res.data;
         if (mounted && Array.isArray(data)) setAchievements(data);
       } catch (err) {
-        console.error("Error loading achievements:", err);
+        console.error('Error loading achievements:', err);
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Check achievements after step verification
@@ -478,11 +734,7 @@ const CodeEditor = () => {
         if (newlyEarned.length > 0) {
           invalidateUserCaches();
           setAchievements((prev) =>
-            prev.map((a) =>
-              newlyEarned.some((n) => n.id === a.id)
-                ? { ...a, earned: true }
-                : a
-            )
+            prev.map((a) => (newlyEarned.some((n) => n.id === a.id) ? { ...a, earned: true } : a))
           );
           newlyEarned.forEach((ach) =>
             toast.success(
@@ -502,7 +754,8 @@ const CodeEditor = () => {
     if (!moduleId || !module || isLoadingDraft) return;
     const interval = setInterval(async () => {
       if (!isMountedRef.current) return;
-      if (codeChangeTimerRef.current || previewTimerRef.current || isLoadingDraftRef.current) return;
+      if (codeChangeTimerRef.current || previewTimerRef.current || isLoadingDraftRef.current)
+        return;
       if (saveInProgressRef.current) return;
       saveInProgressRef.current = true;
       try {
@@ -524,14 +777,8 @@ const CodeEditor = () => {
     return steps.every((_, i) => stepsVerified[i]);
   }, [steps, stepsVerified]);
 
-  const earnedAchievements = useMemo(
-    () => achievements.filter((a) => a.earned),
-    [achievements]
-  );
-  const verifiedCount = useMemo(
-    () => stepsVerified.filter(Boolean).length,
-    [stepsVerified]
-  );
+  const earnedAchievements = useMemo(() => achievements.filter((a) => a.earned), [achievements]);
+  const verifiedCount = useMemo(() => stepsVerified.filter(Boolean).length, [stepsVerified]);
 
   const showPointFloater = useCallback((amount) => {
     setPointFloater({ id: Date.now(), amount });
@@ -579,7 +826,8 @@ const CodeEditor = () => {
       const resp = await tutorAPI.verifyStep(payload);
       const data = resp.data;
       const correct = !!data.correct;
-      const feedback = data.feedback || (correct ? "Looks good!" : "Not quite yet. Check the hint and try again.");
+      const feedback =
+        data.feedback || (correct ? 'Looks good!' : 'Not quite yet. Check the hint and try again.');
       setVerifyFeedback(feedback);
       setVerifyPassed(correct);
       if (correct) {
@@ -598,7 +846,7 @@ const CodeEditor = () => {
         setPointsJustEarned(true);
         setTimeout(() => isMountedRef.current && setPointsJustEarned(false), 600);
         showPointFloater(15);
-        toast.success("Step complete!");
+        toast.success('Step complete!');
         // Open MCQ gate: 1-2 questions before next step (only if step has concept / we want MCQ)
         const step = steps[currentStepIndex];
         if (step?.concept && currentStepIndex < steps.length - 1) {
@@ -607,46 +855,66 @@ const CodeEditor = () => {
           setMcqCurrentIndex(0);
           setMcqSelectedIndex(null);
           setMcqResult(null);
+          setMcqErrorsByQuestion({});
           setMcqPassedCount(0);
           fetchMCQsForStep(step);
         }
       } else {
         setStepFailureFeedback((prev) => ({ ...prev, [currentStepIndex]: feedback }));
-        toast.warning("Not quite yet. See the explanation below.");
+        toast.warning('Not quite yet. See the explanation below.');
         setShowTutorSidebar(true);
         const step = steps[currentStepIndex];
         const instructionBlock = [
-          step?.title ? `**This step**\n\n${step.title}` : "",
-          step?.instruction ? `**What you need to do**\n\n${step.instruction}` : "",
-          step?.concept ? `**Concept**\n\n${step.concept}` : "",
+          step?.title ? `**This step**\n\n${step.title}` : '',
+          step?.instruction ? `**What you need to do**\n\n${step.instruction}` : '',
+          step?.concept ? `**Concept**\n\n${step.concept}` : '',
         ]
           .filter(Boolean)
-          .join("\n\n");
+          .join('\n\n');
         const codeHelp =
-          "**Need help with your code?**\n\nAsk below for a hint or use **Explain selected code** in this panel.";
+          '**Need help with your code?**\n\nAsk below for a hint or use **Explain selected code** in this panel.';
         const content = instructionBlock ? `${instructionBlock}\n\n---\n\n${codeHelp}` : codeHelp;
-        setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "hint", userLabel: "Step help", content, timestamp: new Date().toLocaleTimeString(), confidence: 0.5 }]);
+        setCompanionMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            type: 'hint',
+            userLabel: 'Step help',
+            content,
+            timestamp: new Date().toLocaleTimeString(),
+            confidence: 0.5,
+          },
+        ]);
       }
     } catch (err) {
-      console.error("Verify error", err);
-      const msg = "Verification failed. Check the hint and try again.";
+      console.error('Verify error', err);
+      const msg = 'Verification failed. Check the hint and try again.';
       setVerifyFeedback(msg);
       setVerifyPassed(false);
       setStepFailureFeedback((prev) => ({ ...prev, [currentStepIndex]: msg }));
-      toast.error("Not quite yet—check the hint and try again.");
+      toast.error('Not quite yet—check the hint and try again.');
       setShowTutorSidebar(true);
       const step = steps[currentStepIndex];
       const instructionBlock = [
-        step?.title ? `**This step**\n\n${step.title}` : "",
-        step?.instruction ? `**What you need to do**\n\n${step.instruction}` : "",
-        step?.concept ? `**Concept**\n\n${step.concept}` : "",
+        step?.title ? `**This step**\n\n${step.title}` : '',
+        step?.instruction ? `**What you need to do**\n\n${step.instruction}` : '',
+        step?.concept ? `**Concept**\n\n${step.concept}` : '',
       ]
         .filter(Boolean)
-        .join("\n\n");
+        .join('\n\n');
       const codeHelp =
-        "**Need help with your code?**\n\nAsk below for a hint or use **Explain selected code** in this panel.";
+        '**Need help with your code?**\n\nAsk below for a hint or use **Explain selected code** in this panel.';
       const content = instructionBlock ? `${instructionBlock}\n\n---\n\n${codeHelp}` : codeHelp;
-      setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "hint", userLabel: "Step help", content, timestamp: new Date().toLocaleTimeString() }]);
+      setCompanionMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: 'hint',
+          userLabel: 'Step help',
+          content,
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ]);
     } finally {
       setVerifyLoading(false);
     }
@@ -666,6 +934,7 @@ const CodeEditor = () => {
       setMcqQuestions(questions);
       setMcqCurrentIndex(0);
       setMcqSelectedIndex(null);
+      setMcqErrorsByQuestion({});
       if (questions.length === 0) {
         setMcqGateForStep(null);
       }
@@ -693,6 +962,11 @@ const CodeEditor = () => {
       const { correct, explanation } = resp.data;
       setMcqResult({ correct, explanation });
       if (correct) {
+        setMcqErrorsByQuestion((prev) => {
+          const next = { ...prev };
+          delete next[mcqCurrentIndex];
+          return next;
+        });
         setMcqPassedCount((c) => c + 1);
         if (mcqCurrentIndex < mcqQuestions.length - 1) {
           setMcqCurrentIndex((i) => i + 1);
@@ -703,13 +977,19 @@ const CodeEditor = () => {
           setPointsJustEarned(true);
           setTimeout(() => isMountedRef.current && setPointsJustEarned(false), 600);
           showPointFloater(10);
-          toast.success("Quiz passed! You can continue to the next step.");
+          toast.success('Quiz passed! You can continue to the next step.');
         }
       } else {
-        toast.warning("Wrong answer. Read the explanation below.");
+        setMcqErrorsByQuestion((prev) => ({
+          ...prev,
+          [mcqCurrentIndex]: explanation || 'Wrong answer. Try again.',
+        }));
+        toast.warning('Wrong answer. Read the explanation below.');
       }
     } catch {
-      setMcqResult({ correct: false, explanation: "Verification failed. Try again." });
+      const explanation = 'Verification failed. Try again.';
+      setMcqResult({ correct: false, explanation });
+      setMcqErrorsByQuestion((prev) => ({ ...prev, [mcqCurrentIndex]: explanation }));
     } finally {
       setMcqVerifyLoading(false);
     }
@@ -719,6 +999,7 @@ const CodeEditor = () => {
     setMcqGateForStep(null);
     setMcqQuestions([]);
     setMcqResult(null);
+    setMcqErrorsByQuestion({});
     setMcqPassedCount(0);
     if (currentStepIndex < steps.length - 1) {
       setCurrentStepIndex((i) => i + 1);
@@ -730,24 +1011,40 @@ const CodeEditor = () => {
   const handleExplainSelection = async () => {
     const view = editorViewRef.current;
     if (!view) {
-      toast.info("Select some code in the editor first, then click Explain.");
+      toast.info('Select some code in the editor first, then click Explain.');
       return;
     }
     const { from, to } = view.state.selection.main;
     const selected = view.state.sliceDoc(from, to).trim();
     if (!selected) {
-      toast.info("Select some code in the editor first, then click Explain.");
+      toast.info('Select some code in the editor first, then click Explain.');
       return;
     }
     setShowTutorSidebar(true);
     setExplainCodeLoading(true);
     try {
-      const lang = activeTab === "jsx" ? "javascript" : activeTab === "js" ? "javascript" : activeTab === "server" ? "javascript" : activeTab;
+      const lang =
+        activeTab === 'jsx'
+          ? 'javascript'
+          : activeTab === 'js'
+            ? 'javascript'
+            : activeTab === 'server'
+              ? 'javascript'
+              : activeTab;
       const resp = await tutorAPI.explainCode(selected, lang);
-      const explanation = resp.data?.explanation || "No explanation available.";
-      setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "explain", userLabel: "Explanation of selection", content: explanation, timestamp: new Date().toLocaleTimeString() }]);
+      const explanation = resp.data?.explanation || 'No explanation available.';
+      setCompanionMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: 'explain',
+          userLabel: 'Explanation of selection',
+          content: explanation,
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ]);
     } catch (err) {
-      console.error("Explain code error", err);
+      console.error('Explain code error', err);
       toast.error("We couldn't get an explanation right now. Please try again.");
     } finally {
       setExplainCodeLoading(false);
@@ -777,11 +1074,11 @@ const CodeEditor = () => {
       const r = codeRefs.current;
       const channelName = `gamilearn-mp-${moduleId}`;
 
-      if (isMultiplayerModule && playerRole === "server") {
+      if (isMultiplayerModule && playerRole === 'server') {
         return buildServerPreviewHtml(channelName, r.server);
       }
 
-      if (isMultiplayerModule && (playerRole === "player1" || playerRole === "player2")) {
+      if (isMultiplayerModule && (playerRole === 'player1' || playerRole === 'player2')) {
         return buildClientPreviewHtml(channelName, playerRole, r.html, r.css, r.js);
       }
 
@@ -821,7 +1118,7 @@ const CodeEditor = () => {
       ${jsx}
       if (typeof App !== 'undefined') {
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App ${playerRole ? `playerRole="${playerRole}"` : ""} />);
+        root.render(<App ${playerRole ? `playerRole="${playerRole}"` : ''} />);
       }
     } catch (e) {
       console.error('Runtime Error:', e.message);
@@ -904,13 +1201,19 @@ const CodeEditor = () => {
 </body>
 </html>`;
     },
-    [isReactModule, isMultiplayerModule, moduleId],
+    [isReactModule, isMultiplayerModule, moduleId]
   );
 
   const handleCompleteModule = async () => {
     if (!allStepsVerified) return;
     try {
-      const sessionStats = { totalEdits: codeChanges, streak, totalRuns: 0, sessionTime: 0, saveCount: 0 };
+      const sessionStats = {
+        totalEdits: codeChanges,
+        streak,
+        totalRuns: 0,
+        sessionTime: 0,
+        saveCount: 0,
+      };
       const resp = await userAPI.completeModule(moduleId, sessionStats);
       if (refreshProfile) await refreshProfile();
       const totalPointsEarned = points + completionBonus;
@@ -918,9 +1221,9 @@ const CodeEditor = () => {
       let message = `Lesson complete! You earned ${points} points + ${completionBonus} bonus = ${totalPointsEarned} total.`;
       if (newlyEarned.length > 0) message += ` ${newlyEarned.length} new achievement(s)!`;
       toast.success(message, { autoClose: 5000 });
-      navigate("/dashboard");
+      navigate('/dashboard');
     } catch (error) {
-      console.error("Error completing module:", error);
+      console.error('Error completing module:', error);
     }
   };
 
@@ -929,7 +1232,7 @@ const CodeEditor = () => {
     codeRefs.current[tabKey] = value;
     // Auto-clear console when user edits and there were errors, so errors disappear once they fix the code
     setConsoleLogs((prev) => {
-      const hadErrors = prev.some((e) => e.level === "error");
+      const hadErrors = prev.some((e) => e.level === 'error');
       return hadErrors ? [] : prev;
     });
     setShowAllClear(false);
@@ -945,12 +1248,14 @@ const CodeEditor = () => {
     }, 1500);
   }, []);
 
-  const onChangeHtml = useCallback((v) => handleCodeChange(v, "html"), [handleCodeChange]);
-  const onChangeCss = useCallback((v) => handleCodeChange(v, "css"), [handleCodeChange]);
-  const onChangeJs = useCallback((v) => handleCodeChange(v, "js"), [handleCodeChange]);
-  const onChangeJsx = useCallback((v) => handleCodeChange(v, "jsx"), [handleCodeChange]);
-  const onChangeServer = useCallback((v) => handleCodeChange(v, "server"), [handleCodeChange]);
-  const onEditorCreate = useCallback((view) => { editorViewRef.current = view; }, []);
+  const onChangeHtml = useCallback((v) => handleCodeChange(v, 'html'), [handleCodeChange]);
+  const onChangeCss = useCallback((v) => handleCodeChange(v, 'css'), [handleCodeChange]);
+  const onChangeJs = useCallback((v) => handleCodeChange(v, 'js'), [handleCodeChange]);
+  const onChangeJsx = useCallback((v) => handleCodeChange(v, 'jsx'), [handleCodeChange]);
+  const onChangeServer = useCallback((v) => handleCodeChange(v, 'server'), [handleCodeChange]);
+  const onEditorCreate = useCallback((view) => {
+    editorViewRef.current = view;
+  }, []);
 
   const handleRunCode = () => {
     const hadErrorsBeforeRun = errorCountRef.current > 0;
@@ -963,9 +1268,9 @@ const CodeEditor = () => {
     setPreviewKey((k) => k + 1);
     if (isMultiplayerModule) {
       setMultiplayerSnapshot({
-        server: getPreviewContent("server"),
-        player1: getPreviewContent("player1"),
-        player2: getPreviewContent("player2"),
+        server: getPreviewContent('server'),
+        player1: getPreviewContent('player1'),
+        player2: getPreviewContent('player2'),
       });
       setPlayer1PreviewKey((k) => k + 1);
       setPlayer2PreviewKey((k) => k + 1);
@@ -984,7 +1289,7 @@ const CodeEditor = () => {
         setPointsJustEarned(true);
         setTimeout(() => isMountedRef.current && setPointsJustEarned(false), 600);
         showPointFloater(10);
-        addFloatingMessage("success", "Errors fixed!", 10);
+        addFloatingMessage('success', 'Errors fixed!', 10);
         setShowAllClear(true);
         const clearTid = setTimeout(() => {
           if (isMountedRef.current) setShowAllClear(false);
@@ -997,11 +1302,11 @@ const CodeEditor = () => {
 
   const handleReset = () => setShowResetConfirm(true);
   const confirmReset = () => {
-    const h = module.starterCode?.html || "";
-    const c = module.starterCode?.css || "";
-    const j = module.starterCode?.javascript || "";
-    const jx = module.starterCode?.jsx || module.starterCode?.javascript || "";
-    const s = module.starterCode?.serverJs || "";
+    const h = module.starterCode?.html || '';
+    const c = module.starterCode?.css || '';
+    const j = module.starterCode?.javascript || '';
+    const jx = module.starterCode?.jsx || module.starterCode?.javascript || '';
+    const s = module.starterCode?.serverJs || '';
     codeRefs.current = { html: h, css: c, js: j, jsx: jx, server: s };
     if (lastVerifiedStepClearTidRef.current) clearTimeout(lastVerifiedStepClearTidRef.current);
     lastVerifiedStepClearTidRef.current = null;
@@ -1021,11 +1326,11 @@ const CodeEditor = () => {
     setMcqResult(null);
     setPreviewKey((k) => k + 1);
     setEditorKey((k) => k + 1); // Force editor remount
-    if (module?.category === "multiplayer") {
+    if (module?.category === 'multiplayer') {
       setMultiplayerSnapshot({
-        server: getPreviewContent("server"),
-        player1: getPreviewContent("player1"),
-        player2: getPreviewContent("player2"),
+        server: getPreviewContent('server'),
+        player1: getPreviewContent('player1'),
+        player2: getPreviewContent('player2'),
       });
       setServerPreviewKey((k) => k + 1);
       setPlayer1PreviewKey((k) => k + 1);
@@ -1033,7 +1338,7 @@ const CodeEditor = () => {
     }
     setShowResetConfirm(false);
     sessionStorage.removeItem(STORAGE_KEY);
-    toast.info("Code reset to starter template.");
+    toast.info('Code reset to starter template.');
   };
 
   const handleExplainErrorClick = async (errorMessage) => {
@@ -1042,22 +1347,26 @@ const CodeEditor = () => {
     setExplainErrorLoading(true);
     try {
       const r = codeRefs.current;
-      const lang = activeTab === "jsx" || activeTab === "js" || activeTab === "server" ? "javascript" : activeTab;
-      const codeSnippet = r[activeTab === "server" ? "server" : activeTab === "js" ? "js" : activeTab] || "";
+      const lang =
+        activeTab === 'jsx' || activeTab === 'js' || activeTab === 'server'
+          ? 'javascript'
+          : activeTab;
+      const codeSnippet =
+        r[activeTab === 'server' ? 'server' : activeTab === 'js' ? 'js' : activeTab] || '';
       const resp = await tutorAPI.explainError(errorMessage, codeSnippet, lang);
-      const explanation = resp.data?.explanation || "Could not get explanation.";
+      const explanation = resp.data?.explanation || 'Could not get explanation.';
       setCompanionMessages((prev) => [
         ...prev,
         {
           id: Date.now(),
-          type: "explain",
-          userLabel: "Error explanation",
+          type: 'explain',
+          userLabel: 'Error explanation',
           content: explanation,
           timestamp: new Date().toLocaleTimeString(),
         },
       ]);
     } catch (err) {
-      console.error("Explain error", err);
+      console.error('Explain error', err);
       toast.error("We couldn't explain that error right now. Please try again.");
     } finally {
       setExplainErrorLoading(false);
@@ -1073,31 +1382,57 @@ const CodeEditor = () => {
     if (!tutorQuestion.trim()) return;
     const question = tutorQuestion.trim();
     setTutorLoading(true);
-    setTutorQuestion("");
+    setTutorQuestion('');
     try {
       const r = codeRefs.current;
       const errorFromQuestion = question.match(/error:?\s*(.+)/i)?.[1]?.trim() || null;
       const resp = await tutorAPI.ask(question, {
-        type: "hint-mode",
+        type: 'hint-mode',
         hintStyle,
         moduleTitle: module?.title,
         objectives: module?.objectives,
         currentStepIndex: currentStepIndex,
         currentStepDescription: steps[currentStepIndex]?.title ?? null,
         code: { html: r.html, css: r.css, javascript: r.js, jsx: r.jsx, serverJs: r.server },
-        currentFile: `${activeTab}.${activeTab === "js" ? "js" : activeTab}`,
+        currentFile: `${activeTab}.${activeTab === 'js' ? 'js' : activeTab}`,
         recentErrors,
         errorMessage: errorFromQuestion || (recentErrors.length > 0 ? recentErrors[0] : null),
       });
-      let answer = resp.data.answer || "We couldn't generate a hint right now. Try rephrasing your question or try again.";
+      let answer =
+        resp.data.answer ||
+        "We couldn't generate a hint right now. Try rephrasing your question or try again.";
       // Never show raw API internals (thinking, model, eval_count, etc.)
-      if (typeof answer === "string" && (answer.includes('"thinking"') || answer.includes('"eval_count"') || answer.includes('"model":'))) {
-        answer = "Something went wrong on our side. Please try your question again in a moment.";
+      if (
+        typeof answer === 'string' &&
+        (answer.includes('"thinking"') ||
+          answer.includes('"eval_count"') ||
+          answer.includes('"model":'))
+      ) {
+        answer = 'Something went wrong on our side. Please try your question again in a moment.';
       }
-      setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "hint", userLabel: question, content: answer, timestamp: new Date().toLocaleTimeString(), confidence: resp.data.confidence }]);
+      setCompanionMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: 'hint',
+          userLabel: question,
+          content: answer,
+          timestamp: new Date().toLocaleTimeString(),
+          confidence: resp.data.confidence,
+        },
+      ]);
     } catch (err) {
-      console.error("Tutor error", err);
-      setCompanionMessages((prev) => [...prev, { id: Date.now(), type: "hint", userLabel: question, content: "We couldn't get a response right now. Please try asking again.", timestamp: new Date().toLocaleTimeString() }]);
+      console.error('Tutor error', err);
+      setCompanionMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: 'hint',
+          userLabel: question,
+          content: "We couldn't get a response right now. Please try asking again.",
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ]);
     } finally {
       setTutorLoading(false);
     }
@@ -1105,36 +1440,57 @@ const CodeEditor = () => {
 
   const openLivePreviewInNewTab = () => {
     const html = getPreviewContent();
-    const blob = new Blob([html], { type: "text/html" });
+    const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    window.open(url, "_blank", "noopener");
+    window.open(url, '_blank', 'noopener');
   };
 
   if (loading || isLoadingDraft) {
     return (
-      <div className="min-h-screen bg-game-void text-slate-100 flex flex-col items-center justify-center gap-4" role="status" aria-live="polite">
-        <div className="h-12 w-12 animate-spin rounded-full border-2 border-neon-cyan border-t-transparent" aria-hidden />
+      <div
+        className="min-h-screen bg-game-void text-slate-100 flex flex-col items-center justify-center gap-4"
+        role="status"
+        aria-live="polite"
+      >
+        <div
+          className="h-12 w-12 animate-spin rounded-full border-2 border-neon-cyan border-t-transparent"
+          aria-hidden
+        />
         <p className="text-sm font-medium text-slate-300">
-          {loading ? "Preparing your lesson…" : "Restoring your progress…"}
+          {loading ? 'Preparing your lesson…' : 'Restoring your progress…'}
         </p>
         <p className="text-xs text-slate-500">
-          {loading ? "Fetching content and steps" : "Loading your last saved code"}
+          {loading ? 'Fetching content and steps' : 'Loading your last saved code'}
         </p>
       </div>
     );
   }
 
   const currentStep = steps[currentStepIndex];
-  const defaultAchievementIcon = "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/award.svg";
+  const defaultAchievementIcon =
+    'https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/award.svg';
   const renderAchievementIcon = (icon, alt, cls) => {
-    const isUrl = typeof icon === "string" && icon.startsWith("http");
-    if (isUrl) return <img src={icon} alt={alt} className={cls} onError={(e) => { if (!e.target.dataset.fb) { e.target.dataset.fb = "1"; e.target.src = defaultAchievementIcon; } }} />;
+    const isUrl = typeof icon === 'string' && icon.startsWith('http');
+    if (isUrl)
+      return (
+        <img
+          src={icon}
+          alt={alt}
+          className={cls}
+          onError={(e) => {
+            if (!e.target.dataset.fb) {
+              e.target.dataset.fb = '1';
+              e.target.src = defaultAchievementIcon;
+            }
+          }}
+        />
+      );
     return <FaTrophy className={cls} />;
   };
 
   return (
     <div className="h-screen overflow-hidden bg-game-void text-slate-100 flex flex-col">
-      {/* Floating Learning Overview Popup (on module open) – centered in viewport */}
+      {/* Lecture Slide Popup – presentation-style */}
       <AnimatePresence>
         {showOverviewPopup && module && (
           <>
@@ -1142,53 +1498,185 @@ const CodeEditor = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 bg-black/85 z-[100]"
               onClick={() => setShowOverviewPopup(false)}
               aria-hidden
             />
             <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+              {/* Slide container – 16:9 presentation aspect */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="w-[min(560px,92vw)] max-h-[85vh] flex flex-col rounded-2xl border border-neon-cyan/30 bg-game-night shadow-2xl shadow-neon-cyan/10 pointer-events-auto"
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-[92vw] max-w-[1200px] h-[88vh] flex flex-col bg-[#0f1419] border border-white/15 shadow-[0_0_80px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.05)] pointer-events-auto overflow-hidden"
               >
-              <div className="flex items-center justify-between border-b border-white/10 px-5 py-3 shrink-0">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                  <FaBookOpen className="text-neon-cyan" /> Learning Overview
-                </h2>
+                {/* Close button – top right */}
                 <button
                   onClick={() => setShowOverviewPopup(false)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition"
+                  className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors"
                   aria-label="Close"
                 >
-                  <FaTimes />
+                  <FaTimes className="text-sm" />
                 </button>
-              </div>
-              <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 p-5">
-                <div className="text-base text-slate-200 leading-relaxed">
-                  <MarkdownContent content={module.content} />
-                </div>
-                {module.hints?.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-white/10">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Hints</p>
-                    <ul className="list-disc pl-4 space-y-1.5 text-sm text-slate-300">
-                      {module.hints.map((h, i) => <li key={i}>{h}</li>)}
-                    </ul>
+
+                {lectureNotesLoading ? (
+                  <div className="flex-1 flex flex-col items-center justify-center py-12">
+                    <div className="h-12 w-12 rounded-full border-2 border-neon-cyan/50 border-t-neon-cyan animate-spin" />
+                    <p className="text-base font-semibold text-slate-200 mt-6">Generating lecture slides…</p>
+                    <p className="text-xs text-slate-500 mt-1">Mistral AI</p>
                   </div>
+                ) : lectureNotesError ? (
+                  <div className="flex-1 flex flex-col p-8">
+                    <div className="flex items-start gap-2 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 mb-4">
+                      <FaExclamationTriangle className="text-amber-400 mt-0.5 shrink-0" />
+                      <p className="text-sm text-amber-200/90">{lectureNotesError}</p>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-3">Showing original overview:</p>
+                    <div className="text-slate-300 leading-relaxed overflow-y-auto flex-1 [&_.markdown-content]:[&_h2]:text-lg">
+                      <MarkdownContent content={module.content} />
+                    </div>
+                    <button
+                      onClick={() => setShowOverviewPopup(false)}
+                      className="mt-6 w-full py-3 rounded-lg bg-neon-cyan text-game-void font-bold hover:brightness-110 transition"
+                    >
+                      Got it
+                    </button>
+                  </div>
+                ) : hasSlides ? (
+                  /* ─── SLIDE MODE ─── */
+                  <>
+                    {/* Full-bleed hero image */}
+                    <div className="relative h-[32%] min-h-[140px] shrink-0">
+                      <img
+                        src={getSlideImage(
+                          lectureSlides[lectureSlideIndex],
+                          module.title,
+                          module.category
+                        )}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
+                      <div className="absolute bottom-0 left-0 right-0 px-8 py-4">
+                        <h2 className="text-xl font-bold text-white drop-shadow-lg">{module.title}</h2>
+                        <p className="text-xs text-white/80 mt-0.5">
+                          Slide {lectureSlideIndex + 1} of {lectureSlides.length}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Slide content body */}
+                    <div className="flex-1 min-h-0 overflow-y-auto px-8 py-6 scrollbar-hide flex flex-col">
+                      <div className="text-slate-200 [&_.markdown-content_h2]:text-lg [&_.markdown-content_h2]:mb-2 [&_.markdown-content_h3]:text-base [&_.markdown-content_p]:text-[15px] [&_.markdown-content_ul]:space-y-1 [&_.markdown-content_ol]:space-y-1">
+                        <MarkdownContent
+                          content={lectureSlides[lectureSlideIndex] || lectureSlides[0]}
+                          className="[&_ul]:list-disc [&_ol]:list-decimal"
+                        />
+                      </div>
+                      {module.hints?.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-white/10">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-neon-cyan/80 mb-1.5">Hints</p>
+                          <ul className="list-disc list-inside text-xs text-slate-400 space-y-0.5">
+                            {module.hints.map((h, i) => (
+                              <li key={i}>{h}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Slide footer – nav + progress */}
+                    <div className="shrink-0 flex items-center justify-between px-8 py-3 bg-black/40 border-t border-white/10">
+                      <button
+                        onClick={() => setLectureSlideIndex((i) => Math.max(0, i - 1))}
+                        disabled={lectureSlideIndex === 0}
+                        className="flex items-center gap-1 px-4 py-2 rounded text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      >
+                        <FaChevronLeft className="text-xs" /> Previous
+                      </button>
+                      <div className="flex items-center gap-2">
+                        {lectureSlides.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setLectureSlideIndex(i)}
+                            className={`h-1.5 rounded-full transition-all ${
+                              i === lectureSlideIndex
+                                ? 'w-6 bg-neon-cyan'
+                                : 'w-1.5 bg-white/25 hover:bg-white/40'
+                            }`}
+                            aria-label={`Go to slide ${i + 1}`}
+                          />
+                        ))}
+                      </div>
+                      <button
+                        onClick={() =>
+                          setLectureSlideIndex((i) => Math.min(lectureSlides.length - 1, i + 1))
+                        }
+                        disabled={lectureSlideIndex >= lectureSlides.length - 1}
+                        className="flex items-center gap-1 px-4 py-2 rounded text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      >
+                        Next <FaChevronRight className="text-xs" />
+                      </button>
+                    </div>
+
+                    {/* Start / Dismiss */}
+                    <div className="shrink-0 px-8 pb-4">
+                      <button
+                        onClick={() => setShowOverviewPopup(false)}
+                        className="w-full py-2.5 rounded-lg bg-neon-cyan text-game-void text-sm font-bold hover:brightness-110 transition"
+                      >
+                        Let's go
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  /* ─── SINGLE SLIDE (no multi-slide) ─── */
+                  <>
+                    <div className="relative h-[28%] min-h-[120px] shrink-0">
+                      <img
+                        src={getSlideImage(lectureNotes || module.content, module.title, module.category)}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70" />
+                      <div className="absolute bottom-0 left-0 right-0 px-8 py-4">
+                        <h2 className="text-xl font-bold text-white drop-shadow-lg">{module.title}</h2>
+                        <p className="text-xs text-white/80 mt-0.5">Learning Overview</p>
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-8 py-6 scrollbar-hide">
+                      <div className="text-slate-200 [&_.markdown-content_h2]:text-lg [&_.markdown-content_p]:text-[15px]">
+                        {lectureNotes ? (
+                          <MarkdownContent content={lectureNotes} />
+                        ) : (
+                          <MarkdownContent content={module.content} />
+                        )}
+                      </div>
+                      {module.hints?.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-white/10">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-neon-cyan/80 mb-1.5">Hints</p>
+                          <ul className="list-disc list-inside text-xs text-slate-400 space-y-0.5">
+                            {module.hints.map((h, i) => (
+                              <li key={i}>{h}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                    <div className="shrink-0 px-8 pb-6">
+                      <button
+                        onClick={() => setShowOverviewPopup(false)}
+                        className="w-full py-2.5 rounded-lg bg-neon-cyan text-game-void text-sm font-bold hover:brightness-110 transition"
+                      >
+                        Let's go
+                      </button>
+                    </div>
+                  </>
                 )}
-              </div>
-              <div className="border-t border-white/10 px-5 py-3 shrink-0 flex justify-end">
-                <button
-                  onClick={() => setShowOverviewPopup(false)}
-                  className="px-4 py-2 rounded-lg bg-neon-cyan text-game-void text-sm font-bold hover:brightness-110 transition"
-                >
-                  Got it
-                </button>
-              </div>
-            </motion.div>
+              </motion.div>
             </div>
           </>
         )}
@@ -1199,12 +1687,12 @@ const CodeEditor = () => {
         className="flex items-center justify-between px-4 h-12 border-b border-white/10 bg-game-night/90 backdrop-blur shrink-0 relative z-10"
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", damping: 22, stiffness: 300 }}
+        transition={{ type: 'spring', damping: 22, stiffness: 300 }}
       >
         {/* Left: back + title */}
         <div className="flex items-center gap-3 min-w-0">
           <button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate('/dashboard')}
             className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition"
             title="Back to Dashboard"
           >
@@ -1212,12 +1700,20 @@ const CodeEditor = () => {
           </button>
           <div className="flex items-center gap-2 min-w-0">
             <div className="shrink-0 w-7 h-7 rounded-md bg-neon-cyan/10 border border-white/10 flex items-center justify-center">
-              {isMultiplayerModule ? <FaUsers className="text-neon-purple text-xs" /> : <FaCode className="text-neon-cyan text-xs" />}
+              {isMultiplayerModule ? (
+                <FaUsers className="text-neon-purple text-xs" />
+              ) : (
+                <FaCode className="text-neon-cyan text-xs" />
+              )}
             </div>
             <div className="min-w-0">
-              <h1 className="text-sm font-bold text-white truncate leading-tight">{module.title}</h1>
+              <h1 className="text-sm font-bold text-white truncate leading-tight">
+                {module.title}
+              </h1>
               <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-semibold uppercase ${difficultyStyles[module.difficulty]} px-1.5 py-0 rounded`}>
+                <span
+                  className={`text-[10px] font-semibold uppercase ${difficultyStyles[module.difficulty]} px-1.5 py-0 rounded`}
+                >
                   {module.difficulty}
                 </span>
               </div>
@@ -1237,14 +1733,14 @@ const CodeEditor = () => {
                 <motion.div
                   key={i}
                   className={`h-2 rounded-full transition-all duration-300 ${
-                    steps.length <= 6 ? "w-8" : "w-5"
+                    steps.length <= 6 ? 'w-8' : 'w-5'
                   } ${
                     stepsVerified[i]
-                      ? "bg-neon-green shadow-glow-green/30"
+                      ? 'bg-neon-green shadow-glow-green/30'
                       : i === currentStepIndex
-                        ? "bg-neon-cyan animate-pulse"
-                        : "bg-white/10"
-                  } ${justVerified ? "shadow-[0_0_12px_rgba(74,222,128,0.6)]" : ""}`}
+                        ? 'bg-neon-cyan animate-pulse'
+                        : 'bg-white/10'
+                  } ${justVerified ? 'shadow-[0_0_12px_rgba(74,222,128,0.6)]' : ''}`}
                   animate={justVerified ? { scale: [1, 1.25, 1] } : {}}
                   transition={{ duration: 0.4 }}
                 />
@@ -1280,7 +1776,7 @@ const CodeEditor = () => {
                 initial={{ opacity: 1, y: 0, scale: 1.1 }}
                 animate={{ opacity: 0, y: -48, scale: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 1.2, ease: "easeOut" }}
+                transition={{ duration: 1.2, ease: 'easeOut' }}
                 className="absolute right-48 top-1 flex items-center gap-1 text-neon-gold font-bold text-sm pointer-events-none drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]"
               >
                 <FaStar className="text-[10px]" /> +{pointFloater.amount}
@@ -1307,8 +1803,8 @@ const CodeEditor = () => {
             onClick={() => setShowTutorSidebar(!showTutorSidebar)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
               showTutorSidebar
-                ? "bg-violet-500/25 text-violet-300 border border-violet-400/40 shadow-glow-purple/20"
-                : "bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/10"
+                ? 'bg-violet-500/25 text-violet-300 border border-violet-400/40 shadow-glow-purple/20'
+                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/10'
             }`}
           >
             <FaMagic className="text-[9px]" /> AI
@@ -1332,17 +1828,17 @@ const CodeEditor = () => {
               initial={{ opacity: 0, y: 0, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -24, scale: 0.95 }}
-              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg ${
-                m.type === "success"
-                  ? "bg-emerald-500/95 text-white border-2 border-emerald-300/50 shadow-emerald-500/30"
-                  : m.type === "error"
-                    ? "bg-red-500/95 text-white border-2 border-red-300/50"
-                    : "bg-neon-cyan/95 text-game-void border-2 border-neon-cyan/50"
+                m.type === 'success'
+                  ? 'bg-emerald-500/95 text-white border-2 border-emerald-300/50 shadow-emerald-500/30'
+                  : m.type === 'error'
+                    ? 'bg-red-500/95 text-white border-2 border-red-300/50'
+                    : 'bg-neon-cyan/95 text-game-void border-2 border-neon-cyan/50'
               }`}
             >
-              {m.type === "success" && <FaCheckCircle className="text-base shrink-0" />}
-              {m.type === "error" && <FaExclamationTriangle className="text-base shrink-0" />}
+              {m.type === 'success' && <FaCheckCircle className="text-base shrink-0" />}
+              {m.type === 'error' && <FaExclamationTriangle className="text-base shrink-0" />}
               <span>{m.text}</span>
               {m.points != null && (
                 <span className="shrink-0 flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">
@@ -1367,7 +1863,7 @@ const CodeEditor = () => {
           style={{ width: leftPanelWidth }}
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ type: "spring", damping: 24, stiffness: 300 }}
+          transition={{ type: 'spring', damping: 24, stiffness: 300 }}
         >
           {/* Lesson overview (collapsible) – clear, readable block */}
           <motion.div
@@ -1383,26 +1879,43 @@ const CodeEditor = () => {
               <span className="flex items-center gap-2">
                 <FaBookOpen className="text-neon-cyan" /> Lesson Overview
               </span>
-              {showOverview ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
+              {showOverview ? (
+                <FaChevronUp className="text-xs" />
+              ) : (
+                <FaChevronDown className="text-xs" />
+              )}
             </button>
             <AnimatePresence>
               {showOverview && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
+                  animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
                   <div className="px-4 pb-4 max-h-[400px] overflow-y-auto scrollbar-hide">
+                    <button
+                      onClick={() => {
+                        setLectureSlideIndex(0);
+                        setShowOverviewPopup(true);
+                      }}
+                      className="w-full mb-3 flex items-center justify-center gap-2 py-2 rounded-lg bg-neon-cyan/15 border border-neon-cyan/30 text-neon-cyan text-xs font-semibold hover:bg-neon-cyan/25 transition"
+                    >
+                      <FaBookOpen className="text-xs" /> Open Lecture
+                    </button>
                     <div className="text-sm text-slate-200 leading-relaxed tracking-tight">
                       <MarkdownContent content={module.content} />
                     </div>
                     {module.hints?.length > 0 && (
                       <div className="mt-4 pt-3 border-t border-white/10">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Hints</p>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                          Hints
+                        </p>
                         <ul className="list-disc pl-4 space-y-1.5 text-sm text-slate-300">
-                          {module.hints.map((h, i) => <li key={i}>{h}</li>)}
+                          {module.hints.map((h, i) => (
+                            <li key={i}>{h}</li>
+                          ))}
                         </ul>
                       </div>
                     )}
@@ -1438,7 +1951,7 @@ const CodeEditor = () => {
                   return (
                     <motion.div
                       key={step.id}
-                      className={`flex gap-2.5 items-start rounded-md transition-colors duration-300 ${justVerified ? "bg-neon-green/15" : ""}`}
+                      className={`flex gap-2.5 items-start rounded-md transition-colors duration-300 ${justVerified ? 'bg-neon-green/15' : ''}`}
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.12 + i * 0.04 }}
@@ -1448,20 +1961,28 @@ const CodeEditor = () => {
                         <motion.div
                           className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-colors ${
                             verified
-                              ? "border-neon-green bg-neon-green/20 text-neon-green"
+                              ? 'border-neon-green bg-neon-green/20 text-neon-green'
                               : isCurrent
-                                ? "border-neon-cyan bg-neon-cyan/10 text-neon-cyan shadow-glow-cyan/20"
+                                ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan shadow-glow-cyan/20'
                                 : failedFeedback
-                                  ? "border-red-400 bg-red-500/10 text-red-400"
-                                  : "border-white/20 bg-white/5 text-slate-500"
-                          } ${justVerified ? "shadow-[0_0_10px_rgba(74,222,128,0.5)]" : ""}`}
+                                  ? 'border-red-400 bg-red-500/10 text-red-400'
+                                  : 'border-white/20 bg-white/5 text-slate-500'
+                          } ${justVerified ? 'shadow-[0_0_10px_rgba(74,222,128,0.5)]' : ''}`}
                           animate={justVerified ? { scale: [1, 1.35, 1] } : {}}
                           transition={{ duration: 0.35 }}
                         >
-                          {verified ? <FaCheck className="text-[8px]" /> : failedFeedback ? <FaTimes className="text-[8px]" /> : i + 1}
+                          {verified ? (
+                            <FaCheck className="text-[8px]" />
+                          ) : failedFeedback ? (
+                            <FaTimes className="text-[8px]" />
+                          ) : (
+                            i + 1
+                          )}
                         </motion.div>
                         {i < steps.length - 1 && (
-                          <div className={`w-0.5 h-4 mt-1 rounded-full ${verified ? "bg-neon-green/40" : "bg-white/10"}`} />
+                          <div
+                            className={`w-0.5 h-4 mt-1 rounded-full ${verified ? 'bg-neon-green/40' : 'bg-white/10'}`}
+                          />
                         )}
                       </div>
                       {/* Step content */}
@@ -1469,16 +1990,26 @@ const CodeEditor = () => {
                         onClick={() => !locked && goToStep(i)}
                         disabled={locked}
                         className={`flex-1 text-left pb-2 min-w-0 transition ${
-                          locked ? "cursor-not-allowed opacity-40" : "hover:opacity-80"
+                          locked ? 'cursor-not-allowed opacity-40' : 'hover:opacity-80'
                         }`}
                       >
-                        <p className={`text-xs font-medium leading-tight truncate ${
-                          isCurrent ? "text-neon-cyan" : verified ? "text-neon-green" : failedFeedback ? "text-red-300" : "text-slate-300"
-                        } ${failedFeedback && !isCurrent ? "line-through" : ""}`}>
+                        <p
+                          className={`text-xs font-medium leading-tight truncate ${
+                            isCurrent
+                              ? 'text-neon-cyan'
+                              : verified
+                                ? 'text-neon-green'
+                                : failedFeedback
+                                  ? 'text-red-300'
+                                  : 'text-slate-300'
+                          } ${failedFeedback && !isCurrent ? 'line-through' : ''}`}
+                        >
                           {step.title}
                         </p>
                         {failedFeedback && (
-                          <p className="text-[10px] text-red-300/80 mt-0.5 line-clamp-2">{failedFeedback}</p>
+                          <p className="text-[10px] text-red-300/80 mt-0.5 line-clamp-2">
+                            {failedFeedback}
+                          </p>
                         )}
                       </button>
                     </motion.div>
@@ -1505,13 +2036,17 @@ const CodeEditor = () => {
                     {earnedAchievements.length}/{achievements.length}
                   </span>
                 </span>
-                {showAchievements ? <FaChevronUp className="text-[10px]" /> : <FaChevronDown className="text-[10px]" />}
+                {showAchievements ? (
+                  <FaChevronUp className="text-[10px]" />
+                ) : (
+                  <FaChevronDown className="text-[10px]" />
+                )}
               </button>
               <AnimatePresence>
                 {showAchievements && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
+                    animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
@@ -1525,17 +2060,22 @@ const CodeEditor = () => {
                           transition={{ delay: 0.05 + idx * 0.04 }}
                           className={`rounded-lg border p-2 flex flex-col items-center text-center gap-1 transition ${
                             ach.earned
-                              ? "border-neon-gold/30 bg-neon-gold/5"
-                              : "border-white/10 bg-white/[0.02] opacity-50"
+                              ? 'border-neon-gold/30 bg-neon-gold/5'
+                              : 'border-white/10 bg-white/[0.02] opacity-50'
                           }`}
                         >
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${ach.earned ? "bg-neon-gold/15" : "bg-white/5"}`}>
-                            {ach.earned
-                              ? renderAchievementIcon(ach.icon, ach.name, "w-4 h-4 text-neon-gold")
-                              : <FaLock className="text-[10px] text-slate-500" />
-                            }
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center ${ach.earned ? 'bg-neon-gold/15' : 'bg-white/5'}`}
+                          >
+                            {ach.earned ? (
+                              renderAchievementIcon(ach.icon, ach.name, 'w-4 h-4 text-neon-gold')
+                            ) : (
+                              <FaLock className="text-[10px] text-slate-500" />
+                            )}
                           </div>
-                          <p className={`text-[10px] font-semibold leading-tight line-clamp-2 ${ach.earned ? "text-slate-200" : "text-slate-500"}`}>
+                          <p
+                            className={`text-[10px] font-semibold leading-tight line-clamp-2 ${ach.earned ? 'text-slate-200' : 'text-slate-500'}`}
+                          >
                             {ach.name}
                           </p>
                           {ach.earned && ach.points && (
@@ -1544,7 +2084,9 @@ const CodeEditor = () => {
                         </motion.div>
                       ))}
                       {achievements.length === 0 && (
-                        <p className="col-span-2 text-[11px] text-slate-500 italic py-2">Complete steps to earn achievements</p>
+                        <p className="col-span-2 text-[11px] text-slate-500 italic py-2">
+                          Complete steps to earn achievements
+                        </p>
                       )}
                     </div>
                   </motion.div>
@@ -1562,23 +2104,37 @@ const CodeEditor = () => {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  transition={{ type: "spring", damping: 22, stiffness: 300 }}
+                  transition={{ type: 'spring', damping: 22, stiffness: 300 }}
                   className="rounded-xl border-2 border-amber-400/30 bg-amber-500/10 p-3 space-y-2"
                 >
                   <h4 className="text-xs font-bold text-amber-200 flex items-center gap-1.5">
                     <FaBolt className="text-amber-400" /> Concept Check
                   </h4>
                   {mcqLoading ? (
-                    <div className="flex items-center gap-2 text-[11px] text-slate-400" role="status" aria-label="Preparing quiz">
-                      <div className="h-3 w-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" aria-hidden />
+                    <div
+                      className="flex items-center gap-2 text-[11px] text-slate-400"
+                      role="status"
+                      aria-label="Preparing quiz"
+                    >
+                      <div
+                        className="h-3 w-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin"
+                        aria-hidden
+                      />
                       Preparing your quiz…
                     </div>
                   ) : mcqQuestions.length > 0 ? (
                     <>
                       <p className="text-[11px] text-slate-200 leading-relaxed">
-                        <span className="text-amber-300 font-semibold">Q{mcqCurrentIndex + 1}/{mcqQuestions.length}:</span>{" "}
+                        <span className="text-amber-300 font-semibold">
+                          Q{mcqCurrentIndex + 1}/{mcqQuestions.length}:
+                        </span>{' '}
                         {mcqQuestions[mcqCurrentIndex]?.question}
                       </p>
+                      {mcqErrorsByQuestion[mcqCurrentIndex] && (
+                        <div className="rounded-lg border border-red-400/30 bg-red-500/10 text-red-200 p-2 text-[11px]">
+                          {mcqErrorsByQuestion[mcqCurrentIndex]}
+                        </div>
+                      )}
                       <div className="space-y-1">
                         {mcqQuestions[mcqCurrentIndex]?.options?.map((opt, idx) => (
                           <motion.button
@@ -1589,8 +2145,8 @@ const CodeEditor = () => {
                             whileTap={{ scale: 0.98 }}
                             className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] border transition ${
                               mcqSelectedIndex === idx
-                                ? "border-amber-400 bg-amber-500/20 text-amber-100"
-                                : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                                ? 'border-amber-400 bg-amber-500/20 text-amber-100'
+                                : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
                             }`}
                           >
                             {opt}
@@ -1598,12 +2154,12 @@ const CodeEditor = () => {
                         ))}
                       </div>
                       <AnimatePresence mode="wait">
-                        {mcqResult && (
+                        {mcqResult && mcqResult.correct && (
                           <motion.div
                             initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
+                            animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
-                            className={`overflow-hidden rounded-lg p-2 text-[11px] ${mcqResult.correct ? "bg-emerald-500/15 text-emerald-200 border border-emerald-400/30" : "bg-red-500/15 text-red-200 border border-red-400/30"}`}
+                            className={`overflow-hidden rounded-lg p-2 text-[11px] ${mcqResult.correct ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-400/30' : 'bg-red-500/15 text-red-200 border border-red-400/30'}`}
                           >
                             {mcqResult.explanation}
                           </motion.div>
@@ -1616,17 +2172,25 @@ const CodeEditor = () => {
                           disabled={mcqVerifyLoading || mcqSelectedIndex == null}
                           className="flex-1 py-1.5 rounded-lg bg-amber-500 text-game-void text-xs font-bold hover:bg-amber-400 disabled:opacity-50 transition"
                         >
-                          {mcqVerifyLoading ? "Checking your answer…" : "Check answer"}
+                          {mcqVerifyLoading ? 'Checking your answer…' : 'Check answer'}
                         </button>
                         {mcqPassedCount === mcqQuestions.length && mcqQuestions.length > 0 && (
-                          <button type="button" onClick={handleMCQNextStep} className="flex-1 py-1.5 rounded-lg bg-neon-green text-game-void text-xs font-bold hover:brightness-110 transition flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={handleMCQNextStep}
+                            className="flex-1 py-1.5 rounded-lg bg-neon-green text-game-void text-xs font-bold hover:brightness-110 transition flex items-center justify-center gap-1"
+                          >
                             Next <FaChevronRight className="text-[8px]" />
                           </button>
                         )}
                       </div>
                     </>
                   ) : (
-                    <button type="button" onClick={handleMCQNextStep} className="w-full py-1.5 rounded-lg bg-white/10 text-slate-300 text-xs hover:bg-white/15 transition">
+                    <button
+                      type="button"
+                      onClick={handleMCQNextStep}
+                      className="w-full py-1.5 rounded-lg bg-white/10 text-slate-300 text-xs hover:bg-white/15 transition"
+                    >
                       Skip to next step
                     </button>
                   )}
@@ -1637,7 +2201,7 @@ const CodeEditor = () => {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  transition={{ type: "spring", damping: 22, stiffness: 300 }}
+                  transition={{ type: 'spring', damping: 22, stiffness: 300 }}
                   className="space-y-2"
                 >
                   <div className="rounded-xl bg-neon-cyan/10 border border-neon-cyan/20 p-3">
@@ -1648,7 +2212,7 @@ const CodeEditor = () => {
                       <p className="text-xs font-semibold text-white mb-1">{currentStep.title}</p>
                     )}
                     <p className="text-[11px] text-slate-300 leading-relaxed line-clamp-3">
-                      {currentStep?.instruction ?? currentStep?.title ?? "Complete this step."}
+                      {currentStep?.instruction ?? currentStep?.title ?? 'Complete this step.'}
                     </p>
                     {currentStep?.concept && (
                       <p className="text-[10px] text-neon-cyan/70 mt-1.5 italic border-l-2 border-neon-cyan/30 pl-2 line-clamp-2">
@@ -1664,7 +2228,10 @@ const CodeEditor = () => {
                   >
                     {verifyLoading ? (
                       <>
-                        <div className="h-3 w-3 rounded-full border-2 border-game-void border-t-transparent animate-spin" aria-hidden />
+                        <div
+                          className="h-3 w-3 rounded-full border-2 border-game-void border-t-transparent animate-spin"
+                          aria-hidden
+                        />
                         Checking your code…
                       </>
                     ) : (
@@ -1673,15 +2240,16 @@ const CodeEditor = () => {
                       </>
                     )}
                   </button>
-                  {(verifyPassed || stepsVerified[currentStepIndex]) && currentStepIndex < steps.length - 1 && (
-                    <button
-                      type="button"
-                      onClick={handleNextStep}
-                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-neon-green text-game-void text-xs font-bold hover:brightness-110 transition"
-                    >
-                      Next step <FaChevronRight className="text-[8px]" />
-                    </button>
-                  )}
+                  {(verifyPassed || stepsVerified[currentStepIndex]) &&
+                    currentStepIndex < steps.length - 1 && (
+                      <button
+                        type="button"
+                        onClick={handleNextStep}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-neon-green text-game-void text-xs font-bold hover:brightness-110 transition"
+                      >
+                        Next step <FaChevronRight className="text-[8px]" />
+                      </button>
+                    )}
                   <AnimatePresence>
                     {verifyFeedback && (
                       <motion.div
@@ -1690,8 +2258,8 @@ const CodeEditor = () => {
                         exit={{ opacity: 0 }}
                         className={`rounded-lg p-2 text-[11px] leading-relaxed ${
                           verifyPassed
-                            ? "bg-neon-green/10 text-emerald-200 border border-neon-green/20"
-                            : "bg-amber-500/10 text-amber-200 border border-amber-400/20"
+                            ? 'bg-neon-green/10 text-emerald-200 border border-neon-green/20'
+                            : 'bg-amber-500/10 text-amber-200 border border-amber-400/20'
                         }`}
                       >
                         {verifyFeedback}
@@ -1720,7 +2288,7 @@ const CodeEditor = () => {
           className="flex-1 flex flex-col min-w-0 min-h-0 border-r border-white/10"
           initial={{ opacity: 0, x: 12 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ type: "spring", damping: 24, stiffness: 300, delay: 0.06 }}
+          transition={{ type: 'spring', damping: 24, stiffness: 300, delay: 0.06 }}
         >
           {/* File tabs */}
           <motion.div
@@ -1739,14 +2307,14 @@ const CodeEditor = () => {
                 whileTap={{ scale: 0.98 }}
                 className={`px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition border-b-2 ${
                   activeTab === tab
-                    ? "border-neon-cyan text-neon-cyan bg-neon-cyan/5"
-                    : "border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5"
+                    ? 'border-neon-cyan text-neon-cyan bg-neon-cyan/5'
+                    : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5'
                 }`}
                 onClick={() => setActiveTab(tab)}
               >
-                {tab === "jsx" && <FaReact className="text-cyan-400 text-xs" />}
-                {tab === "server" && <FaServer className="text-amber-400 text-xs" />}
-                {tab === "server" ? "SERVER.JS" : tab.toUpperCase()}
+                {tab === 'jsx' && <FaReact className="text-cyan-400 text-xs" />}
+                {tab === 'server' && <FaServer className="text-amber-400 text-xs" />}
+                {tab === 'server' ? 'SERVER.JS' : tab.toUpperCase()}
               </motion.button>
             ))}
             {isReactModule && (
@@ -1775,7 +2343,7 @@ const CodeEditor = () => {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 12 }}
-                  transition={{ type: "spring", damping: 22, stiffness: 300 }}
+                  transition={{ type: 'spring', damping: 22, stiffness: 300 }}
                   className="absolute bottom-2 left-2 right-2 z-30 rounded-xl border border-neon-cyan/25 bg-game-night/95 backdrop-blur-lg shadow-xl shadow-neon-cyan/5 overflow-hidden"
                 >
                   <div className="flex items-start gap-3 p-3">
@@ -1787,7 +2355,9 @@ const CodeEditor = () => {
                         <span className="rounded-full bg-neon-cyan/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-neon-cyan">
                           Step {currentStepIndex + 1}/{steps.length}
                         </span>
-                        <span className="text-xs font-semibold text-white truncate">{currentStep.title}</span>
+                        <span className="text-xs font-semibold text-white truncate">
+                          {currentStep.title}
+                        </span>
                       </div>
                       <p className="text-[11px] text-slate-300 leading-relaxed mb-1.5">
                         {currentStep.instruction || currentStep.title}
@@ -1813,7 +2383,7 @@ const CodeEditor = () => {
               <motion.button
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: "spring", damping: 20 }}
+                transition={{ type: 'spring', damping: 20 }}
                 onClick={() => setShowStepGuide(true)}
                 className="absolute bottom-2 right-2 z-30 flex items-center gap-1.5 rounded-lg border border-neon-cyan/20 bg-game-night/80 backdrop-blur px-2.5 py-1.5 text-[10px] font-semibold text-neon-cyan/80 hover:text-neon-cyan hover:bg-game-night/95 transition shadow-sm"
                 title="Show step guide"
@@ -1823,7 +2393,7 @@ const CodeEditor = () => {
                 <FaLightbulb className="text-[9px]" /> Step {currentStepIndex + 1}
               </motion.button>
             )}
-            {activeTab === "html" && (
+            {activeTab === 'html' && (
               <CodeMirror
                 key={`html-${editorKey}`}
                 value={codeRefs.current.html}
@@ -1835,7 +2405,7 @@ const CodeEditor = () => {
                 basicSetup={{ lineNumbers: true, completionKeymap: true }}
               />
             )}
-            {activeTab === "css" && (
+            {activeTab === 'css' && (
               <CodeMirror
                 key={`css-${editorKey}`}
                 value={codeRefs.current.css}
@@ -1847,7 +2417,7 @@ const CodeEditor = () => {
                 basicSetup={{ lineNumbers: true, completionKeymap: true }}
               />
             )}
-            {activeTab === "js" && (
+            {activeTab === 'js' && (
               <CodeMirror
                 key={`js-${editorKey}`}
                 value={codeRefs.current.js}
@@ -1859,7 +2429,7 @@ const CodeEditor = () => {
                 basicSetup={{ lineNumbers: true, completionKeymap: true }}
               />
             )}
-            {activeTab === "jsx" && (
+            {activeTab === 'jsx' && (
               <CodeMirror
                 key={`jsx-${editorKey}`}
                 value={codeRefs.current.jsx}
@@ -1871,7 +2441,7 @@ const CodeEditor = () => {
                 basicSetup={{ lineNumbers: true, completionKeymap: true }}
               />
             )}
-            {activeTab === "server" && (
+            {activeTab === 'server' && (
               <CodeMirror
                 key={`server-${editorKey}`}
                 value={codeRefs.current.server}
@@ -1893,56 +2463,61 @@ const CodeEditor = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ type: "spring", damping: 20 }}
+                transition={{ type: 'spring', damping: 20 }}
                 className="shrink-0 border-t border-emerald-400/30 bg-emerald-950/50 px-3 py-3 flex items-center gap-3"
               >
-              <span className="w-8 h-8 rounded-full bg-emerald-500/30 flex items-center justify-center shrink-0">
-                <FaCheckCircle className="text-emerald-400 text-sm" />
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-emerald-200">All clear!</p>
-                <p className="text-[10px] text-emerald-300/80">No errors in this run. Keep going!</p>
-              </div>
-              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full">
-                +10
-              </span>
-            </motion.div>
-            ) : recentErrors.length > 0 ? (
-            <div className="shrink-0 border-t border-red-400/20 bg-red-950/40">
-              <div className="flex items-center justify-between px-3 py-2 border-b border-red-400/10">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-red-300 flex items-center gap-1.5">
-                  <FaExclamationTriangle className="text-red-400" /> Errors ({recentErrors.length})
+                <span className="w-8 h-8 rounded-full bg-emerald-500/30 flex items-center justify-center shrink-0">
+                  <FaCheckCircle className="text-emerald-400 text-sm" />
                 </span>
-                <button
-                  type="button"
-                  onClick={clearConsole}
-                  className="text-[9px] font-semibold text-red-300/80 hover:text-red-200 transition"
-                >
-                  Clear
-                </button>
-              </div>
-              <ul className="max-h-24 overflow-y-auto scrollbar-hide px-3 py-2 space-y-1.5">
-                {recentErrors.map((msg, i) => (
-                  <li
-                    key={`editor-err-${i}`}
-                    className="flex items-start gap-2 text-[11px] rounded-lg border border-red-400/20 bg-red-500/10 px-2 py-1.5"
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-emerald-200">All clear!</p>
+                  <p className="text-[10px] text-emerald-300/80">
+                    No errors in this run. Keep going!
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full">
+                  +10
+                </span>
+              </motion.div>
+            ) : recentErrors.length > 0 ? (
+              <div className="shrink-0 border-t border-red-400/20 bg-red-950/40">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-red-400/10">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-red-300 flex items-center gap-1.5">
+                    <FaExclamationTriangle className="text-red-400" /> Errors ({recentErrors.length}
+                    )
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearConsole}
+                    className="text-[9px] font-semibold text-red-300/80 hover:text-red-200 transition"
                   >
-                    <span className="shrink-0 w-5 h-5 rounded bg-red-500/40 text-red-100 flex items-center justify-center text-[10px] font-bold">
-                      !
-                    </span>
-                    <span className="text-red-200/95 break-words flex-1 min-w-0 font-medium">{msg}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleExplainErrorClick(msg)}
-                      disabled={explainErrorLoading}
-                      className="shrink-0 rounded-md px-2 py-0.5 text-[9px] font-bold bg-red-500/40 text-red-100 hover:bg-red-500/60 disabled:opacity-50 transition border border-red-400/30"
+                    Clear
+                  </button>
+                </div>
+                <ul className="max-h-24 overflow-y-auto scrollbar-hide px-3 py-2 space-y-1.5">
+                  {recentErrors.map((msg, i) => (
+                    <li
+                      key={`editor-err-${i}`}
+                      className="flex items-start gap-2 text-[11px] rounded-lg border border-red-400/20 bg-red-500/10 px-2 py-1.5"
                     >
-                      Explain
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                      <span className="shrink-0 w-5 h-5 rounded bg-red-500/40 text-red-100 flex items-center justify-center text-[10px] font-bold">
+                        !
+                      </span>
+                      <span className="text-red-200/95 break-words flex-1 min-w-0 font-medium">
+                        {msg}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleExplainErrorClick(msg)}
+                        disabled={explainErrorLoading}
+                        className="shrink-0 rounded-md px-2 py-0.5 text-[9px] font-bold bg-red-500/40 text-red-100 hover:bg-red-500/60 disabled:opacity-50 transition border border-red-400/30"
+                      >
+                        Explain
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
           </AnimatePresence>
         </motion.div>
@@ -1964,7 +2539,7 @@ const CodeEditor = () => {
           style={{ width: rightPanelWidth }}
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ type: "spring", damping: 24, stiffness: 300, delay: 0.1 }}
+          transition={{ type: 'spring', damping: 24, stiffness: 300, delay: 0.1 }}
         >
           {isMultiplayerModule ? (
             <>
@@ -1976,9 +2551,9 @@ const CodeEditor = () => {
                 transition={{ delay: 0.12 }}
               >
                 {[
-                  { key: "server", label: "Server", color: "amber" },
-                  { key: "player1", label: "Client 1", color: "red", icon: FaUser },
-                  { key: "player2", label: "Client 2", color: "cyan", icon: FaUser },
+                  { key: 'server', label: 'Server', color: 'amber' },
+                  { key: 'player1', label: 'Client 1', color: 'red', icon: FaUser },
+                  { key: 'player2', label: 'Client 2', color: 'cyan', icon: FaUser },
                 ].map(({ key, label, color, icon: Icon }) => (
                   <button
                     key={key}
@@ -1986,7 +2561,7 @@ const CodeEditor = () => {
                     className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 text-[10px] font-semibold transition border-b-2 ${
                       activePreviewTab === key
                         ? `border-${color}-400 text-${color}-400 bg-${color}-500/10`
-                        : "border-transparent text-slate-500 hover:text-slate-300"
+                        : 'border-transparent text-slate-500 hover:text-slate-300'
                     }`}
                   >
                     {Icon && <Icon className="text-[8px]" />} {label}
@@ -1997,26 +2572,46 @@ const CodeEditor = () => {
                 {/* Keep all iframes mounted; use snapshot so code changes don't reload (new socket). Only Run/Reset update snapshot. */}
                 <iframe
                   key={`server-${serverPreviewKey}`}
-                  srcDoc={multiplayerSnapshot?.server ?? getPreviewContent("server")}
-                  className={activePreviewTab === "server" ? "w-full flex-1 min-h-0 border-0" : "absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"}
+                  srcDoc={multiplayerSnapshot?.server ?? getPreviewContent('server')}
+                  className={
+                    activePreviewTab === 'server'
+                      ? 'w-full flex-1 min-h-0 border-0'
+                      : 'absolute w-px h-px opacity-0 pointer-events-none overflow-hidden'
+                  }
                   sandbox="allow-scripts allow-same-origin"
                   title="Server"
                 />
-                <div className={activePreviewTab === "player1" ? "flex flex-col flex-1 min-h-0" : "absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"}>
-                  <div className="px-2 py-1 bg-red-500/10 text-red-500 text-[10px] font-bold text-center shrink-0">Client 1</div>
+                <div
+                  className={
+                    activePreviewTab === 'player1'
+                      ? 'flex flex-col flex-1 min-h-0'
+                      : 'absolute w-px h-px opacity-0 pointer-events-none overflow-hidden'
+                  }
+                >
+                  <div className="px-2 py-1 bg-red-500/10 text-red-500 text-[10px] font-bold text-center shrink-0">
+                    Client 1
+                  </div>
                   <iframe
                     key={`p1-${player1PreviewKey}`}
-                    srcDoc={multiplayerSnapshot?.player1 ?? getPreviewContent("player1")}
+                    srcDoc={multiplayerSnapshot?.player1 ?? getPreviewContent('player1')}
                     className="flex-1 w-full min-h-0 border-0"
                     sandbox="allow-scripts allow-same-origin"
                     title="Client 1"
                   />
                 </div>
-                <div className={activePreviewTab === "player2" ? "flex flex-col flex-1 min-h-0" : "absolute w-px h-px opacity-0 pointer-events-none overflow-hidden"}>
-                  <div className="px-2 py-1 bg-cyan-500/10 text-cyan-500 text-[10px] font-bold text-center shrink-0">Client 2</div>
+                <div
+                  className={
+                    activePreviewTab === 'player2'
+                      ? 'flex flex-col flex-1 min-h-0'
+                      : 'absolute w-px h-px opacity-0 pointer-events-none overflow-hidden'
+                  }
+                >
+                  <div className="px-2 py-1 bg-cyan-500/10 text-cyan-500 text-[10px] font-bold text-center shrink-0">
+                    Client 2
+                  </div>
                   <iframe
                     key={`p2-${player2PreviewKey}`}
-                    srcDoc={multiplayerSnapshot?.player2 ?? getPreviewContent("player2")}
+                    srcDoc={multiplayerSnapshot?.player2 ?? getPreviewContent('player2')}
                     className="flex-1 w-full min-h-0 border-0"
                     sandbox="allow-scripts allow-same-origin"
                     title="Client 2"
@@ -2080,36 +2675,63 @@ const CodeEditor = () => {
               <span className="flex items-center gap-2">
                 Console
                 {consoleLogs.length > 0 && (
-                  <span className="rounded-full bg-white/10 px-1.5 py-0 text-[9px] font-semibold text-slate-300">{consoleLogs.length}</span>
+                  <span className="rounded-full bg-white/10 px-1.5 py-0 text-[9px] font-semibold text-slate-300">
+                    {consoleLogs.length}
+                  </span>
                 )}
               </span>
               <div className="flex items-center gap-2">
                 {consoleOpen && !isMultiplayerModule && (
-                  <span onClick={(e) => { e.stopPropagation(); clearConsole(); }} className="text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer">Clear</span>
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearConsole();
+                    }}
+                    className="text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer"
+                  >
+                    Clear
+                  </span>
                 )}
-                {consoleOpen ? <FaChevronDown className="text-[8px]" /> : <FaChevronRight className="text-[8px]" />}
+                {consoleOpen ? (
+                  <FaChevronDown className="text-[8px]" />
+                ) : (
+                  <FaChevronRight className="text-[8px]" />
+                )}
               </div>
             </button>
-            {consoleOpen && (
-              isMultiplayerModule ? (
+            {consoleOpen &&
+              (isMultiplayerModule ? (
                 <div className="flex-1 flex min-h-0 overflow-hidden">
                   <div className="flex-1 flex flex-col min-w-0 border-r border-white/10">
                     <div className="flex items-center justify-between px-2 py-1 bg-amber-500/10 border-b border-amber-500/20 shrink-0">
                       <span className="text-[10px] font-bold text-amber-400">Server</span>
-                      <span onClick={(e) => { e.stopPropagation(); clearServerConsole(); }} className="text-[10px] text-slate-500 hover:text-amber-300 cursor-pointer">Clear</span>
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearServerConsole();
+                        }}
+                        className="text-[10px] text-slate-500 hover:text-amber-300 cursor-pointer"
+                      >
+                        Clear
+                      </span>
                     </div>
                     <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 px-2 py-1 font-mono text-[11px] space-y-0.5">
                       {serverLogs.length === 0 ? (
-                        <p className="text-slate-600 italic text-[10px] px-1">No server output yet.</p>
+                        <p className="text-slate-600 italic text-[10px] px-1">
+                          No server output yet.
+                        </p>
                       ) : (
                         serverLogs.map((entry, i) => (
                           <div
                             key={`s-${entry.timestamp}-${i}`}
                             className={`flex gap-1.5 py-0.5 px-1.5 rounded ${
-                              entry.level === "error" ? "text-red-400 bg-red-500/10"
-                                : entry.level === "warn" ? "text-amber-400 bg-amber-500/10"
-                                  : entry.level === "info" ? "text-cyan-400 bg-cyan-500/10"
-                                    : "text-slate-400 bg-white/[0.03]"
+                              entry.level === 'error'
+                                ? 'text-red-400 bg-red-500/10'
+                                : entry.level === 'warn'
+                                  ? 'text-amber-400 bg-amber-500/10'
+                                  : entry.level === 'info'
+                                    ? 'text-cyan-400 bg-cyan-500/10'
+                                    : 'text-slate-400 bg-white/[0.03]'
                             }`}
                           >
                             <span className="shrink-0 opacity-50 text-[10px]">[{entry.level}]</span>
@@ -2122,20 +2744,33 @@ const CodeEditor = () => {
                   <div className="flex-1 flex flex-col min-w-0">
                     <div className="flex items-center justify-between px-2 py-1 bg-slate-500/10 border-b border-white/10 shrink-0">
                       <span className="text-[10px] font-bold text-slate-300">Clients</span>
-                      <span onClick={(e) => { e.stopPropagation(); clearClientConsole(); }} className="text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer">Clear</span>
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearClientConsole();
+                        }}
+                        className="text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer"
+                      >
+                        Clear
+                      </span>
                     </div>
                     <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 px-2 py-1 font-mono text-[11px] space-y-0.5">
                       {clientLogs.length === 0 ? (
-                        <p className="text-slate-600 italic text-[10px] px-1">No client output yet.</p>
+                        <p className="text-slate-600 italic text-[10px] px-1">
+                          No client output yet.
+                        </p>
                       ) : (
                         clientLogs.map((entry, i) => (
                           <div
                             key={`c-${entry.timestamp}-${i}`}
                             className={`flex gap-1.5 py-0.5 px-1.5 rounded ${
-                              entry.level === "error" ? "text-red-400 bg-red-500/10"
-                                : entry.level === "warn" ? "text-amber-400 bg-amber-500/10"
-                                  : entry.level === "info" ? "text-cyan-400 bg-cyan-500/10"
-                                    : "text-slate-400 bg-white/[0.03]"
+                              entry.level === 'error'
+                                ? 'text-red-400 bg-red-500/10'
+                                : entry.level === 'warn'
+                                  ? 'text-amber-400 bg-amber-500/10'
+                                  : entry.level === 'info'
+                                    ? 'text-cyan-400 bg-cyan-500/10'
+                                    : 'text-slate-400 bg-white/[0.03]'
                             }`}
                           >
                             <span className="shrink-0 opacity-50 text-[10px]">[{entry.level}]</span>
@@ -2155,20 +2790,22 @@ const CodeEditor = () => {
                       <div
                         key={`${entry.timestamp}-${i}`}
                         className={`flex gap-1.5 py-0.5 px-1.5 rounded ${
-                          entry.level === "error" ? "text-red-400 bg-red-500/10"
-                            : entry.level === "warn" ? "text-amber-400 bg-amber-500/10"
-                              : entry.level === "info" ? "text-cyan-400 bg-cyan-500/10"
-                                : "text-slate-400 bg-white/[0.03]"
+                          entry.level === 'error'
+                            ? 'text-red-400 bg-red-500/10'
+                            : entry.level === 'warn'
+                              ? 'text-amber-400 bg-amber-500/10'
+                              : entry.level === 'info'
+                                ? 'text-cyan-400 bg-cyan-500/10'
+                                : 'text-slate-400 bg-white/[0.03]'
                         }`}
                       >
                         <span className="shrink-0 opacity-50 text-[10px]">[{entry.level}]</span>
                         <span className="break-all flex-1">{entry.message}</span>
-                    </div>
-                  ))
+                      </div>
+                    ))
                   )}
                 </div>
-              )
-            )}
+              ))}
           </div>
         </motion.div>
 
@@ -2179,14 +2816,17 @@ const CodeEditor = () => {
               initial={{ x: 320 }}
               animate={{ x: 0 }}
               exit={{ x: 320 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               className="fixed top-12 right-0 bottom-0 w-80 max-w-[90vw] z-50 flex flex-col border-l border-violet-500/20 bg-game-night/95 backdrop-blur-xl shadow-2xl"
             >
               <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5 shrink-0">
                 <h2 className="text-xs font-bold text-white flex items-center gap-2">
                   <FaMagic className="text-violet-400" /> AI Companion
                 </h2>
-                <button onClick={() => setShowTutorSidebar(false)} className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition">
+                <button
+                  onClick={() => setShowTutorSidebar(false)}
+                  className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition"
+                >
                   <FaTimes className="text-[10px]" />
                 </button>
               </div>
@@ -2199,8 +2839,13 @@ const CodeEditor = () => {
                     </p>
                     <ul className="space-y-1.5">
                       {recentErrors.slice(-3).map((msg, i) => (
-                        <li key={`err-${i}`} className="flex items-start gap-1.5 rounded-lg border border-red-400/20 bg-red-500/10 px-2 py-1.5">
-                          <span className="text-[10px] text-red-200 break-words flex-1 min-w-0 line-clamp-2 font-medium">{msg}</span>
+                        <li
+                          key={`err-${i}`}
+                          className="flex items-start gap-1.5 rounded-lg border border-red-400/20 bg-red-500/10 px-2 py-1.5"
+                        >
+                          <span className="text-[10px] text-red-200 break-words flex-1 min-w-0 line-clamp-2 font-medium">
+                            {msg}
+                          </span>
                           <button
                             type="button"
                             onClick={() => handleExplainErrorClick(msg)}
@@ -2216,12 +2861,19 @@ const CodeEditor = () => {
                 )}
                 {/* Message thread — highlighted code vs error explanations */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide p-3 space-y-2">
-                  {companionMessages.length === 0 && !explainCodeLoading && !tutorLoading && !explainErrorLoading && (
-                    <p className="text-[11px] text-slate-500 italic leading-relaxed">Ask a question, select code and click &quot;Explain&quot;, or paste an error message.</p>
-                  )}
+                  {companionMessages.length === 0 &&
+                    !explainCodeLoading &&
+                    !tutorLoading &&
+                    !explainErrorLoading && (
+                      <p className="text-[11px] text-slate-500 italic leading-relaxed">
+                        Ask a question, select code and click &quot;Explain&quot;, or paste an error
+                        message.
+                      </p>
+                    )}
                   {companionMessages.map((msg) => {
-                    const isErrorExplanation = msg.type === "explain" && msg.userLabel === "Error explanation";
-                    const isCodeExplanation = msg.type === "explain" && !isErrorExplanation;
+                    const isErrorExplanation =
+                      msg.type === 'explain' && msg.userLabel === 'Error explanation';
+                    const isCodeExplanation = msg.type === 'explain' && !isErrorExplanation;
                     return (
                       <motion.div
                         key={msg.id}
@@ -2229,30 +2881,53 @@ const CodeEditor = () => {
                         animate={{ opacity: 1, y: 0 }}
                         className={`rounded-xl overflow-hidden border-2 ${
                           isErrorExplanation
-                            ? "border-red-400/40 bg-red-950/40 shadow-lg shadow-red-500/5"
+                            ? 'border-red-400/40 bg-red-950/40 shadow-lg shadow-red-500/5'
                             : isCodeExplanation
-                              ? "border-violet-400/30 bg-violet-950/30 shadow-lg shadow-violet-500/5"
-                              : "border-white/10 bg-game-void/60"
+                              ? 'border-violet-400/30 bg-violet-950/30 shadow-lg shadow-violet-500/5'
+                              : 'border-white/10 bg-game-void/60'
                         }`}
                       >
-                        <div className={`px-3 py-1.5 border-b flex items-center justify-between gap-2 ${
-                          isErrorExplanation ? "border-red-400/20 text-red-200" : isCodeExplanation ? "border-violet-400/20 text-violet-200" : "border-white/[0.06] text-slate-500"
-                        } text-[10px] font-semibold`}>
+                        <div
+                          className={`px-3 py-1.5 border-b flex items-center justify-between gap-2 ${
+                            isErrorExplanation
+                              ? 'border-red-400/20 text-red-200'
+                              : isCodeExplanation
+                                ? 'border-violet-400/20 text-violet-200'
+                                : 'border-white/[0.06] text-slate-500'
+                          } text-[10px] font-semibold`}
+                        >
                           <span className="flex items-center gap-1.5">
-                            {isErrorExplanation && <FaExclamationTriangle className="text-red-400 shrink-0" />}
+                            {isErrorExplanation && (
+                              <FaExclamationTriangle className="text-red-400 shrink-0" />
+                            )}
                             {isCodeExplanation && <FaMagic className="text-violet-400 shrink-0" />}
-                            {isErrorExplanation ? "Error explanation" : isCodeExplanation ? "Code explanation" : "You"}
-                            {msg.type === "hint" && msg.userLabel !== "Step help" && <span className="text-slate-600 truncate max-w-[80px]" title={msg.userLabel}>: {msg.userLabel}</span>}
+                            {isErrorExplanation
+                              ? 'Error explanation'
+                              : isCodeExplanation
+                                ? 'Code explanation'
+                                : 'You'}
+                            {msg.type === 'hint' && msg.userLabel !== 'Step help' && (
+                              <span
+                                className="text-slate-600 truncate max-w-[80px]"
+                                title={msg.userLabel}
+                              >
+                                : {msg.userLabel}
+                              </span>
+                            )}
                           </span>
                           <span className="shrink-0 opacity-70">{msg.timestamp}</span>
                         </div>
                         <div className="p-3 text-xs leading-relaxed text-slate-200">
                           <MarkdownContent content={msg.content} />
                         </div>
-                        {msg.confidence != null && msg.type === "hint" && (
+                        {msg.confidence != null && msg.type === 'hint' && (
                           <div className="px-3 pb-2">
                             <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] text-slate-500">
-                              {msg.confidence >= 0.6 ? "Targeted" : msg.confidence >= 0.4 ? "General" : "Needs context"}
+                              {msg.confidence >= 0.6
+                                ? 'Targeted'
+                                : msg.confidence >= 0.4
+                                  ? 'General'
+                                  : 'Needs context'}
                             </span>
                           </div>
                         )}
@@ -2260,10 +2935,20 @@ const CodeEditor = () => {
                     );
                   })}
                   {(explainCodeLoading || tutorLoading || explainErrorLoading) && (
-                    <div className="rounded-xl border border-violet-400/20 bg-violet-500/10 p-3 flex items-center gap-2 text-violet-200" role="status">
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" aria-hidden />
+                    <div
+                      className="rounded-xl border border-violet-400/20 bg-violet-500/10 p-3 flex items-center gap-2 text-violet-200"
+                      role="status"
+                    >
+                      <div
+                        className="h-3.5 w-3.5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin"
+                        aria-hidden
+                      />
                       <span className="text-[11px]">
-                        {explainCodeLoading ? "Explaining your code…" : tutorLoading ? "Thinking of a hint…" : "Explaining this error…"}
+                        {explainCodeLoading
+                          ? 'Explaining your code…'
+                          : tutorLoading
+                            ? 'Thinking of a hint…'
+                            : 'Explaining this error…'}
                       </span>
                     </div>
                   )}
@@ -2297,8 +2982,8 @@ const CodeEditor = () => {
                         type="button"
                         className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold transition ${
                           hintStyle === s.value
-                            ? "border-violet-400/40 bg-violet-500/15 text-violet-200"
-                            : "border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/5"
+                            ? 'border-violet-400/40 bg-violet-500/15 text-violet-200'
+                            : 'border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/5'
                         }`}
                         onClick={() => setHintStyle(s.value)}
                         title={s.description}

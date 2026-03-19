@@ -1,5 +1,5 @@
-import { motion } from "framer-motion";
-import { useLocation, useNavigationType } from "react-router-dom";
+import { motion } from 'framer-motion';
+import { useLocation, useNavigationType } from 'react-router-dom';
 
 const MotionDiv = motion.div;
 
@@ -14,7 +14,7 @@ const SWIPE_EASE = [0.32, 0.72, 0, 1];
  * - REPLACE: crossfade
  */
 const getSwipeVariants = (direction, navigationType) => {
-  const isReplace = navigationType === "REPLACE";
+  const isReplace = navigationType === 'REPLACE';
   if (isReplace) {
     return {
       initial: { opacity: 0 },
@@ -23,9 +23,9 @@ const getSwipeVariants = (direction, navigationType) => {
     };
   }
 
-  const isBack = direction === "back" || (direction == null && navigationType === "POP");
-  const enterX = isBack ? "-100%" : "100%";
-  const exitX = isBack ? "100%" : "-100%";
+  const isBack = direction === 'back' || (direction == null && navigationType === 'POP');
+  const enterX = isBack ? '-100%' : '100%';
+  const exitX = isBack ? '100%' : '-100%';
 
   return {
     initial: {
@@ -44,7 +44,7 @@ const getSwipeVariants = (direction, navigationType) => {
 };
 
 const pageTransition = {
-  type: "tween",
+  type: 'tween',
   ease: SWIPE_EASE,
   duration: SWIPE_DURATION,
 };
@@ -63,9 +63,9 @@ const PageTransition = ({ children }) => {
       variants={variants}
       transition={pageTransition}
       style={{
-        width: "100%",
-        minHeight: "100vh",
-        backgroundColor: "#000000",
+        width: '100%',
+        minHeight: '100vh',
+        backgroundColor: '#000000',
       }}
     >
       {children}

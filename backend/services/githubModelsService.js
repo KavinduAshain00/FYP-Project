@@ -1,12 +1,14 @@
-const ModelClient = require('@azure-rest/ai-inference').default;
-const { isUnexpected } = require('@azure-rest/ai-inference');
-const { AzureKeyCredential } = require('@azure/core-auth');
+const ModelClient = require("@azure-rest/ai-inference").default;
+const { isUnexpected } = require("@azure-rest/ai-inference");
+const { AzureKeyCredential } = require("@azure/core-auth");
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const ENDPOINT = 'https://models.github.ai/inference';
+const ENDPOINT = "https://models.github.ai/inference";
 
 if (!GITHUB_TOKEN) {
-  console.warn('Warning: GITHUB_TOKEN not set. GitHub Models calls will fail until configured.');
+  console.warn(
+    "Warning: GITHUB_TOKEN not set. GitHub Models calls will fail until configured.",
+  );
 }
 
 let client = null;
@@ -26,10 +28,10 @@ function getClient() {
  * @returns {Promise<string>} The assistant's reply text
  */
 async function chatCompletion(messages, model, options = {}) {
-  if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN not configured');
+  if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
 
   const c = getClient();
-  const response = await c.path('/chat/completions').post({
+  const response = await c.path("/chat/completions").post({
     body: {
       messages,
       model,
@@ -41,11 +43,13 @@ async function chatCompletion(messages, model, options = {}) {
 
   if (isUnexpected(response)) {
     const err = response.body.error;
-    throw new Error(err?.message || JSON.stringify(err) || 'GitHub Models request failed');
+    throw new Error(
+      err?.message || JSON.stringify(err) || "GitHub Models request failed",
+    );
   }
 
   const choice = response.body.choices?.[0];
-  return choice?.message?.content || '';
+  return choice?.message?.content || "";
 }
 
 module.exports = { chatCompletion };

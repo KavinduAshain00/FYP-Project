@@ -1,23 +1,17 @@
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-} from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import { AnimatePresence } from "framer-motion";
-import ProtectedRoute from "./components/ProtectedRoute";
-import PageTransition from "./components/PageTransition";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import Dashboard from "./pages/Dashboard";
-import Modules from "./pages/Modules";
-import CodeEditor from "./pages/CodeEditor";
-import Profile from "./pages/Profile";
-import Admin from "./pages/Admin";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { AnimatePresence } from 'framer-motion';
+import ProtectedRoute from './components/ProtectedRoute';
+import PageTransition from './components/PageTransition';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import Dashboard from './pages/Dashboard';
+import Modules from './pages/Modules';
+import CodeEditor from './pages/CodeEditor';
+import Profile from './pages/Profile';
+import Admin from './pages/Admin';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -25,11 +19,11 @@ function AnimatedRoutes() {
   return (
     <div
       style={{
-        position: "relative",
-        overflowX: "hidden",
-        overflowY: "auto",
-        minHeight: "100vh",
-        width: "100%",
+        position: 'relative',
+        overflowX: 'hidden',
+        overflowY: 'auto',
+        minHeight: '100vh',
+        width: '100%',
       }}
     >
       <AnimatePresence mode="wait" initial={false}>

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import {
   FaBolt,
   FaCamera,
@@ -13,25 +13,27 @@ import {
   FaLock,
   FaStar,
   FaLink,
-} from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
-import { achievementsAPI, userAPI } from "../api/api";
-import { GameLayout } from "../components/layout/GameLayout";
-import LoadingScreen from "../components/ui/LoadingScreen";
+} from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
+import { achievementsAPI, userAPI } from '../api/api';
+import { GameLayout } from '../components/layout/GameLayout';
+import LoadingScreen from '../components/ui/LoadingScreen';
 
 const buildPromptUrl = (prompt) =>
   `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=768&height=768&seed=42&nologo=true`;
 
-const defaultAvatarPrompt = "Stylized hero portrait, simple avatar";
+const defaultAvatarPrompt = 'Stylized hero portrait, simple avatar';
 
 const groupAvatarsByUnlock = (avatars) => {
-  const default_ = avatars.filter((a) => a.unlockType === "default");
-  const level = avatars.filter((a) => a.unlockType === "level").sort((a, b) => {
-    const lvA = parseInt(a.requirementTag?.replace(/\D/g, "") || "0", 10);
-    const lvB = parseInt(b.requirementTag?.replace(/\D/g, "") || "0", 10);
-    return lvA - lvB;
-  });
-  const achievement = avatars.filter((a) => a.unlockType === "achievement");
+  const default_ = avatars.filter((a) => a.unlockType === 'default');
+  const level = avatars
+    .filter((a) => a.unlockType === 'level')
+    .sort((a, b) => {
+      const lvA = parseInt(a.requirementTag?.replace(/\D/g, '') || '0', 10);
+      const lvB = parseInt(b.requirementTag?.replace(/\D/g, '') || '0', 10);
+      return lvA - lvB;
+    });
+  const achievement = avatars.filter((a) => a.unlockType === 'achievement');
   return { default: default_, level, achievement };
 };
 
@@ -41,14 +43,14 @@ const Profile = () => {
   const [profile, setProfile] = useState(null);
   const [achievements, setAchievements] = useState([]);
   const [avatars, setAvatars] = useState([]);
-  const [name, setName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
+  const [name, setName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [changePasswordCurrent, setChangePasswordCurrent] = useState("");
-  const [changePasswordNew, setChangePasswordNew] = useState("");
-  const [changePasswordConfirm, setChangePasswordConfirm] = useState("");
+  const [changePasswordCurrent, setChangePasswordCurrent] = useState('');
+  const [changePasswordNew, setChangePasswordNew] = useState('');
+  const [changePasswordConfirm, setChangePasswordConfirm] = useState('');
   const [changePasswordSaving, setChangePasswordSaving] = useState(false);
 
   useEffect(() => {
@@ -61,12 +63,12 @@ const Profile = () => {
         ]);
         const userData = profileRes.data.user;
         setProfile(userData);
-        setName(userData.name || "");
-        setAvatarUrl(userData.avatarUrl || "");
+        setName(userData.name || '');
+        setAvatarUrl(userData.avatarUrl || '');
         setAchievements(achievementsRes.data.achievements || []);
         setAvatars(avatarsRes.data.avatars || []);
       } catch (error) {
-        console.error("Error loading profile:", error);
+        console.error('Error loading profile:', error);
       } finally {
         setLoading(false);
       }
@@ -76,7 +78,7 @@ const Profile = () => {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast.error("Please enter a display name.");
+      toast.error('Please enter a display name.');
       return;
     }
     setSaving(true);
@@ -86,7 +88,7 @@ const Profile = () => {
         avatarUrl: avatarUrl.trim(),
       });
       await refreshProfile?.();
-      toast.success("Your profile has been updated!");
+      toast.success('Your profile has been updated!');
       setEditMode(false);
     } catch {
       toast.error("We couldn't save your profile. Please try again.");
@@ -98,22 +100,22 @@ const Profile = () => {
   const handleChangePassword = async (e) => {
     e.preventDefault();
     if (changePasswordNew !== changePasswordConfirm) {
-      toast.error("New passwords do not match.");
+      toast.error('New passwords do not match.');
       return;
     }
     if (changePasswordNew.length < 6) {
-      toast.error("New password must be at least 6 characters.");
+      toast.error('New password must be at least 6 characters.');
       return;
     }
     setChangePasswordSaving(true);
     try {
       await userAPI.changePassword(changePasswordCurrent, changePasswordNew);
-      toast.success("Password updated.");
-      setChangePasswordCurrent("");
-      setChangePasswordNew("");
-      setChangePasswordConfirm("");
+      toast.success('Password updated.');
+      setChangePasswordCurrent('');
+      setChangePasswordNew('');
+      setChangePasswordConfirm('');
     } catch (err) {
-      toast.error(err.response?.data?.message || "Could not update password.");
+      toast.error(err.response?.data?.message || 'Could not update password.');
     } finally {
       setChangePasswordSaving(false);
     }
@@ -148,11 +150,7 @@ const Profile = () => {
             <div className="flex flex-col items-center">
               <div className="relative">
                 <img
-                  src={
-                    avatarUrl.trim()
-                      ? avatarUrl
-                      : buildPromptUrl(defaultAvatarPrompt)
-                  }
+                  src={avatarUrl.trim() ? avatarUrl : buildPromptUrl(defaultAvatarPrompt)}
                   alt="Profile"
                   className="w-28 h-28 sm:w-36 sm:h-36 border border-[#2e3648] object-cover rounded-xl"
                 />
@@ -167,19 +165,22 @@ const Profile = () => {
                 </button>
               </div>
               <span className="mt-2 text-xs font-bold text-[#c8a040] border border-[#c8a040]/30 bg-[#c8a040]/5 px-2 py-0.5 rounded-lg">
-                <FaCrown className="inline mr-1" /> {(profile?.levelInfo?.rank?.name || user?.levelInfo?.rank?.name || "Amateur").toUpperCase()}
+                <FaCrown className="inline mr-1" />{' '}
+                {(
+                  profile?.levelInfo?.rank?.name ||
+                  user?.levelInfo?.rank?.name ||
+                  'Amateur'
+                ).toUpperCase()}
               </span>
             </div>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-[#d8d0c4] mb-1">
-                {name || user?.name}
-              </h1>
+              <h1 className="text-2xl font-bold text-[#d8d0c4] mb-1">{name || user?.name}</h1>
               <p className="text-[#706858] text-sm mb-2">{user?.email}</p>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#2e3648] bg-[#1c2230] text-sm rounded-xl">
                 <FaShieldAlt className="text-[#8070b0]" />
-                Path:{" "}
+                Path:{' '}
                 <span className="font-semibold capitalize text-[#d8d0c4]">
-                  {profile?.learningPath?.replace("-", " ") || "Explorer"}
+                  {profile?.learningPath?.replace('-', ' ') || 'Explorer'}
                 </span>
               </div>
               {!editMode && (
@@ -226,9 +227,7 @@ const Profile = () => {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[#a09888] mb-1">
-                  Name
-                </label>
+                <label className="block text-sm font-medium text-[#a09888] mb-1">Name</label>
                 <div className="flex items-center gap-2 border border-[#252c3a] bg-[#161c28] px-3 py-2 rounded-xl">
                   <FaUser className="text-[#585048]" />
                   <input
@@ -242,17 +241,11 @@ const Profile = () => {
               </div>
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-[#a09888] mb-3">
-                    Avatar
-                  </label>
+                  <label className="block text-sm font-medium text-[#a09888] mb-3">Avatar</label>
                   <div className="flex flex-col sm:flex-row gap-4 items-start">
                     <div className="relative shrink-0">
                       <img
-                        src={
-                          avatarUrl.trim()
-                            ? avatarUrl
-                            : buildPromptUrl(defaultAvatarPrompt)
-                        }
+                        src={avatarUrl.trim() ? avatarUrl : buildPromptUrl(defaultAvatarPrompt)}
                         alt="Current"
                         className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl border-2 border-[#2e3648] object-cover"
                       />
@@ -261,83 +254,90 @@ const Profile = () => {
                       </span>
                     </div>
                     <p className="text-xs text-[#585048] sm:pt-2 max-w-xs">
-                      Pick an unlocked avatar below or paste a custom image link. Locked avatars unlock as you level up or earn achievements.
+                      Pick an unlocked avatar below or paste a custom image link. Locked avatars
+                      unlock as you level up or earn achievements.
                     </p>
                   </div>
                 </div>
 
-                {avatars.length > 0 && (() => {
-                  const groups = groupAvatarsByUnlock(avatars);
-                  const sections = [
-                    { key: "default", title: "Starter", icon: FaStar, list: groups.default },
-                    { key: "level", title: "Level unlocks", icon: FaCrown, list: groups.level },
-                    { key: "achievement", title: "Achievement unlocks", icon: FaTrophy, list: groups.achievement },
-                  ].filter((s) => s.list.length > 0);
+                {avatars.length > 0 &&
+                  (() => {
+                    const groups = groupAvatarsByUnlock(avatars);
+                    const sections = [
+                      { key: 'default', title: 'Starter', icon: FaStar, list: groups.default },
+                      { key: 'level', title: 'Level unlocks', icon: FaCrown, list: groups.level },
+                      {
+                        key: 'achievement',
+                        title: 'Achievement unlocks',
+                        icon: FaTrophy,
+                        list: groups.achievement,
+                      },
+                    ].filter((s) => s.list.length > 0);
 
-                  return (
-                    <div className="max-h-[320px] overflow-y-auto overflow-x-hidden rounded-xl border border-[#252c3a] bg-[#161c28] pr-1 -mr-1">
-                      <div className="space-y-5 p-1">
-                      {sections.map((section) => {
-                        const SectionIcon = section.icon;
-                        return (
-                        <div key={section.key}>
-                          <h3 className="flex items-center gap-2 text-xs font-semibold text-[#706858] uppercase tracking-wider mb-3 sticky top-0 bg-[#161c28] py-1 z-10 -mx-1 px-1">
-                            <SectionIcon className="text-[#c8a040]" /> {section.title}
-                          </h3>
-                          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
-                            {section.list.map((av) => {
-                              const selected = avatarUrl === av.url;
-                              return (
-                                <button
-                                  key={av.index}
-                                  type="button"
-                                  onClick={() => av.unlocked && setAvatarUrl(av.url)}
-                                  disabled={!av.unlocked}
-                                  title={!av.unlocked ? av.unlockLabel : undefined}
-                                  className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all focus:outline-none focus:ring-2 focus:ring-[#c8a040]/30 focus:ring-offset-2 focus:ring-offset-[#111620] disabled:cursor-not-allowed disabled:opacity-60 ${
-                                    selected
-                                      ? "border-[#c8a040] scale-[1.02]"
-                                      : av.unlocked
-                                        ? "border-[#2e3648]"
-                                        : "border-[#252c3a] grayscale hover:border-[#3a4258] hover:opacity-90"
-                                  }`}
-                                >
-                                  <img
-                                    src={av.url}
-                                    alt=""
-                                    className="w-full h-full object-cover"
-                                  />
-                                  {!av.unlocked && (
-                                    <>
-                                      <span className="absolute inset-0 flex flex-col items-center justify-center bg-[#0d1017]/90 p-1">
-                                        <FaLock className="text-[#585048] w-5 h-5 shrink-0 mb-0.5" />
-                                        <span className="text-[8px] font-medium text-[#c8a040] text-center leading-tight line-clamp-2 px-0.5">
-                                          {av.unlockLabel || "Unlock"}
-                                        </span>
-                                      </span>
-                                    </>
-                                  )}
-                                  {av.unlocked && av.requirementTag && (
-                                    <span className="absolute bottom-0 left-0 right-0 bg-[#0d1017]/80 text-[9px] text-[#c8a040] py-0.5 text-center font-medium truncate px-0.5">
-                                      {av.requirementTag}
-                                    </span>
-                                  )}
-                                  {selected && (
-                                    <span className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-[#c8a040] flex items-center justify-center">
-                                      <FaCheckCircle className="text-[#0d1017] w-3 h-3" />
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
+                    return (
+                      <div className="max-h-[320px] overflow-y-auto overflow-x-hidden rounded-xl border border-[#252c3a] bg-[#161c28] pr-1 -mr-1">
+                        <div className="space-y-5 p-1">
+                          {sections.map((section) => {
+                            const SectionIcon = section.icon;
+                            return (
+                              <div key={section.key}>
+                                <h3 className="flex items-center gap-2 text-xs font-semibold text-[#706858] uppercase tracking-wider mb-3 sticky top-0 bg-[#161c28] py-1 z-10 -mx-1 px-1">
+                                  <SectionIcon className="text-[#c8a040]" /> {section.title}
+                                </h3>
+                                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
+                                  {section.list.map((av) => {
+                                    const selected = avatarUrl === av.url;
+                                    return (
+                                      <button
+                                        key={av.index}
+                                        type="button"
+                                        onClick={() => av.unlocked && setAvatarUrl(av.url)}
+                                        disabled={!av.unlocked}
+                                        title={!av.unlocked ? av.unlockLabel : undefined}
+                                        className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all focus:outline-none focus:ring-2 focus:ring-[#c8a040]/30 focus:ring-offset-2 focus:ring-offset-[#111620] disabled:cursor-not-allowed disabled:opacity-60 ${
+                                          selected
+                                            ? 'border-[#c8a040] scale-[1.02]'
+                                            : av.unlocked
+                                              ? 'border-[#2e3648]'
+                                              : 'border-[#252c3a] grayscale hover:border-[#3a4258] hover:opacity-90'
+                                        }`}
+                                      >
+                                        <img
+                                          src={av.url}
+                                          alt=""
+                                          className="w-full h-full object-cover"
+                                        />
+                                        {!av.unlocked && (
+                                          <>
+                                            <span className="absolute inset-0 flex flex-col items-center justify-center bg-[#0d1017]/90 p-1">
+                                              <FaLock className="text-[#585048] w-5 h-5 shrink-0 mb-0.5" />
+                                              <span className="text-[8px] font-medium text-[#c8a040] text-center leading-tight line-clamp-2 px-0.5">
+                                                {av.unlockLabel || 'Unlock'}
+                                              </span>
+                                            </span>
+                                          </>
+                                        )}
+                                        {av.unlocked && av.requirementTag && (
+                                          <span className="absolute bottom-0 left-0 right-0 bg-[#0d1017]/80 text-[9px] text-[#c8a040] py-0.5 text-center font-medium truncate px-0.5">
+                                            {av.requirementTag}
+                                          </span>
+                                        )}
+                                        {selected && (
+                                          <span className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-[#c8a040] flex items-center justify-center">
+                                            <FaCheckCircle className="text-[#0d1017] w-3 h-3" />
+                                          </span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        );
-                      })}
                       </div>
-                    </div>
-                  );
-                })()}
+                    );
+                  })()}
 
                 <div className="rounded-xl border border-[#252c3a] bg-[#161c28] p-4">
                   <h3 className="flex items-center gap-2 text-xs font-semibold text-[#706858] uppercase tracking-wider mb-2">
@@ -352,7 +352,7 @@ const Profile = () => {
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             e.target.onerror = null;
-                            e.target.style.display = "none";
+                            e.target.style.display = 'none';
                           }}
                         />
                       ) : (
@@ -370,7 +370,8 @@ const Profile = () => {
                     />
                   </div>
                   <p className="text-[10px] text-[#585048] mt-1.5">
-                    Paste a direct image URL for a custom avatar. Choosing a preset above will replace this.
+                    Paste a direct image URL for a custom avatar. Choosing a preset above will
+                    replace this.
                   </p>
                 </div>
               </div>
@@ -381,7 +382,7 @@ const Profile = () => {
                 disabled={saving}
                 className="flex items-center gap-2 px-4 py-2 border border-[#4e9a8e]/30 bg-[#4e9a8e]/10 text-[#4e9a8e] text-sm font-medium hover:bg-[#4e9a8e]/20 disabled:opacity-50 rounded-xl transition-colors"
               >
-                <FaSave /> {saving ? "Saving..." : "Save"}
+                <FaSave /> {saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
@@ -394,7 +395,9 @@ const Profile = () => {
           </h2>
           <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
             <div>
-              <label className="block text-sm font-medium text-[#a09888] mb-1">Current password</label>
+              <label className="block text-sm font-medium text-[#a09888] mb-1">
+                Current password
+              </label>
               <input
                 type="password"
                 value={changePasswordCurrent}
@@ -417,7 +420,9 @@ const Profile = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#a09888] mb-1">Confirm new password</label>
+              <label className="block text-sm font-medium text-[#a09888] mb-1">
+                Confirm new password
+              </label>
               <input
                 type="password"
                 value={changePasswordConfirm}
@@ -430,10 +435,15 @@ const Profile = () => {
             </div>
             <button
               type="submit"
-              disabled={changePasswordSaving || !changePasswordCurrent || !changePasswordNew || !changePasswordConfirm}
+              disabled={
+                changePasswordSaving ||
+                !changePasswordCurrent ||
+                !changePasswordNew ||
+                !changePasswordConfirm
+              }
               className="flex items-center gap-2 px-4 py-2 border border-[#4e9a8e]/30 bg-[#4e9a8e]/10 text-[#4e9a8e] text-sm font-medium hover:bg-[#4e9a8e]/20 disabled:opacity-50 rounded-xl transition-colors"
             >
-              <FaSave /> {changePasswordSaving ? "Updating…" : "Update password"}
+              <FaSave /> {changePasswordSaving ? 'Updating…' : 'Update password'}
             </button>
           </form>
         </div>
@@ -441,29 +451,19 @@ const Profile = () => {
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="border border-[#252c3a] bg-[#111620] p-4 rounded-xl">
-            <div className="text-xs text-[#706858] uppercase font-medium mb-1">
-              Total XP
-            </div>
+            <div className="text-xs text-[#706858] uppercase font-medium mb-1">Total XP</div>
             <div className="text-xl font-bold text-[#c8a040]">{totalPoints}</div>
           </div>
           <div className="border border-[#252c3a] bg-[#111620] p-4 rounded-xl">
-            <div className="text-xs text-[#706858] uppercase font-medium mb-1">
-              Level
-            </div>
+            <div className="text-xs text-[#706858] uppercase font-medium mb-1">Level</div>
             <div className="text-xl font-bold text-[#d8d0c4]">{level}</div>
           </div>
           <div className="border border-[#252c3a] bg-[#111620] p-4 rounded-xl">
-            <div className="text-xs text-[#706858] uppercase font-medium mb-1">
-              Modules Done
-            </div>
-            <div className="text-xl font-bold text-[#d8d0c4]">
-              {completedModules}
-            </div>
+            <div className="text-xs text-[#706858] uppercase font-medium mb-1">Modules Done</div>
+            <div className="text-xl font-bold text-[#d8d0c4]">{completedModules}</div>
           </div>
           <div className="border border-[#252c3a] bg-[#111620] p-4 rounded-xl">
-            <div className="text-xs text-[#706858] uppercase font-medium mb-1">
-              Achievements
-            </div>
+            <div className="text-xs text-[#706858] uppercase font-medium mb-1">Achievements</div>
             <div className="text-xl font-bold text-[#d8d0c4]">
               {earnedAchievements}/{achievements.length}
             </div>
@@ -485,13 +485,15 @@ const Profile = () => {
                 key={ach.id}
                 className={`border p-4 flex items-start gap-3 rounded-xl transition-colors ${
                   ach.earned
-                    ? "border-[#c8a040]/25 bg-[#c8a040]/5"
-                    : "border-[#252c3a] bg-[#111620] opacity-80"
+                    ? 'border-[#c8a040]/25 bg-[#c8a040]/5'
+                    : 'border-[#252c3a] bg-[#111620] opacity-80'
                 }`}
               >
                 <div
                   className={`w-12 h-12 border flex items-center justify-center shrink-0 rounded-xl ${
-                    ach.earned ? "border-[#c8a040]/30 bg-[#c8a040]/10" : "border-[#2e3648] bg-[#1c2230]"
+                    ach.earned
+                      ? 'border-[#c8a040]/30 bg-[#c8a040]/10'
+                      : 'border-[#2e3648] bg-[#1c2230]'
                   }`}
                 >
                   {ach.earned ? (
@@ -502,16 +504,10 @@ const Profile = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-[#d8d0c4] truncate">
-                      {ach.name}
-                    </h3>
-                    {ach.earned && (
-                      <FaCheckCircle className="text-[#5c9650] shrink-0" />
-                    )}
+                    <h3 className="font-bold text-[#d8d0c4] truncate">{ach.name}</h3>
+                    {ach.earned && <FaCheckCircle className="text-[#5c9650] shrink-0" />}
                   </div>
-                  <p className="text-xs text-[#706858] line-clamp-2">
-                    {ach.description}
-                  </p>
+                  <p className="text-xs text-[#706858] line-clamp-2">{ach.description}</p>
                   {ach.xpReward && (
                     <div className="mt-1 flex items-center gap-1 text-xs text-[#c8a040]">
                       <FaBolt /> +{ach.xpReward} XP
@@ -521,11 +517,11 @@ const Profile = () => {
                 <span
                   className={`text-xs font-bold px-2 py-0.5 border rounded-lg ${
                     ach.earned
-                      ? "border-[#5c9650]/30 text-[#5c9650] bg-[#5c9650]/5"
-                      : "border-[#2e3648] text-[#585048]"
+                      ? 'border-[#5c9650]/30 text-[#5c9650] bg-[#5c9650]/5'
+                      : 'border-[#2e3648] text-[#585048]'
                   }`}
                 >
-                  {ach.earned ? "UNLOCKED" : "LOCKED"}
+                  {ach.earned ? 'UNLOCKED' : 'LOCKED'}
                 </span>
               </div>
             ))}
