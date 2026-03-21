@@ -247,6 +247,10 @@ const CodeEditor = () => {
   const [tutorQuestion, setTutorQuestion] = useState('');
   const [tutorLoading, setTutorLoading] = useState(false);
   const [hintStyle, setHintStyle] = useState('general');
+  const aiCompanionUsesRef = useRef(0);
+  const aiHintRequestsRef = useRef(0);
+  const aiExplainCodeUsesRef = useRef(0);
+  const aiExplainErrorUsesRef = useRef(0);
   // Unified thread: explain + hint Q&A in one list
   const [companionMessages, setCompanionMessages] = useState([]);
 
@@ -726,6 +730,10 @@ const CodeEditor = () => {
       totalPoints: points,
       streak,
       completedModules: 0,
+      aiCompanionUses: aiCompanionUsesRef.current,
+      aiHintRequests: aiHintRequestsRef.current,
+      aiExplainCodeUses: aiExplainCodeUsesRef.current,
+      aiExplainErrorUses: aiExplainErrorUsesRef.current,
     };
     achievementsAPI
       .checkAchievements(progressData)
@@ -1043,6 +1051,8 @@ const CodeEditor = () => {
           timestamp: new Date().toLocaleTimeString(),
         },
       ]);
+      aiCompanionUsesRef.current += 1;
+      aiExplainCodeUsesRef.current += 1;
     } catch (err) {
       console.error('Explain code error', err);
       toast.error("We couldn't get an explanation right now. Please try again.");
@@ -1365,6 +1375,8 @@ const CodeEditor = () => {
           timestamp: new Date().toLocaleTimeString(),
         },
       ]);
+      aiCompanionUsesRef.current += 1;
+      aiExplainErrorUsesRef.current += 1;
     } catch (err) {
       console.error('Explain error', err);
       toast.error("We couldn't explain that error right now. Please try again.");
@@ -1421,6 +1433,8 @@ const CodeEditor = () => {
           confidence: resp.data.confidence,
         },
       ]);
+      aiCompanionUsesRef.current += 1;
+      aiHintRequestsRef.current += 1;
     } catch (err) {
       console.error('Tutor error', err);
       setCompanionMessages((prev) => [

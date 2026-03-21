@@ -87,3 +87,32 @@ export async function clearEditorDraft(moduleId) {
     console.warn('Editor draft clear failed:', e);
   }
 }
+
+/**
+ * Returns the most recently saved module id from editor drafts.
+ * @returns {Promise<string|null>}
+ */
+export async function getLastWorkedEditorModuleId() {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_EDITOR, 'readonly');
+    const store = tx.objectStore(STORE_EDITOR);
+    return new Promise((resolve, reject) => {
+      const req = store.getAll();
+      req.onsuccess = () => {
+        const rows = Array.isArray(req.result) ? req.result : [];
+        if (!rows.length) return resolve(null);
+        const latest = rows.reduce((acc, row) => {
+          if (!row || !row.moduleId) return acc;
+          if (!acc) return row;
+          return (row.timestamp || 0) > (acc.timestamp || 0) ? row : acc;
+        }, null);
+        resolve(latest?.moduleId || null);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) {
+    console.warn('Last worked module lookup failed:', e);
+    return null;
+  }
+}

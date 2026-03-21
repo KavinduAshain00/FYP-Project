@@ -23,10 +23,12 @@ import {
 import { GameLayout } from '../components/layout/GameLayout';
 import LoadingScreen from '../components/ui/LoadingScreen';
 import { toModuleId } from '../utils/ids';
+import { getLastWorkedEditorModuleId } from '../utils/draftStorage';
 
 const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lastWorkedModuleId, setLastWorkedModuleId] = useState(null);
   const [searchParams] = useSearchParams();
   const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -47,6 +49,18 @@ const Dashboard = () => {
     };
     fetchData();
   }, [searchParams]);
+
+  useEffect(() => {
+    let active = true;
+    const loadLastWorkedModule = async () => {
+      const moduleId = await getLastWorkedEditorModuleId();
+      if (active) setLastWorkedModuleId(moduleId);
+    };
+    loadLastWorkedModule();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleStartModule = async (moduleId) => {
     try {
@@ -88,8 +102,6 @@ const Dashboard = () => {
       profile?.learningPath === 'advanced' &&
       currentModuleFromCatalog?.category === 'javascript-basics'
     );
-  const earnedAchievements = achievements.filter((a) => a.earned).length;
-
   const modulePath = useMemo(() => {
     const pathCategories = profile?.pathCategories;
     const filtered = pathCategories?.length
@@ -101,6 +113,14 @@ const Dashboard = () => {
         : filtered;
     return [...withoutBasics].sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [modules, profile?.pathCategories, profile?.learningPath]);
+  const continueModuleFromStorage = useMemo(() => {
+    const id = toModuleId(lastWorkedModuleId);
+    if (!id) return null;
+    return modulePath.find((m) => toModuleId(m._id) === id) || null;
+  }, [modulePath, lastWorkedModuleId]);
+  const continueModule = continueModuleFromStorage || (hasCurrentModule ? currentModuleFromCatalog : null);
+  const continueModuleId = toModuleId(continueModule?._id);
+  const earnedAchievements = achievements.filter((a) => a.earned).length;
 
   const nextModule = modulePath.find((m) => !completedModuleIds.includes(toModuleId(m._id)));
 
@@ -193,7 +213,7 @@ const Dashboard = () => {
             <FaMapMarkerAlt className="text-[#c8a040]" /> Current Module
           </h2>
           <div className="border border-[#252c3a] bg-[#111620] p-6 rounded-2xl">
-            {hasCurrentModule ? (
+            {continueModule ? (
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <div className="w-14 h-14 border border-[#2e3648] bg-[#1c2230] flex items-center justify-center shrink-0 rounded-xl">
                   <FaCode className="text-xl text-[#4e9a8e]" />
@@ -203,12 +223,12 @@ const Dashboard = () => {
                     IN PROGRESS
                   </span>
                   <h3 className="text-lg font-bold text-[#d8d0c4] mb-1">
-                    {profile.currentModule?.title || 'Current Module'}
+                    {continueModule?.title || 'Current Module'}
                   </h3>
                   <p className="text-[#9a9080] text-sm">Continue where you left off</p>
                 </div>
                 <button
-                  onClick={() => navigate(`/editor/${profile.currentModule._id}`)}
+                  onClick={() => navigate(`/editor/${continueModuleId}`)}
                   className={btnPrimaryClass}
                 >
                   <span className="flex items-center gap-2">

@@ -17,6 +17,22 @@ function mergeProgressWithUser(user, progressData) {
   );
   const saveCount = Math.max(gs.saveCount || 0, progressData.saveCount || 0);
   const streak = Math.max(gs.streak || 0, progressData.streak || 0);
+  const aiCompanionUses = Math.max(
+    gs.aiCompanionUses || 0,
+    progressData.aiCompanionUses || 0,
+  );
+  const aiHintRequests = Math.max(
+    gs.aiHintRequests || 0,
+    progressData.aiHintRequests || 0,
+  );
+  const aiExplainCodeUses = Math.max(
+    gs.aiExplainCodeUses || 0,
+    progressData.aiExplainCodeUses || 0,
+  );
+  const aiExplainErrorUses = Math.max(
+    gs.aiExplainErrorUses || 0,
+    progressData.aiExplainErrorUses || 0,
+  );
 
   const merged = {
     totalEdits,
@@ -24,6 +40,10 @@ function mergeProgressWithUser(user, progressData) {
     sessionTime,
     saveCount,
     streak,
+    aiCompanionUses,
+    aiHintRequests,
+    aiExplainCodeUses,
+    aiExplainErrorUses,
     totalPoints: user.totalPoints || 0,
     completedModules:
       (user.completedModules && user.completedModules.length) || 0,
@@ -54,6 +74,10 @@ async function checkProgress(userId, progressData) {
   user.gameStats.sessionTime = merged.sessionTime;
   user.gameStats.saveCount = merged.saveCount;
   user.gameStats.streak = merged.streak;
+  user.gameStats.aiCompanionUses = merged.aiCompanionUses;
+  user.gameStats.aiHintRequests = merged.aiHintRequests;
+  user.gameStats.aiExplainCodeUses = merged.aiExplainCodeUses;
+  user.gameStats.aiExplainErrorUses = merged.aiExplainErrorUses;
 
   const allAchievements = await Achievement.find({ isActive: true });
   const newlyEarned = [];
@@ -74,6 +98,10 @@ async function checkProgress(userId, progressData) {
       shouldEarn = true;
     else if (reqReq === "complete_10_modules" && merged.completedModules >= 10)
       shouldEarn = true;
+    else if (reqReq === "complete_15_modules" && merged.completedModules >= 15)
+      shouldEarn = true;
+    else if (reqReq === "complete_20_modules" && merged.completedModules >= 20)
+      shouldEarn = true;
     else if (reqReq === "points_100" && merged.totalPoints >= 100)
       shouldEarn = true;
     else if (reqReq === "points_250" && merged.totalPoints >= 250)
@@ -83,6 +111,8 @@ async function checkProgress(userId, progressData) {
     else if (reqReq === "points_750" && merged.totalPoints >= 750)
       shouldEarn = true;
     else if (reqReq === "points_1000" && merged.totalPoints >= 1000)
+      shouldEarn = true;
+    else if (reqReq === "points_1500" && merged.totalPoints >= 1500)
       shouldEarn = true;
     // ─── Track completion (DB: user completedModules vs Module list) ───
     else if (reqReq === "complete_basics_track") {
@@ -124,12 +154,21 @@ async function checkProgress(userId, progressData) {
       shouldEarn = true;
     else if (reqReq === "edit_50_times" && merged.totalEdits >= 50)
       shouldEarn = true;
+    else if (reqReq === "edit_100_times" && merged.totalEdits >= 100)
+      shouldEarn = true;
     else if (reqReq === "streak_5" && merged.streak >= 5) shouldEarn = true;
+    else if (reqReq === "streak_10" && merged.streak >= 10) shouldEarn = true;
     else if (reqReq === "session_10_min" && merged.sessionTime >= 10)
       shouldEarn = true;
     else if (reqReq === "session_30_min" && merged.sessionTime >= 30)
       shouldEarn = true;
+    else if (reqReq === "session_60_min" && merged.sessionTime >= 60)
+      shouldEarn = true;
     else if (reqReq === "run_10_times" && merged.totalRuns >= 10)
+      shouldEarn = true;
+    else if (reqReq === "run_25_times" && merged.totalRuns >= 25)
+      shouldEarn = true;
+    else if (reqReq === "run_50_times" && merged.totalRuns >= 50)
       shouldEarn = true;
     else if (reqReq === "save_5_times" && merged.saveCount >= 5)
       shouldEarn = true;
@@ -141,6 +180,26 @@ async function checkProgress(userId, progressData) {
     )
       shouldEarn = true;
     else if (reqReq === "debug_session" && merged.debugSession)
+      shouldEarn = true;
+    else if (reqReq === "ai_companion_first_use" && merged.aiCompanionUses >= 1)
+      shouldEarn = true;
+    else if (reqReq === "ai_hint_3" && merged.aiHintRequests >= 3)
+      shouldEarn = true;
+    else if (reqReq === "ai_companion_10_uses" && merged.aiCompanionUses >= 10)
+      shouldEarn = true;
+    else if (reqReq === "ai_companion_25_uses" && merged.aiCompanionUses >= 25)
+      shouldEarn = true;
+    else if (reqReq === "ai_hint_10" && merged.aiHintRequests >= 10)
+      shouldEarn = true;
+    else if (reqReq === "ai_hint_25" && merged.aiHintRequests >= 25)
+      shouldEarn = true;
+    else if (reqReq === "ai_explain_code_once" && merged.aiExplainCodeUses >= 1)
+      shouldEarn = true;
+    else if (reqReq === "ai_explain_code_5" && merged.aiExplainCodeUses >= 5)
+      shouldEarn = true;
+    else if (reqReq === "ai_explain_error_once" && merged.aiExplainErrorUses >= 1)
+      shouldEarn = true;
+    else if (reqReq === "ai_explain_error_5" && merged.aiExplainErrorUses >= 5)
       shouldEarn = true;
 
     if (shouldEarn) {

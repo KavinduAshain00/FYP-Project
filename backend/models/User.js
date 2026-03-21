@@ -73,6 +73,10 @@ const userSchema = new mongoose.Schema(
       sessionTime: { type: Number, default: 0 },
       saveCount: { type: Number, default: 0 },
       streak: { type: Number, default: 0 },
+      aiCompanionUses: { type: Number, default: 0 },
+      aiHintRequests: { type: Number, default: 0 },
+      aiExplainCodeUses: { type: Number, default: 0 },
+      aiExplainErrorUses: { type: Number, default: 0 },
     },
     // UC8: Personalize AI Guide – tone, hint detail, assistance frequency
     aiPreferences: {

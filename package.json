@@ -7,7 +7,8 @@
     "start": "concurrently \"pnpm:dev:frontend\" \"pnpm:dev:backend\"",
     "dev:frontend": "cd gamilearn && pnpm run dev",
     "dev:backend": "cd backend && pnpm run dev",
-    "install": "cd gamilearn && pnpm install && cd ../backend && pnpm install"
+    "install": "cd gamilearn && pnpm install && cd ../backend && pnpm install",
+    "seed": "cd backend && pnpm run seed"
   },
   "license": "MIT",
   "devDependencies": {
