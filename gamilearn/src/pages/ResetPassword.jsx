@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { FaLock, FaGamepad, FaArrowLeft } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { GameLayout } from '../components/layout/GameLayout';
 import { authAPI } from '../api/api';
+
+const ease = [0.25, 0.1, 0.25, 1];
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -27,6 +30,12 @@ const ResetPassword = () => {
       // ignore storage failures (private browsing, etc.)
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!success) return;
+    const tid = setTimeout(() => navigate('/login'), 2000);
+    return () => clearTimeout(tid);
+  }, [success, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,7 +61,6 @@ const ResetPassword = () => {
       }
       setSuccess(true);
       toast.success('Password reset. Sign in with your new password.');
-      setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Reset failed. Request a new link.');
     } finally {
@@ -60,20 +68,24 @@ const ResetPassword = () => {
     }
   };
 
-  const inputClass =
-    'w-full px-3 py-2 border-0 bg-transparent text-[#d8d0c4] placeholder-[#585048] focus:outline-none rounded-xl [&:-webkit-autofill]:!bg-[#161c28] [&:-webkit-autofill]:![-webkit-text-fill-color:#d8d0c4] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#161c28]';
-  const labelClass = 'block text-sm font-medium text-[#a09888] mb-1';
+  const fieldClass =
+    'w-full rounded-2xl bg-blue-800 pl-12 pr-4 py-3.5 text-blue-50 placeholder-blue-300 outline-none focus:outline focus:outline-2 focus:outline-blue-400/60 text-sm';
 
   if (success) {
     return (
       <GameLayout showNavbar={false} showParticles={false}>
-        <div className="min-h-screen flex items-center justify-center px-4 py-12">
-          <div className="w-full max-w-md border border-[#252c3a] bg-[#111620] p-6 rounded-2xl text-center">
-            <p className="text-[#d8d0c4] font-medium">Password updated. Redirecting to sign in…</p>
-            <Link to="/login" className="mt-4 inline-block text-[#c8a040] hover:underline">
+        <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-neutral-900">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.35, ease }}
+            className="w-full max-w-md rounded-3xl bg-blue-900 p-8 text-center shadow-2xl shadow-black/40"
+          >
+            <p className="text-blue-50 font-medium">Password updated. Redirecting to sign in…</p>
+            <Link to="/login" className="mt-4 inline-block font-semibold text-blue-200 hover:text-blue-100">
               Sign in
             </Link>
-          </div>
+          </motion.div>
         </div>
       </GameLayout>
     );
@@ -81,84 +93,110 @@ const ResetPassword = () => {
 
   return (
     <GameLayout showNavbar={false} showParticles={false}>
-      <div className="min-h-screen flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md border border-[#252c3a] bg-[#111620] p-6 rounded-2xl">
-          <div className="flex flex-col items-center mb-6">
-            <div className="w-14 h-14 border border-[#2e3648] bg-[#1c2230] flex items-center justify-center mb-3 rounded-xl">
-              <FaGamepad className="text-2xl text-[#c8a040]" />
+      <div className="min-h-screen flex flex-col lg:flex-row bg-neutral-900">
+        <motion.aside
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.42, ease }}
+          className="lg:w-[40%] flex flex-col justify-center p-8 sm:p-12 bg-gradient-to-b from-blue-900 to-neutral-900 relative overflow-hidden"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-cyan-400/12 via-transparent to-emerald-400/10" />
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+              <span className="w-12 h-12 rounded-2xl bg-blue-800 flex items-center justify-center text-blue-50 shadow-lg shadow-black/40">
+                <FaGamepad className="text-xl" />
+              </span>
+              <span className="font-bold text-blue-50">Choose a strong password</span>
             </div>
-            <h1 className="text-xl font-bold text-[#d8d0c4]">Set new password</h1>
-            <p className="text-sm text-[#706858] mt-1 text-center">
-              Enter your new password below.
+            <p className="text-sm text-blue-200 max-w-xs">
+              After updating, sign in with your email and the new password.
             </p>
           </div>
+        </motion.aside>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!searchParams.get('token') && (
+        <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
+          <motion.div
+            className="w-full max-w-md rounded-3xl bg-blue-900 p-8 shadow-2xl shadow-black/40"
+            initial={{ opacity: 0, y: 22 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.06, ease }}
+          >
+            <h1 className="text-2xl font-bold text-blue-50">Set new password</h1>
+            <p className="text-sm text-blue-300 mt-2 mb-8">Enter your new password below.</p>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {!searchParams.get('token') && (
+                <div>
+                  <label className="block text-sm font-medium text-blue-200 mb-2">
+                    Reset token
+                  </label>
+                  <div className="relative">
+                    <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
+                    <input
+                      type="text"
+                      value={token}
+                      onChange={(e) => setToken(e.target.value)}
+                      placeholder="Paste reset token"
+                      className={fieldClass}
+                      autoComplete="one-time-code"
+                    />
+                  </div>
+                </div>
+              )}
               <div>
-                <label className={labelClass}>Reset token</label>
-                <div className="flex items-center gap-2 border border-[#252c3a] bg-[#161c28] rounded-xl focus-within:border-[#3a4258]">
-                  <FaLock className="text-[#585048] ml-3 shrink-0" />
+                <label className="block text-sm font-medium text-blue-200 mb-2">
+                  New password
+                </label>
+                <div className="relative">
+                  <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                   <input
-                    type="text"
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
-                    placeholder="Paste reset token"
-                    className={inputClass}
-                    autoComplete="one-time-code"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    placeholder="At least 6 characters"
+                    className={fieldClass}
+                    autoComplete="new-password"
                   />
                 </div>
               </div>
-            )}
-            <div>
-              <label className={labelClass}>New password</label>
-              <div className="flex items-center gap-2 border border-[#252c3a] bg-[#161c28] rounded-xl focus-within:border-[#3a4258]">
-                <FaLock className="text-[#585048] ml-3 shrink-0" />
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  placeholder="At least 6 characters"
-                  className={inputClass}
-                  autoComplete="new-password"
-                />
+              <div>
+                <label className="block text-sm font-medium text-blue-200 mb-2">
+                  Confirm new password
+                </label>
+                <div className="relative">
+                  <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    placeholder="Confirm new password"
+                    className={fieldClass}
+                    autoComplete="new-password"
+                  />
+                </div>
               </div>
-            </div>
-            <div>
-              <label className={labelClass}>Confirm new password</label>
-              <div className="flex items-center gap-2 border border-[#252c3a] bg-[#161c28] rounded-xl focus-within:border-[#3a4258]">
-                <FaLock className="text-[#585048] ml-3 shrink-0" />
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  placeholder="Confirm new password"
-                  className={inputClass}
-                  autoComplete="new-password"
-                />
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 border border-[#3a4258] bg-[#1c2230] text-[#d8d0c4] font-medium hover:bg-[#242c3c] rounded-xl disabled:opacity-50 transition-colors"
-            >
-              {loading ? 'Updating…' : 'Update password'}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 font-semibold text-sm shadow-lg shadow-cyan-500/30 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {loading ? 'Updating…' : 'Update password'}
+              </button>
+            </form>
 
-          <p className="mt-6 text-center text-sm text-[#706858]">
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 font-medium text-[#c8a040] hover:underline"
-            >
-              <FaArrowLeft className="text-xs" /> Back to sign in
-            </Link>
-          </p>
+            <p className="mt-8 text-center text-sm text-blue-300">
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 font-semibold text-blue-200 hover:text-blue-100"
+              >
+                <FaArrowLeft className="text-xs" /> Back to sign in
+              </Link>
+            </p>
+          </motion.div>
         </div>
       </div>
     </GameLayout>

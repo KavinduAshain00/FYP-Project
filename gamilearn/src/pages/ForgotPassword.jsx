@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { FaEnvelope, FaGamepad, FaArrowLeft } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { GameLayout } from '../components/layout/GameLayout';
 import { authAPI } from '../api/api';
+
+const ease = [0.25, 0.1, 0.25, 1];
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -36,76 +39,104 @@ const ForgotPassword = () => {
     }
   };
 
-  const inputClass =
-    'w-full px-3 py-2 border-0 bg-transparent text-[#d8d0c4] placeholder-[#585048] focus:outline-none rounded-xl [&:-webkit-autofill]:!bg-[#161c28] [&:-webkit-autofill]:![-webkit-text-fill-color:#d8d0c4] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#161c28]';
-  const labelClass = 'block text-sm font-medium text-[#a09888] mb-1';
+  const fieldClass =
+    'w-full rounded-2xl bg-blue-800 pl-12 pr-4 py-3.5 text-blue-50 placeholder-blue-300 outline-none focus:outline focus:outline-2 focus:outline-blue-400/60 text-sm';
 
   return (
     <GameLayout showNavbar={false} showParticles={false}>
-      <div className="min-h-screen flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md border border-[#252c3a] bg-[#111620] p-6 rounded-2xl">
-          <div className="flex flex-col items-center mb-6">
-            <div className="w-14 h-14 border border-[#2e3648] bg-[#1c2230] flex items-center justify-center mb-3 rounded-xl">
-              <FaGamepad className="text-2xl text-[#c8a040]" />
+      <div className="min-h-screen flex flex-col lg:flex-row bg-neutral-900">
+        <motion.aside
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.42, ease }}
+          className="lg:w-[40%] flex flex-col justify-center p-8 sm:p-12 bg-gradient-to-b from-blue-900 to-neutral-900 relative overflow-hidden"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-teal-400/10 via-transparent to-cyan-400/10" />
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+              <span className="w-12 h-12 rounded-2xl bg-blue-800 flex items-center justify-center text-blue-50 shadow-lg shadow-black/40">
+                <FaGamepad className="text-xl" />
+              </span>
+              <span className="font-bold text-blue-50">GamiLearn</span>
             </div>
-            <h1 className="text-xl font-bold text-[#d8d0c4]">Forgot password</h1>
-            <p className="text-sm text-[#706858] mt-1 text-center">
-              Enter your email and we’ll help you reset your password.
+            <h2 className="text-2xl sm:text-3xl font-bold text-blue-50 leading-tight max-w-sm">
+              Reset access in a few steps
+            </h2>
+            <p className="mt-4 text-sm text-blue-200 max-w-xs">
+              We will email instructions if an account matches your address.
             </p>
           </div>
+        </motion.aside>
 
-          {!sent ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className={labelClass}>Email</label>
-                <div className="flex items-center gap-2 border border-[#252c3a] bg-[#161c28] rounded-xl focus-within:border-[#3a4258]">
-                  <FaEnvelope className="text-[#585048] ml-3 shrink-0" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    placeholder="you@example.com"
-                    className={inputClass}
-                    autoComplete="email"
-                  />
+        <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
+          <motion.div
+            className="w-full max-w-md rounded-3xl bg-blue-900 p-8 shadow-2xl shadow-black/40"
+            initial={{ opacity: 0, y: 22 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.06, ease }}
+          >
+            <h1 className="text-2xl font-bold text-blue-50">Forgot password</h1>
+            <p className="text-sm text-blue-300 mt-2 mb-8">
+              Enter the email you used to register.
+            </p>
+
+            {!sent ? (
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-blue-200 mb-2">Email</label>
+                  <div className="relative">
+                    <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      placeholder="you@example.com"
+                      className={fieldClass}
+                      autoComplete="email"
+                    />
+                  </div>
                 </div>
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 border border-[#3a4258] bg-[#1c2230] text-[#d8d0c4] font-medium hover:bg-[#242c3c] rounded-xl disabled:opacity-50 transition-colors"
-              >
-                {loading ? 'Sending…' : 'Send reset link'}
-              </button>
-            </form>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-[#a09888]">
-                If an account exists for that email, you can reset your password.
-              </p>
-              {resetToken ? (
                 <button
-                  type="button"
-                  onClick={() =>
-                    navigate(`/reset-password?token=${encodeURIComponent(resetToken)}`)
-                  }
-                  className="w-full py-3 border border-[#3a4258] bg-[#1c2230] text-[#c8a040] font-medium hover:bg-[#242c3c] rounded-xl transition-colors"
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 font-semibold text-sm shadow-lg shadow-cyan-500/30 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >
-                  Set new password
+                  {loading ? 'Sending…' : 'Send reset link'}
                 </button>
-              ) : null}
-            </div>
-          )}
+              </form>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4"
+              >
+                <p className="text-sm text-blue-200">
+                  If an account exists for that email, you can reset your password.
+                </p>
+                {resetToken ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(`/reset-password?token=${encodeURIComponent(resetToken)}`)
+                    }
+                    className="w-full py-3.5 rounded-2xl bg-blue-700 text-blue-50 font-semibold text-sm hover:bg-blue-600"
+                  >
+                    Set new password
+                  </button>
+                ) : null}
+              </motion.div>
+            )}
 
-          <p className="mt-6 text-center text-sm text-[#706858]">
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 font-medium text-[#c8a040] hover:underline"
-            >
-              <FaArrowLeft className="text-xs" /> Back to sign in
-            </Link>
-          </p>
+            <p className="mt-8 text-center text-sm text-blue-300">
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 font-semibold text-blue-200 hover:text-blue-100"
+              >
+                <FaArrowLeft className="text-xs" /> Back to sign in
+              </Link>
+            </p>
+          </motion.div>
         </div>
       </div>
     </GameLayout>

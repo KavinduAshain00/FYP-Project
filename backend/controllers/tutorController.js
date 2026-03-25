@@ -499,7 +499,7 @@ function checkCommentsStep(stepDescription, normalized) {
     if (hasMultiLine && hasSingleLine) {
       return {
         correct: true,
-        feedback: 'Great — you have both a descriptive comment and a multi-line comment block.',
+        feedback: 'Great - you have both a descriptive comment and a multi-line comment block.',
       };
     }
     if (!hasMultiLine) {
@@ -608,7 +608,7 @@ ${objectives?.length ? `Module objectives for context: ${objectives.join('; ')}`
 STUDENT'S CURRENT CODE:
 ${codeBlock}
 
-YOUR JOB — verify the student demonstrated the CONCEPT for this step:
+YOUR JOB - verify the student demonstrated the CONCEPT for this step:
 
 1. ACCEPT if the student's code shows they understood and applied the concept correctly, even if:
    - Variable/function names differ from the examples (e.g. "myScore" instead of "score" is fine)

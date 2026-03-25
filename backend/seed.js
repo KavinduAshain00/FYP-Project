@@ -14,7 +14,7 @@ require('dotenv').config();
  */
 const sampleModules = [
   // =============================================
-  //  JAVASCRIPT BASICS (0–9) — beginner
+  //  JAVASCRIPT BASICS (0–9) - beginner
   // =============================================
   {
     title: 'Hello Console',
@@ -35,7 +35,7 @@ console.log(42);
 console.log(true);
 \`\`\`
 
-You can print strings, numbers, booleans — anything.
+You can print strings, numbers, booleans - anything.
 
 ## Combining values
 Pass multiple arguments separated by commas:
@@ -91,7 +91,7 @@ Print a welcome banner, your player name, starting HP, and a ready status.`,
       },
     ],
     hints: [
-      'Strings go in quotes — single or double',
+      'Strings go in quotes - single or double',
       'Numbers and booleans are written without quotes',
       'Separate multiple values with commas inside console.log()',
     ],
@@ -106,11 +106,11 @@ Print a welcome banner, your player name, starting HP, and a ready status.`,
     content: `# Variables and Data Types
 
 ## Storing data
-Games constantly track state — a player's name, their score, whether a level is complete. Variables hold that data for you.
+Games constantly track state - a player's name, their score, whether a level is complete. Variables hold that data for you.
 
 ## let vs const
-- \`const\` — value cannot be reassigned (use for things that stay the same)
-- \`let\` — value can change later
+- \`const\` - value cannot be reassigned (use for things that stay the same)
+- \`let\` - value can change later
 
 \`\`\`javascript
 const gameName = 'Dungeon Quest';
@@ -160,7 +160,7 @@ Declare variables for a player profile and log each value along with its type.`,
         title: 'Declare mutable score and alive variables',
         instruction:
           'Use let to declare a score variable set to 0 and an isAlive variable set to true. Log both.',
-        concept: 'let allows the value to change later — perfect for game state.',
+        concept: 'let allows the value to change later - perfect for game state.',
         verifyType: 'code',
         expectedConsole: null,
       },
@@ -168,7 +168,7 @@ Declare variables for a player profile and log each value along with its type.`,
         title: 'Log the type of each variable',
         instruction:
           'Use console.log(typeof playerName), console.log(typeof score), and console.log(typeof isAlive) to print each type. Run and check the console.',
-        concept: 'typeof returns "string", "number", or "boolean" — useful for debugging.',
+        concept: 'typeof returns "string", "number", or "boolean" - useful for debugging.',
         verifyType: 'checkConsole',
         expectedConsole: { contains: ['string', 'number', 'boolean'] },
       },
@@ -182,14 +182,14 @@ Declare variables for a player profile and log each value along with its type.`,
       },
     ],
     hints: [
-      'const values cannot be reassigned — you will get an error',
+      'const values cannot be reassigned - you will get an error',
       'typeof always returns a lowercase string like "number"',
       'Use let for any value that will change during the game',
     ],
   },
   {
     title: 'Operators and Expressions',
-    description: 'Perform calculations and comparisons — the math behind every game mechanic.',
+    description: 'Perform calculations and comparisons - the math behind every game mechanic.',
     difficulty: 'beginner',
     category: 'javascript-basics',
     order: 2,
@@ -224,7 +224,7 @@ Calculate damage after armor, check if the player survives, and decide if a trea
       html: '<!DOCTYPE html>\n<html>\n<head><title>Operators</title></head>\n<body>\n  <h1>Operators Lab</h1>\n  <p>Results appear in the console.</p>\n</body>\n</html>',
       css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n}\nh1 {\n  color: #fb923c;\n}',
       javascript:
-        '// Game variables — use these in your calculations\nconst attackPower = 30;\nconst armorRating = 12;\nlet health = 45;\nconst hasKey = true;\nconst isTrapped = false;\n',
+        '// Game variables - use these in your calculations\nconst attackPower = 30;\nconst armorRating = 12;\nlet health = 45;\nconst hasKey = true;\nconst isTrapped = false;\n',
     },
     objectives: [
       'Use arithmetic operators for game math',
@@ -235,7 +235,7 @@ Calculate damage after armor, check if the player survives, and decide if a trea
       {
         title: 'Calculate net damage',
         instruction: 'Create a variable netDamage equal to attackPower minus armorRating. Log it.',
-        concept: 'Subtraction calculates the difference — here it models damage reduction.',
+        concept: 'Subtraction calculates the difference - here it models damage reduction.',
         verifyType: 'code',
         expectedConsole: null,
       },
@@ -407,7 +407,7 @@ Create utility functions a game engine would use: calculateDamage, applyHealing,
       {
         title: 'Create applyHealing(current, amount, maxHP)',
         instruction:
-          'Return the healed value but never exceed maxHP. Use Math.min(current + amount, maxHP). Test with (60, 50, 100) — should return 100.',
+          'Return the healed value but never exceed maxHP. Use Math.min(current + amount, maxHP). Test with (60, 50, 100) - should return 100.',
         concept: 'Math.min picks the smaller value, preventing overflow.',
         verifyType: 'code',
         expectedConsole: null,
@@ -437,7 +437,7 @@ Create utility functions a game engine would use: calculateDamage, applyHealing,
   },
   {
     title: 'Arrays',
-    description: 'Manage ordered collections — inventories, enemy lists, and leaderboards.',
+    description: 'Manage ordered collections - inventories, enemy lists, and leaderboards.',
     difficulty: 'beginner',
     category: 'javascript-basics',
     order: 5,
@@ -487,7 +487,7 @@ Build a simple inventory system: add items, remove items, and display the curren
         title: 'Implement useItem()',
         instruction:
           'Write useItem that calls pop() on inventory (only if inventory.length > 0) and logs what was used. Then call render().',
-        concept: 'pop() removes and returns the last element — like using the most recent pickup.',
+        concept: 'pop() removes and returns the last element - like using the most recent pickup.',
         verifyType: 'code',
         expectedConsole: null,
       },
@@ -517,7 +517,7 @@ Build a simple inventory system: add items, remove items, and display the curren
   {
     title: 'Loops',
     description:
-      'Repeat actions efficiently — spawn enemies, animate frames, process input queues.',
+      'Repeat actions efficiently - spawn enemies, animate frames, process input queues.',
     difficulty: 'beginner',
     category: 'javascript-basics',
     order: 6,
@@ -575,7 +575,7 @@ Use loops to spawn a grid of enemies, filter items from an inventory, and simula
         title: 'Log each enemy name with for...of',
         instruction:
           'Create an array enemies with at least 4 names. Use for...of to loop over it and call log() for each.',
-        concept: 'for...of reads values directly — no index needed.',
+        concept: 'for...of reads values directly - no index needed.',
         verifyType: 'code',
         expectedConsole: null,
       },
@@ -591,27 +591,27 @@ Use loops to spawn a grid of enemies, filter items from an inventory, and simula
         title: 'Simulate a stamina drain with while',
         instruction:
           'Set let stamina = 20. Write a while (stamina > 0) loop that subtracts a random amount (1–5) each iteration and logs stamina. Log "Exhausted!" after the loop.',
-        concept: 'while loops run until a condition is false — useful for drain/regen simulations.',
+        concept: 'while loops run until a condition is false - useful for drain/regen simulations.',
         verifyType: 'code',
         expectedConsole: null,
       },
     ],
     hints: [
       'Nested loops: outer controls rows, inner controls columns',
-      'for...of does not give you the index — use for if you need it',
-      'Be careful with while — ensure the condition will eventually be false',
+      'for...of does not give you the index - use for if you need it',
+      'Be careful with while - ensure the condition will eventually be false',
     ],
   },
   {
     title: 'Objects',
-    description: 'Model game entities with objects — properties for data, methods for behavior.',
+    description: 'Model game entities with objects - properties for data, methods for behavior.',
     difficulty: 'beginner',
     category: 'javascript-basics',
     order: 7,
     content: `# Objects
 
 ## Bundling data
-Objects group related values under one name — ideal for characters, enemies, and items.
+Objects group related values under one name - ideal for characters, enemies, and items.
 
 \`\`\`javascript
 const player = {
@@ -655,7 +655,7 @@ Create a character sheet object, add methods for attacking and healing, and disp
         title: 'Add a describe() method',
         instruction:
           'Add a method describe() that returns a template literal: "${this.name} | HP: ${this.hp}/${this.maxHp} | ATK: ${this.attack} | XP: ${this.xp}". Log hero.describe().',
-        concept: 'Methods are functions on an object — this refers to the object itself.',
+        concept: 'Methods are functions on an object - this refers to the object itself.',
         verifyType: 'code',
         expectedConsole: null,
       },
@@ -844,25 +844,25 @@ Build a small interactive playground: a click counter, a key display, and a mous
       },
     ],
     hints: [
-      'Use addEventListener — not onclick attributes',
+      'Use addEventListener - not onclick attributes',
       'e.key returns the key name as a string',
       'offsetX/offsetY are relative to the element, not the page',
     ],
   },
 
   // =============================================
-  //  GAME DEVELOPMENT (10–19) — intermediate
+  //  GAME DEVELOPMENT (10–19) - intermediate
   // =============================================
   {
     title: 'Canvas Fundamentals',
-    description: 'Get a 2D drawing context and render shapes — the foundation of game graphics.',
+    description: 'Get a 2D drawing context and render shapes - the foundation of game graphics.',
     difficulty: 'intermediate',
     category: 'game-development',
     order: 12,
     content: `# Canvas Fundamentals
 
 ## The \`<canvas>\` element
-Canvas is a blank bitmap you draw on with JavaScript. It has no built-in shapes — you create everything in code.
+Canvas is a blank bitmap you draw on with JavaScript. It has no built-in shapes - you create everything in code.
 
 ## Getting started
 \`\`\`javascript
@@ -935,7 +935,7 @@ Draw a night scene with a ground plane, a house (rectangles), a moon (circle), a
   {
     title: 'The Game Loop',
     description:
-      'Create a 60 FPS update-draw cycle with requestAnimationFrame — the heartbeat of any game.',
+      'Create a 60 FPS update-draw cycle with requestAnimationFrame - the heartbeat of any game.',
     difficulty: 'intermediate',
     category: 'game-development',
     order: 13,
@@ -1095,7 +1095,7 @@ Create a controllable character that moves in four directions and stays within t
   {
     title: 'Collision Detection',
     description:
-      'Detect when game objects overlap — essential for pickups, combat, and boundaries.',
+      'Detect when game objects overlap - essential for pickups, combat, and boundaries.',
     difficulty: 'intermediate',
     category: 'game-development',
     order: 15,
@@ -1140,7 +1140,7 @@ Build a coin-collection game. The player moves with arrow keys and collects coin
         title: 'Write rectsCollide(a, b)',
         instruction:
           'Implement the AABB check: return true if rectangles a and b overlap on both X and Y axes. Each object has x, y, w, h.',
-        concept: 'AABB tests four conditions — all must be true for an overlap.',
+        concept: 'AABB tests four conditions - all must be true for an overlap.',
         verifyType: 'code',
         expectedConsole: null,
       },
@@ -1323,7 +1323,7 @@ Create a character that has idle and walking animations with visible frame chang
         title: 'Wire the game loop and test',
         instruction:
           'Add movement logic, clamping, and start the game loop. Walk around and verify the character animates while moving and stands still when idle.',
-        concept: 'Animation only plays during movement — idle characters stay on frame 0.',
+        concept: 'Animation only plays during movement - idle characters stay on frame 0.',
         verifyType: 'code',
         expectedConsole: null,
       },
@@ -1385,7 +1385,7 @@ Create four distinct sound effects for common game events: jump, collect, damage
       {
         title: 'Create a jump sound',
         instruction:
-          'Write jumpSound() that plays a rising tone — start at 300 Hz, quickly sweep to 600 Hz using osc.frequency.linearRampToValueAtTime. Add a button labeled "Jump" that calls it.',
+          'Write jumpSound() that plays a rising tone - start at 300 Hz, quickly sweep to 600 Hz using osc.frequency.linearRampToValueAtTime. Add a button labeled "Jump" that calls it.',
         concept: 'Frequency sweeps create a sense of upward motion.',
         verifyType: 'code',
         expectedConsole: null,
@@ -1551,7 +1551,7 @@ Click the canvas to spawn colorful particle bursts that fade and fall with gravi
         title: 'Draw particles with fading',
         instruction:
           'In draw(), for each particle set ctx.globalAlpha = particle.life, draw a small filled circle at its position with its color. Reset globalAlpha to 1 after the loop.',
-        concept: 'globalAlpha controls transparency — decreasing life makes particles fade out.',
+        concept: 'globalAlpha controls transparency - decreasing life makes particles fade out.',
         verifyType: 'code',
         expectedConsole: null,
       },
@@ -1573,11 +1573,11 @@ Click the canvas to spawn colorful particle bursts that fade and fall with gravi
   {
     title: 'Complete Mini-Game: Asteroid Dodger',
     description:
-      'Put everything together — a playable game with movement, collision, scoring, sound, and particles.',
+      'Put everything together - a playable game with movement, collision, scoring, sound, and particles.',
     difficulty: 'advanced',
     category: 'game-development',
     order: 21,
-    content: `# Asteroid Dodger — Complete Game
+    content: `# Asteroid Dodger - Complete Game
 
 ## Bringing it all together
 You've learned canvas drawing, game loops, input, collision, state management, sound, HUD, and particles. Now combine them into a complete, playable game.
@@ -1586,7 +1586,7 @@ You've learned canvas drawing, game loops, input, collision, state management, s
 - A ship moves left and right at the bottom
 - Asteroids fall from the top at increasing speed
 - Stars (coins) appear randomly for bonus points
-- Survive as long as possible — each second adds to your score
+- Survive as long as possible - each second adds to your score
 - Hitting an asteroid ends the game
 
 ## Your Task
@@ -1644,10 +1644,10 @@ Build the complete game from the starter code scaffolding.`,
   },
 
   // =============================================
-  //  MULTIPLAYER (20–24) — intermediate / advanced
+  //  MULTIPLAYER (20–24) - intermediate / advanced
   // =============================================
   {
-    title: 'Multiplayer Basics — Socket.IO',
+    title: 'Multiplayer Basics - Socket.IO',
     description:
       'Connect to a real-time server, send and receive events, and see other players come online.',
     difficulty: 'intermediate',
@@ -1656,7 +1656,7 @@ Build the complete game from the starter code scaffolding.`,
     content: `# Socket.IO Basics
 
 ## Real-time communication
-Socket.IO enables instant, bidirectional messaging between a browser and a server — perfect for multiplayer games.
+Socket.IO enables instant, bidirectional messaging between a browser and a server - perfect for multiplayer games.
 
 ## Core API
 \`\`\`javascript
@@ -1672,8 +1672,8 @@ socket.on('welcome', (data) => {
 \`\`\`
 
 ## Connection lifecycle
-- \`connect\` — fired when the connection is established
-- \`disconnect\` — fired when the connection drops
+- \`connect\` - fired when the connection is established
+- \`disconnect\` - fired when the connection drops
 
 ## Your Task
 Set up a Socket.IO connection, send a join event, and display a live list of connected players.`,
@@ -1758,7 +1758,7 @@ server.listen(3001, () => console.log("Server on :3001"));`,
     ],
   },
   {
-    title: 'Multiplayer — Game State Sync',
+    title: 'Multiplayer - Game State Sync',
     description: 'Send player inputs to an authoritative server and render the shared game state.',
     difficulty: 'intermediate',
     category: 'multiplayer',
@@ -1836,7 +1836,7 @@ server.listen(3001, () => console.log("Sync server on :3001"));`,
         title: 'Send inputs to the server',
         instruction:
           'Write a sendInput function that emits "input" with { up, down, left, right } booleans based on the keys object. Call it every 50ms with setInterval.',
-        concept: 'Clients send intentions, not positions — the server decides what happens.',
+        concept: 'Clients send intentions, not positions - the server decides what happens.',
         verifyType: 'code',
         expectedConsole: null,
       },
@@ -1852,7 +1852,7 @@ server.listen(3001, () => console.log("Sync server on :3001"));`,
         title: 'Draw all players',
         instruction:
           'Write draw(): clear the canvas, loop over gameState.players, draw each as a colored circle at their x,y. Label the local player "You" and others with their last 4 id characters.',
-        concept: 'All clients render the same state — this keeps everyone visually in sync.',
+        concept: 'All clients render the same state - this keeps everyone visually in sync.',
         verifyType: 'code',
         expectedConsole: null,
       },
@@ -1872,7 +1872,7 @@ server.listen(3001, () => console.log("Sync server on :3001"));`,
     ],
   },
   {
-    title: 'Multiplayer — Turn-Based Game',
+    title: 'Multiplayer - Turn-Based Game',
     description:
       'Build a multiplayer tic-tac-toe where the server enforces turns and detects wins.',
     difficulty: 'intermediate',
@@ -1892,7 +1892,7 @@ The server tracks whose turn it is. When a player sends a move:
 ## Your Task
 Build a networked tic-tac-toe game. Two players connect, the server assigns them X and O, and enforces the rules.`,
     starterCode: {
-      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Tic-Tac-Toe</title>\n  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>\n</head>\n<body>\n  <h1>Tic-Tac-Toe</h1>\n  <div id="status">Waiting for players…</div>\n  <div id="board"></div>\n  <div id="scores">X: <span id="xScore">0</span> — O: <span id="oScore">0</span></div>\n</body>\n</html>',
+      html: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Tic-Tac-Toe</title>\n  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>\n</head>\n<body>\n  <h1>Tic-Tac-Toe</h1>\n  <div id="status">Waiting for players…</div>\n  <div id="board"></div>\n  <div id="scores">X: <span id="xScore">0</span> - O: <span id="oScore">0</span></div>\n</body>\n</html>',
       css: 'body {\n  font-family: system-ui, sans-serif;\n  padding: 2rem;\n  background: #0f172a;\n  color: #e2e8f0;\n  text-align: center;\n}\nh1 {\n  color: #818cf8;\n}\n#status {\n  font-size: 1.25rem;\n  padding: 0.75rem;\n  background: #1e293b;\n  border-radius: 0.5rem;\n  margin-bottom: 1rem;\n}\n#board {\n  display: inline-grid;\n  grid-template-columns: repeat(3, 90px);\n  gap: 6px;\n  margin-bottom: 1rem;\n}\n.cell {\n  width: 90px;\n  height: 90px;\n  background: #1e293b;\n  border: 2px solid #334155;\n  border-radius: 0.5rem;\n  font-size: 2.5rem;\n  font-weight: bold;\n  cursor: pointer;\n  color: #e2e8f0;\n  transition: background 0.15s;\n}\n.cell:hover:not(.taken) {\n  background: #334155;\n}\n.cell.taken {\n  cursor: not-allowed;\n}\n.cell.x {\n  color: #4ade80;\n}\n.cell.o {\n  color: #f472b6;\n}\n#scores {\n  font-size: 1.1rem;\n  color: #94a3b8;\n}',
       javascript:
         'const socket = io();\nlet myRole = null;\nlet gameState = { board: Array(9).fill(null), turn: "X", scores: { X: 0, O: 0 }, over: false, winner: null };\n\nconst boardEl = document.getElementById("board");\nconst statusEl = document.getElementById("status");\n\nsocket.on("connect", () => console.log("Connected:", socket.id));\nsocket.on("role", (role) => { myRole = role; console.log("You are", role); });\n\n// Build the 3×3 board, handle clicks, receive state, and render.\n',
@@ -1976,7 +1976,7 @@ server.listen(3001, () => console.log("TTT server on :3001"));`,
         title: 'Receive and render state',
         instruction:
           'Listen for "state". Store it in gameState. In a render function, loop over the 9 cells: set textContent to "X", "O", or "", and add .x, .o, or .taken classes accordingly.',
-        concept: 'The client is a pure renderer — it just shows what the server says.',
+        concept: 'The client is a pure renderer - it just shows what the server says.',
         verifyType: 'code',
         expectedConsole: null,
       },
@@ -2004,7 +2004,7 @@ server.listen(3001, () => console.log("TTT server on :3001"));`,
     ],
   },
   {
-    title: 'Multiplayer — Rooms and Lobbies',
+    title: 'Multiplayer - Rooms and Lobbies',
     description: 'Create game rooms with codes, let players join, and implement a ready-up system.',
     difficulty: 'intermediate',
     category: 'multiplayer',
@@ -2015,10 +2015,10 @@ server.listen(3001, () => console.log("TTT server on :3001"));`,
 Instead of one global game, rooms let players form private matches.
 
 ## Flow
-1. **Create** — host creates a room, gets a code
-2. **Join** — another player enters the code
-3. **Ready** — both players toggle "ready"
-4. **Start** — game begins when all are ready
+1. **Create** - host creates a room, gets a code
+2. **Join** - another player enters the code
+3. **Ready** - both players toggle "ready"
+4. **Start** - game begins when all are ready
 
 ## Socket.IO rooms
 \`\`\`javascript
@@ -2143,12 +2143,12 @@ server.listen(3001, () => console.log("Lobby server on :3001"));`,
     ],
     hints: [
       'Store currentRoom so you can send it with ready/leave events',
-      'socket.join on the server groups sockets — io.to(room) sends to that group',
+      'socket.join on the server groups sockets - io.to(room) sends to that group',
       'Listen for "gameStart" to transition from lobby to gameplay',
     ],
   },
   {
-    title: 'Multiplayer — Win Detection and Rematch',
+    title: 'Multiplayer - Win Detection and Rematch',
     description: 'Detect winners, display results to all players, and implement a rematch system.',
     difficulty: 'intermediate',
     category: 'multiplayer',
@@ -2289,7 +2289,7 @@ server.listen(3001, () => console.log("Guess Race server on :3001"));`,
     ],
   },
   {
-    title: 'Multiplayer — Room Chat and Emotes',
+    title: 'Multiplayer - Room Chat and Emotes',
     description:
       'Add real-time room chat with lightweight emotes so players can coordinate before and during matches.',
     difficulty: 'intermediate',
@@ -2398,7 +2398,7 @@ server.listen(3001, () => console.log("Chat server on :3001"));`,
     ],
   },
   {
-    title: 'Multiplayer — Match Timer and Auto-End',
+    title: 'Multiplayer - Match Timer and Auto-End',
     description:
       'Add a synchronized countdown timer and automatically end a round when time runs out.',
     difficulty: 'intermediate',
@@ -2513,7 +2513,7 @@ server.listen(3001, () => console.log("Timer server on :3001"));`,
     ],
   },
   {
-    title: 'Multiplayer — Reconnect and State Sync',
+    title: 'Multiplayer - Reconnect and State Sync',
     description:
       'Recover player state after temporary disconnects by restoring room and match information.',
     difficulty: 'advanced',
@@ -2783,7 +2783,7 @@ Create an inventory array, loop through it, and produce a simple count summary.`
     ],
   },
   {
-    title: 'Game Development — Animation Loop Basics',
+    title: 'Game Development - Animation Loop Basics',
     description:
       'Build a smooth update-render loop using requestAnimationFrame for real-time motion.',
     difficulty: 'intermediate',
@@ -2854,7 +2854,7 @@ Animate a moving square across the canvas and wrap it back to the left side.`,
     ],
   },
   {
-    title: 'Game Development — Keyboard Input and Movement',
+    title: 'Game Development - Keyboard Input and Movement',
     description:
       'Use keyboard events to control a player object and keep movement inside canvas bounds.',
     difficulty: 'intermediate',

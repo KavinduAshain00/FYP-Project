@@ -21,8 +21,9 @@ import {
   FaUserMinus,
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import { useShellPagesCache } from '../context/ShellPagesCacheContext';
 import { adminAPI, modulesAPI, achievementsAPI } from '../api/api';
-import { GameLayout, PageHeader } from '../components/layout/GameLayout';
+import { PageHeader } from '../components/layout/GameLayout';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import LoadingScreen from '../components/ui/LoadingScreen';
 
@@ -41,40 +42,56 @@ const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'];
 
 const Admin = () => {
   const { user } = useAuth();
-  const [tab, setTab] = useState('overview');
-  const [users, setUsers] = useState([]);
-  const [modules, setModules] = useState([]);
-  const [achievements, setAchievements] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { peek, put } = useShellPagesCache();
+  const savedAdmin = peek('admin');
+  const hydratedAdmin = !!savedAdmin?.hydrated;
+
+  const [tab, setTab] = useState(() => savedAdmin?.tab ?? 'overview');
+  const [users, setUsers] = useState(() => savedAdmin?.users ?? []);
+  const [modules, setModules] = useState(() => savedAdmin?.modules ?? []);
+  const [achievements, setAchievements] = useState(() => savedAdmin?.achievements ?? []);
+  const [loading, setLoading] = useState(() => !hydratedAdmin);
   const [userModal, setUserModal] = useState(null);
   const [moduleModal, setModuleModal] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [userSearch, setUserSearch] = useState('');
-  const [moduleSearch, setModuleSearch] = useState('');
-  const [userFilterPath, setUserFilterPath] = useState('');
-  const [moduleFilterCategory, setModuleFilterCategory] = useState('');
-  const [moduleFilterDifficulty, setModuleFilterDifficulty] = useState('');
-  const [userSortBy, setUserSortBy] = useState('createdAt');
-  const [userSortOrder, setUserSortOrder] = useState('desc');
-  const [userPage, setUserPage] = useState(1);
-  const [userPageSize, setUserPageSize] = useState(10);
-  const [userPagination, setUserPagination] = useState({
-    total: 0,
-    page: 1,
-    limit: 10,
-    totalPages: 1,
-  });
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalXp: 0,
-    totalCompleted: 0,
-    avgLevel: 0,
-    recentSignups: [],
-  });
-  const [moduleSortBy, setModuleSortBy] = useState('order');
-  const [moduleSortOrder, setModuleSortOrder] = useState('asc');
-  const [modulePage, setModulePage] = useState(1);
-  const [achievementSearch, setAchievementSearch] = useState('');
+  const [userSearch, setUserSearch] = useState(() => savedAdmin?.userSearch ?? '');
+  const [moduleSearch, setModuleSearch] = useState(() => savedAdmin?.moduleSearch ?? '');
+  const [userFilterPath, setUserFilterPath] = useState(() => savedAdmin?.userFilterPath ?? '');
+  const [moduleFilterCategory, setModuleFilterCategory] = useState(
+    () => savedAdmin?.moduleFilterCategory ?? ''
+  );
+  const [moduleFilterDifficulty, setModuleFilterDifficulty] = useState(
+    () => savedAdmin?.moduleFilterDifficulty ?? ''
+  );
+  const [userSortBy, setUserSortBy] = useState(() => savedAdmin?.userSortBy ?? 'createdAt');
+  const [userSortOrder, setUserSortOrder] = useState(() => savedAdmin?.userSortOrder ?? 'desc');
+  const [userPage, setUserPage] = useState(() => savedAdmin?.userPage ?? 1);
+  const [userPageSize, setUserPageSize] = useState(() => savedAdmin?.userPageSize ?? 10);
+  const [userPagination, setUserPagination] = useState(
+    () =>
+      savedAdmin?.userPagination ?? {
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      }
+  );
+  const [stats, setStats] = useState(
+    () =>
+      savedAdmin?.stats ?? {
+        totalUsers: 0,
+        totalXp: 0,
+        totalCompleted: 0,
+        avgLevel: 0,
+        recentSignups: [],
+      }
+  );
+  const [moduleSortBy, setModuleSortBy] = useState(() => savedAdmin?.moduleSortBy ?? 'order');
+  const [moduleSortOrder, setModuleSortOrder] = useState(() => savedAdmin?.moduleSortOrder ?? 'asc');
+  const [modulePage, setModulePage] = useState(() => savedAdmin?.modulePage ?? 1);
+  const [achievementSearch, setAchievementSearch] = useState(
+    () => savedAdmin?.achievementSearch ?? ''
+  );
   const MODULE_PAGE_SIZE = 10;
   const [grantModal, setGrantModal] = useState(null);
   const [grantSaving, setGrantSaving] = useState(false);
@@ -87,6 +104,34 @@ const Admin = () => {
   });
   const initialUserModalRef = useRef(null);
   const initialModuleModalRef = useRef(null);
+  const skipBootstrapLoad = useRef(hydratedAdmin);
+  const skipUsersFetchOnce = useRef(hydratedAdmin);
+
+  const adminSnapshotRef = useRef({});
+  adminSnapshotRef.current = {
+    hydrated: true,
+    tab,
+    users,
+    modules,
+    achievements,
+    loading,
+    userSearch,
+    moduleSearch,
+    userFilterPath,
+    moduleFilterCategory,
+    moduleFilterDifficulty,
+    userSortBy,
+    userSortOrder,
+    userPage,
+    userPageSize,
+    userPagination,
+    stats,
+    moduleSortBy,
+    moduleSortOrder,
+    modulePage,
+    achievementSearch,
+  };
+  useEffect(() => () => put('admin', adminSnapshotRef.current), [put]);
 
   const loadUsers = async (page = userPage) => {
     try {
@@ -135,6 +180,10 @@ const Admin = () => {
   };
 
   useEffect(() => {
+    if (skipBootstrapLoad.current) {
+      skipBootstrapLoad.current = false;
+      return;
+    }
     const load = async () => {
       setLoading(true);
       await Promise.all([loadStats(), loadModules(), loadAchievements()]);
@@ -146,6 +195,10 @@ const Admin = () => {
   // loadUsers intentionally depends on multiple pieces of component state, so it is not stable.
   // We keep the effect dependency list focused on those inputs and suppress the lint warning here.
   useEffect(() => {
+    if (skipUsersFetchOnce.current) {
+      skipUsersFetchOnce.current = false;
+      return;
+    }
     loadUsers(userPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userPage, userSearch, userFilterPath, userSortBy, userSortOrder, userPageSize]);
@@ -543,135 +596,115 @@ const Admin = () => {
   };
 
   return (
-    <GameLayout>
+    <>
       <PageHeader
         title="Admin"
-        subtitle="Manage users and modules"
+        subtitle="Users, content, and achievements - all in one place"
         icon={FaShieldAlt}
         badge="Admin"
       />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        <div className="flex gap-2 border-b border-[#252c3a] mb-6">
-          <button
-            onClick={() => setTab('overview')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
-              tab === 'overview'
-                ? 'border-[#9a9080] text-white'
-                : 'border-transparent text-[#706858] hover:text-[#d8d0c4]'
-            }`}
-          >
-            <FaChartBar />
-            Overview
-          </button>
-          <button
-            onClick={() => setTab('users')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
-              tab === 'users'
-                ? 'border-[#9a9080] text-white'
-                : 'border-transparent text-[#706858] hover:text-[#d8d0c4]'
-            }`}
-          >
-            <FaUsers />
-            Users
-          </button>
-          <button
-            onClick={() => setTab('modules')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
-              tab === 'modules'
-                ? 'border-[#9a9080] text-white'
-                : 'border-transparent text-[#706858] hover:text-[#d8d0c4]'
-            }`}
-          >
-            <FaLayerGroup />
-            Modules
-          </button>
-          <button
-            onClick={() => setTab('achievements')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
-              tab === 'achievements'
-                ? 'border-[#9a9080] text-white'
-                : 'border-transparent text-[#706858] hover:text-[#d8d0c4]'
-            }`}
-          >
-            <FaTrophy />
-            Achievements
-          </button>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 text-blue-50">
+        <p className="text-sm text-blue-300 mb-3">
+          Pick a tab to work in. Search and filters stay where you left them while you move between
+          these pages.
+        </p>
+        <div className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-blue-900 shadow-lg shadow-black/30 mb-8 max-w-3xl">
+          {[
+            { id: 'overview', label: 'Overview', icon: FaChartBar },
+            { id: 'users', label: 'Users', icon: FaUsers },
+            { id: 'modules', label: 'Modules', icon: FaLayerGroup },
+            { id: 'achievements', label: 'Achievements', icon: FaTrophy },
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
+                tab === id
+                  ? 'bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 shadow-md shadow-cyan-500/30'
+                  : 'text-blue-200 hover:text-blue-50 hover:bg-blue-800'
+              }`}
+            >
+              <Icon className="text-sm" />
+              {label}
+            </button>
+          ))}
         </div>
 
         {loading ? (
           <LoadingScreen
-            message="Loading admin panel…"
-            subMessage="Fetching users and stats"
+            message="Loading admin tools"
+            subMessage="Gathering platform stats, users, and content"
             inline
           />
         ) : tab === 'overview' ? (
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              <div className="bg-[#111620] border border-[#252c3a] rounded-xl p-6">
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-xl bg-[#1c2230] text-[#9a9080]">
+                  <div className="p-2 rounded-xl bg-blue-700 text-blue-200">
                     <FaUsers className="text-xl" />
                   </div>
-                  <span className="text-[13px] font-medium text-[#706858]">Total users</span>
+                  <span className="text-[13px] font-medium text-blue-300">Total users</span>
                 </div>
-                <p className="text-2xl font-semibold text-[#d8d0c4]">{stats.totalUsers}</p>
+                <p className="text-2xl font-semibold text-blue-50">{stats.totalUsers}</p>
               </div>
-              <div className="bg-[#111620] border border-[#252c3a] rounded-xl p-6">
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-xl bg-[#1c2230] text-[#9a9080]">
+                  <div className="p-2 rounded-xl bg-blue-700 text-blue-200">
                     <FaLayerGroup className="text-xl" />
                   </div>
-                  <span className="text-[13px] font-medium text-[#706858]">Total modules</span>
+                  <span className="text-[13px] font-medium text-blue-300">Total modules</span>
                 </div>
-                <p className="text-2xl font-semibold text-[#d8d0c4]">{modules.length}</p>
+                <p className="text-2xl font-semibold text-blue-50">{modules.length}</p>
               </div>
-              <div className="bg-[#111620] border border-[#252c3a] rounded-xl p-6">
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-xl bg-[#1c2230] text-[#c8a040]">
+                  <div className="p-2 rounded-xl bg-blue-700 text-blue-50">
                     <FaTrophy className="text-xl" />
                   </div>
-                  <span className="text-[13px] font-medium text-[#706858]">Achievements</span>
+                  <span className="text-[13px] font-medium text-blue-300">Achievements</span>
                 </div>
-                <p className="text-2xl font-semibold text-[#d8d0c4]">{achievements.length}</p>
+                <p className="text-2xl font-semibold text-blue-50">{achievements.length}</p>
               </div>
-              <div className="bg-[#111620] border border-[#252c3a] rounded-xl p-6">
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-xl bg-[#1c2230] text-[#4e9a8e]">
+                  <div className="p-2 rounded-xl bg-blue-700 text-blue-200">
                     <FaBolt className="text-xl" />
                   </div>
-                  <span className="text-[13px] font-medium text-[#706858]">Total XP</span>
+                  <span className="text-[13px] font-medium text-blue-300">Total XP</span>
                 </div>
-                <p className="text-2xl font-semibold text-[#d8d0c4]">
+                <p className="text-2xl font-semibold text-blue-50">
                   {overviewStats.totalXp.toLocaleString()}
                 </p>
               </div>
-              <div className="bg-[#111620] border border-[#252c3a] rounded-xl p-6">
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-xl bg-[#1c2230] text-[#c8a040]">
+                  <div className="p-2 rounded-xl bg-blue-700 text-blue-50">
                     <FaAward className="text-xl" />
                   </div>
-                  <span className="text-[13px] font-medium text-[#706858]">Avg level</span>
+                  <span className="text-[13px] font-medium text-blue-300">Avg level</span>
                 </div>
-                <p className="text-2xl font-semibold text-[#d8d0c4]">{overviewStats.avgLevel}</p>
+                <p className="text-2xl font-semibold text-blue-50">{overviewStats.avgLevel}</p>
               </div>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-[#111620] border border-[#252c3a] rounded-xl p-6">
-                <h3 className="text-sm font-semibold text-[#d8d0c4] mb-3 flex items-center gap-2">
-                  <FaBolt className="text-[#c8a040]" /> Platform activity
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
+                <h3 className="text-sm font-semibold text-blue-50 mb-3 flex items-center gap-2">
+                  <FaBolt className="text-blue-50" /> Platform activity
                 </h3>
-                <p className="text-[#706858] text-[13px]">
-                  <span className="text-[#d8d0c4] font-medium">{overviewStats.totalCompleted}</span>{' '}
+                <p className="text-blue-300 text-[13px]">
+                  <span className="text-blue-50 font-medium">{overviewStats.totalCompleted}</span>{' '}
                   modules completed across all users
                 </p>
               </div>
-              <div className="bg-[#111620] border border-[#252c3a] rounded-xl p-6">
-                <h3 className="text-sm font-semibold text-[#d8d0c4] mb-3 flex items-center gap-2">
-                  <FaCalendarAlt className="text-[#4e9a8e]" /> Recent signups (last 7 days)
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
+                <h3 className="text-sm font-semibold text-blue-50 mb-3 flex items-center gap-2">
+                  <FaCalendarAlt className="text-blue-400" /> Recent signups (last 7 days)
                 </h3>
                 {overviewStats.recentSignups.length === 0 ? (
-                  <p className="text-[#706858] text-[13px]">No signups in the last 7 days.</p>
+                  <p className="text-blue-300 text-[13px]">No signups in the last 7 days.</p>
                 ) : (
                   <ul className="space-y-2">
                     {overviewStats.recentSignups.map((u) => (
@@ -679,9 +712,9 @@ const Admin = () => {
                         key={u._id || u.id || u.email}
                         className="flex items-center justify-between text-[13px]"
                       >
-                        <span className="text-[#d8d0c4]">{u.name}</span>
-                        <span className="text-[#706858]">{u.email}</span>
-                        <span className="text-[#585048] text-[12px]">
+                        <span className="text-blue-50">{u.name}</span>
+                        <span className="text-blue-300">{u.email}</span>
+                        <span className="text-blue-300 text-[12px]">
                           {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : ''}
                         </span>
                       </li>
@@ -696,7 +729,7 @@ const Admin = () => {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative flex-1 min-w-[200px] max-w-xs">
-                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#706858] text-sm" />
+                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                   <input
                     type="text"
                     placeholder="Search by name or email..."
@@ -705,7 +738,7 @@ const Admin = () => {
                       setUserSearch(e.target.value);
                       setUserPage(1);
                     }}
-                    className="w-full pl-9 pr-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                    className="w-full pl-9 pr-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                   />
                 </div>
                 <select
@@ -714,7 +747,7 @@ const Admin = () => {
                     setUserFilterPath(e.target.value);
                     setUserPage(1);
                   }}
-                  className="px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                  className="px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 >
                   <option value="">All paths</option>
                   {LEARNING_PATHS.map((path) => (
@@ -729,7 +762,7 @@ const Admin = () => {
                     setUserPageSize(Number(e.target.value));
                     setUserPage(1);
                   }}
-                  className="px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                  className="px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 >
                   <option value={10}>10 per page</option>
                   <option value={25}>25 per page</option>
@@ -738,21 +771,21 @@ const Admin = () => {
               </div>
               <button
                 onClick={exportUsersCSV}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1c2230] border border-[#2e3648] text-[#d8d0c4] text-[13px] font-medium hover:bg-[#242c3c] rounded-xl transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors"
               >
                 <FaFileExport /> Export CSV
               </button>
             </div>
-            <div className="bg-[#111620] border border-[#252c3a] overflow-hidden rounded-xl">
+            <div className="bg-blue-900 overflow-hidden rounded-2xl shadow-xl shadow-black/35">
               <div className="overflow-x-auto">
                 <table className="w-full text-[13px]">
                   <thead>
-                    <tr className="border-b border-[#252c3a] bg-[#0d1017]">
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">
+                    <tr className="bg-blue-900">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
                           onClick={() => toggleUserSort('name')}
-                          className="flex items-center gap-1 hover:text-[#d8d0c4]"
+                          className="flex items-center gap-1 hover:text-blue-50"
                         >
                           Name{' '}
                           {userSortBy === 'name' ? (
@@ -762,15 +795,15 @@ const Admin = () => {
                               <FaSortDown />
                             )
                           ) : (
-                            <FaSort className="opacity-50" />
+                            <FaSort className="text-blue-400" />
                           )}
                         </button>
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
                           onClick={() => toggleUserSort('email')}
-                          className="flex items-center gap-1 hover:text-[#d8d0c4]"
+                          className="flex items-center gap-1 hover:text-blue-50"
                         >
                           Email{' '}
                           {userSortBy === 'email' ? (
@@ -780,15 +813,15 @@ const Admin = () => {
                               <FaSortDown />
                             )
                           ) : (
-                            <FaSort className="opacity-50" />
+                            <FaSort className="text-blue-400" />
                           )}
                         </button>
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
                           onClick={() => toggleUserSort('level')}
-                          className="flex items-center gap-1 hover:text-[#d8d0c4]"
+                          className="flex items-center gap-1 hover:text-blue-50"
                         >
                           Level{' '}
                           {userSortBy === 'level' ? (
@@ -798,15 +831,15 @@ const Admin = () => {
                               <FaSortDown />
                             )
                           ) : (
-                            <FaSort className="opacity-50" />
+                            <FaSort className="text-blue-400" />
                           )}
                         </button>
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
                           onClick={() => toggleUserSort('totalPoints')}
-                          className="flex items-center gap-1 hover:text-[#d8d0c4]"
+                          className="flex items-center gap-1 hover:text-blue-50"
                         >
                           XP{' '}
                           {userSortBy === 'totalPoints' ? (
@@ -816,16 +849,16 @@ const Admin = () => {
                               <FaSortDown />
                             )
                           ) : (
-                            <FaSort className="opacity-50" />
+                            <FaSort className="text-blue-400" />
                           )}
                         </button>
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">Completed</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">Completed</th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
                           onClick={() => toggleUserSort('learningPath')}
-                          className="flex items-center gap-1 hover:text-[#d8d0c4]"
+                          className="flex items-center gap-1 hover:text-blue-50"
                         >
                           Path{' '}
                           {userSortBy === 'learningPath' ? (
@@ -835,32 +868,32 @@ const Admin = () => {
                               <FaSortDown />
                             )
                           ) : (
-                            <FaSort className="opacity-50" />
+                            <FaSort className="text-blue-400" />
                           )}
                         </button>
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">Role</th>
-                      <th className="text-right py-3 px-4 font-medium text-[#706858]">Actions</th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">Role</th>
+                      <th className="text-right py-3 px-4 font-medium text-blue-300">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map((u) => (
-                      <tr key={u.id} className="border-b border-[#1c2230] hover:bg-[#161c28]">
-                        <td className="py-3 px-4 text-[#d8d0c4]">{u.name}</td>
-                        <td className="py-3 px-4 text-[#9a9080]">{u.email}</td>
-                        <td className="py-3 px-4 text-[#9a9080]">Lv.{u.level ?? 1}</td>
-                        <td className="py-3 px-4 text-[#c8a040]">{u.totalPoints ?? 0}</td>
-                        <td className="py-3 px-4 text-[#9a9080]">
+                      <tr key={u.id} className="even:bg-blue-900/50 hover:bg-blue-800 transition-colors">
+                        <td className="py-3 px-4 text-blue-50">{u.name}</td>
+                        <td className="py-3 px-4 text-blue-300">{u.email}</td>
+                        <td className="py-3 px-4 text-blue-300">Lv.{u.level ?? 1}</td>
+                        <td className="py-3 px-4 text-blue-50">{u.totalPoints ?? 0}</td>
+                        <td className="py-3 px-4 text-blue-300">
                           {u.completedModules?.length ?? 0}
                         </td>
-                        <td className="py-3 px-4 text-[#9a9080]">{u.learningPath || 'none'}</td>
+                        <td className="py-3 px-4 text-blue-300">{u.learningPath || 'none'}</td>
                         <td className="py-3 px-4">
                           {u.isAdmin ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-[#c8a040]/10 text-[#c8a040] border border-[#c8a040]/30">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-blue-800 text-blue-50">
                               <FaShieldAlt className="text-[10px]" /> Admin
                             </span>
                           ) : (
-                            <span className="text-[#3a4258]">—</span>
+                            <span className="text-blue-700">-</span>
                           )}
                         </td>
                         <td className="py-3 px-4 text-right">
@@ -868,7 +901,7 @@ const Admin = () => {
                             <button
                               onClick={() => handleRevokeAdmin(u)}
                               disabled={u.id === user?.id || adminActionUserId === u.id}
-                              className="p-2 text-[#706858] hover:text-[#c04848] hover:bg-[#1c2230] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="p-2 text-blue-300 hover:text-blue-200 hover:bg-blue-700 rounded-xl transition-colors disabled:text-blue-400 disabled:hover:bg-transparent disabled:cursor-not-allowed"
                               title="Revoke admin"
                             >
                               <FaUserMinus />
@@ -877,7 +910,7 @@ const Admin = () => {
                             <button
                               onClick={() => handleGrantAdmin(u)}
                               disabled={adminActionUserId === u.id}
-                              className="p-2 text-[#706858] hover:text-[#c8a040] hover:bg-[#1c2230] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="p-2 text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors disabled:text-blue-400 disabled:hover:bg-transparent disabled:cursor-not-allowed"
                               title="Make admin"
                             >
                               <FaUserPlus />
@@ -887,14 +920,14 @@ const Admin = () => {
                             onClick={() =>
                               setGrantModal({ userId: u.id, userName: u.name, achievementId: null })
                             }
-                            className="p-2 text-[#706858] hover:text-[#c8a040] hover:bg-[#1c2230] rounded-lg transition-colors"
+                            className="p-2 text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
                             title="Grant achievement"
                           >
                             <FaAward />
                           </button>
                           <button
                             onClick={() => openEditUser(u)}
-                            className="p-2 text-[#706858] hover:text-white hover:bg-[#1c2230] rounded-lg transition-colors"
+                            className="p-2 text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
                             title="Edit"
                           >
                             <FaEdit />
@@ -902,7 +935,7 @@ const Admin = () => {
                           <button
                             onClick={() => handleDeleteUser(u)}
                             disabled={u.id === user?.id}
-                            className="p-2 text-[#706858] hover:text-[#c04848] hover:bg-[#1c2230] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="p-2 text-blue-300 hover:text-blue-200 hover:bg-blue-700 rounded-xl transition-colors disabled:text-blue-400 disabled:hover:bg-transparent disabled:cursor-not-allowed"
                             title="Delete"
                           >
                             <FaTrash />
@@ -916,7 +949,7 @@ const Admin = () => {
             </div>
             {totalUserPages > 1 && (
               <div className="flex items-center justify-between">
-                <p className="text-[#706858] text-[13px]">
+                <p className="text-blue-300 text-[13px]">
                   Showing {(userPage - 1) * userPageSize + 1}–
                   {Math.min(userPage * userPageSize, userPagination.total)} of{' '}
                   {userPagination.total}
@@ -925,17 +958,17 @@ const Admin = () => {
                   <button
                     onClick={() => setUserPage((p) => Math.max(1, p - 1))}
                     disabled={userPage <= 1}
-                    className="px-3 py-1.5 rounded-lg border border-[#252c3a] bg-[#161c28] text-[#d8d0c4] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 rounded-xl bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                   >
                     Previous
                   </button>
-                  <span className="px-3 py-1.5 text-[#9a9080] text-[13px]">
+                  <span className="px-3 py-1.5 text-blue-300 text-[13px]">
                     Page {userPage} of {totalUserPages}
                   </span>
                   <button
                     onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
                     disabled={userPage >= totalUserPages}
-                    className="px-3 py-1.5 rounded-lg border border-[#252c3a] bg-[#161c28] text-[#d8d0c4] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 rounded-xl bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                   >
                     Next
                   </button>
@@ -947,43 +980,43 @@ const Admin = () => {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative flex-1 min-w-[200px] max-w-xs">
-                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#706858] text-sm" />
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                 <input
                   type="text"
                   placeholder="Search achievements..."
                   value={achievementSearch}
                   onChange={(e) => setAchievementSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                  className="w-full pl-9 pr-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 />
               </div>
             </div>
-            <div className="bg-[#111620] border border-[#252c3a] overflow-hidden rounded-xl">
+            <div className="bg-blue-900 overflow-hidden rounded-2xl shadow-xl shadow-black/35">
               <div className="overflow-x-auto">
                 <table className="w-full text-[13px]">
                   <thead>
-                    <tr className="border-b border-[#252c3a] bg-[#0d1017]">
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">Name</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">
+                    <tr className="bg-blue-900">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">Name</th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
                         Description
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">Points</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">Category</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">Earned by</th>
-                      <th className="text-right py-3 px-4 font-medium text-[#706858]">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">Points</th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">Category</th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">Earned by</th>
+                      <th className="text-right py-3 px-4 font-medium text-blue-300">
                         Grant to user
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredAchievements.map((a) => (
-                      <tr key={a.id} className="border-b border-[#1c2230] hover:bg-[#161c28]">
-                        <td className="py-3 px-4 text-[#d8d0c4] font-medium">{a.name}</td>
-                        <td className="py-3 px-4 text-[#9a9080] max-w-[200px] truncate">
+                      <tr key={a.id} className="even:bg-blue-900/50 hover:bg-blue-800 transition-colors">
+                        <td className="py-3 px-4 text-blue-50 font-medium">{a.name}</td>
+                        <td className="py-3 px-4 text-blue-300 max-w-[200px] truncate">
                           {a.description}
                         </td>
-                        <td className="py-3 px-4 text-[#c8a040]">+{a.points ?? 0}</td>
-                        <td className="py-3 px-4 text-[#9a9080]">{a.category || '—'}</td>
-                        <td className="py-3 px-4 text-[#9a9080]">
+                        <td className="py-3 px-4 text-blue-50">+{a.points ?? 0}</td>
+                        <td className="py-3 px-4 text-blue-300">{a.category || '-'}</td>
+                        <td className="py-3 px-4 text-blue-300">
                           {achievementEarnedCount[a.id] ?? 0} users
                         </td>
                         <td className="py-3 px-4 text-right">
@@ -996,7 +1029,7 @@ const Admin = () => {
                                 achievementName: a.name,
                               })
                             }
-                            className="px-2 py-1 rounded-lg text-[11px] font-medium bg-[#4e9a8e]/10 text-[#4e9a8e] border border-[#4e9a8e]/30 hover:bg-[#4e9a8e]/20"
+                            className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-blue-700 text-blue-100 hover:bg-blue-700"
                           >
                             Grant to user
                           </button>
@@ -1008,7 +1041,7 @@ const Admin = () => {
               </div>
             </div>
             {filteredAchievements.length === 0 && (
-              <p className="text-[#706858] text-[13px] py-4 text-center">
+              <p className="text-blue-300 text-[13px] py-4 text-center">
                 No achievements match your search.
               </p>
             )}
@@ -1018,7 +1051,7 @@ const Admin = () => {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative flex-1 min-w-[200px] max-w-xs">
-                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#706858] text-sm" />
+                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                   <input
                     type="text"
                     placeholder="Search by title, category..."
@@ -1027,7 +1060,7 @@ const Admin = () => {
                       setModuleSearch(e.target.value);
                       setModulePage(1);
                     }}
-                    className="w-full pl-9 pr-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                    className="w-full pl-9 pr-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                   />
                 </div>
                 <select
@@ -1036,7 +1069,7 @@ const Admin = () => {
                     setModuleFilterCategory(e.target.value);
                     setModulePage(1);
                   }}
-                  className="px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                  className="px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 >
                   <option value="">All categories</option>
                   {MODULE_CATEGORIES.map((cat) => (
@@ -1051,7 +1084,7 @@ const Admin = () => {
                     setModuleFilterDifficulty(e.target.value);
                     setModulePage(1);
                   }}
-                  className="px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                  className="px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 >
                   <option value="">All difficulties</option>
                   {DIFFICULTIES.map((d) => (
@@ -1063,22 +1096,22 @@ const Admin = () => {
               </div>
               <button
                 onClick={() => openEditModule(null)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1c2230] border border-[#2e3648] text-[#d8d0c4] text-[13px] font-medium hover:bg-[#242c3c] rounded-xl transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors"
               >
                 <FaPlus />
                 Add module
               </button>
             </div>
-            <div className="bg-[#111620] border border-[#252c3a] overflow-hidden rounded-xl">
+            <div className="bg-blue-900 overflow-hidden rounded-2xl shadow-xl shadow-black/35">
               <div className="overflow-x-auto">
                 <table className="w-full text-[13px]">
                   <thead>
-                    <tr className="border-b border-[#252c3a] bg-[#0d1017]">
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">
+                    <tr className="bg-blue-900">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
                           onClick={() => toggleModuleSort('title')}
-                          className="flex items-center gap-1 hover:text-[#d8d0c4]"
+                          className="flex items-center gap-1 hover:text-blue-50"
                         >
                           Title{' '}
                           {moduleSortBy === 'title' ? (
@@ -1088,18 +1121,18 @@ const Admin = () => {
                               <FaSortDown />
                             )
                           ) : (
-                            <FaSort className="opacity-50" />
+                            <FaSort className="text-blue-400" />
                           )}
                         </button>
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
                         Description
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
                           onClick={() => toggleModuleSort('category')}
-                          className="flex items-center gap-1 hover:text-[#d8d0c4]"
+                          className="flex items-center gap-1 hover:text-blue-50"
                         >
                           Category{' '}
                           {moduleSortBy === 'category' ? (
@@ -1109,15 +1142,15 @@ const Admin = () => {
                               <FaSortDown />
                             )
                           ) : (
-                            <FaSort className="opacity-50" />
+                            <FaSort className="text-blue-400" />
                           )}
                         </button>
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
                           onClick={() => toggleModuleSort('difficulty')}
-                          className="flex items-center gap-1 hover:text-[#d8d0c4]"
+                          className="flex items-center gap-1 hover:text-blue-50"
                         >
                           Difficulty{' '}
                           {moduleSortBy === 'difficulty' ? (
@@ -1127,15 +1160,15 @@ const Admin = () => {
                               <FaSortDown />
                             )
                           ) : (
-                            <FaSort className="opacity-50" />
+                            <FaSort className="text-blue-400" />
                           )}
                         </button>
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-[#706858]">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
                           onClick={() => toggleModuleSort('order')}
-                          className="flex items-center gap-1 hover:text-[#d8d0c4]"
+                          className="flex items-center gap-1 hover:text-blue-50"
                         >
                           Order{' '}
                           {moduleSortBy === 'order' ? (
@@ -1145,37 +1178,37 @@ const Admin = () => {
                               <FaSortDown />
                             )
                           ) : (
-                            <FaSort className="opacity-50" />
+                            <FaSort className="text-blue-400" />
                           )}
                         </button>
                       </th>
-                      <th className="text-right py-3 px-4 font-medium text-[#706858]">Actions</th>
+                      <th className="text-right py-3 px-4 font-medium text-blue-300">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedModulesForAdmin.map((m) => (
-                      <tr key={m._id} className="border-b border-[#1c2230] hover:bg-[#161c28]">
-                        <td className="py-3 px-4 text-[#d8d0c4] font-medium">{m.title}</td>
+                      <tr key={m._id} className="even:bg-blue-900/50 hover:bg-blue-800 transition-colors">
+                        <td className="py-3 px-4 text-blue-50 font-medium">{m.title}</td>
                         <td
-                          className="py-3 px-4 text-[#9a9080] max-w-[220px] truncate"
+                          className="py-3 px-4 text-blue-300 max-w-[220px] truncate"
                           title={m.description}
                         >
-                          {m.description || '—'}
+                          {m.description || '-'}
                         </td>
-                        <td className="py-3 px-4 text-[#9a9080]">{m.category}</td>
-                        <td className="py-3 px-4 text-[#9a9080]">{m.difficulty || '—'}</td>
-                        <td className="py-3 px-4 text-[#9a9080]">{m.order ?? 0}</td>
+                        <td className="py-3 px-4 text-blue-300">{m.category}</td>
+                        <td className="py-3 px-4 text-blue-300">{m.difficulty || '-'}</td>
+                        <td className="py-3 px-4 text-blue-300">{m.order ?? 0}</td>
                         <td className="py-3 px-4 text-right">
                           <button
                             onClick={() => openEditModule(m)}
-                            className="p-2 text-[#706858] hover:text-white hover:bg-[#1c2230] rounded-lg transition-colors"
+                            className="p-2 text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
                             title="Edit"
                           >
                             <FaEdit />
                           </button>
                           <button
                             onClick={() => handleDeleteModule(m)}
-                            className="p-2 text-[#706858] hover:text-[#c04848] hover:bg-[#1c2230] rounded-lg transition-colors"
+                            className="p-2 text-blue-300 hover:text-blue-200 hover:bg-blue-700 rounded-xl transition-colors"
                             title="Delete"
                           >
                             <FaTrash />
@@ -1188,7 +1221,7 @@ const Admin = () => {
               </div>
               {totalModulePages > 1 && (
                 <div className="mt-4 flex items-center justify-between px-4">
-                  <p className="text-[#706858] text-[13px]">
+                  <p className="text-blue-300 text-[13px]">
                     Showing {(modulePage - 1) * MODULE_PAGE_SIZE + 1}–
                     {Math.min(modulePage * MODULE_PAGE_SIZE, filteredModules.length)} of{' '}
                     {filteredModules.length}
@@ -1198,18 +1231,18 @@ const Admin = () => {
                       type="button"
                       onClick={() => setModulePage((p) => Math.max(1, p - 1))}
                       disabled={modulePage <= 1}
-                      className="px-3 py-1.5 rounded-lg border border-[#252c3a] bg-[#161c28] text-[#d8d0c4] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 rounded-xl bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                     >
                       Previous
                     </button>
-                    <span className="px-3 py-1.5 text-[#9a9080] text-[13px]">
+                    <span className="px-3 py-1.5 text-blue-300 text-[13px]">
                       Page {modulePage} of {totalModulePages}
                     </span>
                     <button
                       type="button"
                       onClick={() => setModulePage((p) => Math.min(totalModulePages, p + 1))}
                       disabled={modulePage >= totalModulePages}
-                      className="px-3 py-1.5 rounded-lg border border-[#252c3a] bg-[#161c28] text-[#d8d0c4] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 rounded-xl bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                     >
                       Next
                     </button>
@@ -1224,44 +1257,44 @@ const Admin = () => {
       {/* User edit modal */}
       {userModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/75 backdrop-blur-sm"
           onClick={() => closeUserModal()}
           role="presentation"
         >
           <div
-            className="bg-[#111620] border border-[#252c3a] rounded-2xl w-full max-w-md p-6 shadow-xl"
+            className="bg-blue-900 rounded-3xl w-full max-w-md p-6 shadow-2xl shadow-black/60"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
           >
-            <h3 className="text-lg font-semibold text-[#d8d0c4] mb-4">Edit user</h3>
+            <h3 className="text-lg font-bold text-blue-50 mb-4">Edit user</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-[11px] font-medium text-[#706858] mb-1">Name</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">Name</label>
                 <input
                   type="text"
                   value={userModal.name}
                   onChange={(e) => setUserModal((p) => ({ ...p, name: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-[#706858] mb-1">Email</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">Email</label>
                 <input
                   type="email"
                   value={userModal.email}
                   onChange={(e) => setUserModal((p) => ({ ...p, email: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-[#706858] mb-1">
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">
                   Learning path
                 </label>
                 <select
                   value={userModal.learningPath}
                   onChange={(e) => setUserModal((p) => ({ ...p, learningPath: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 >
                   {LEARNING_PATHS.map((path) => (
                     <option key={path} value={path}>
@@ -1278,9 +1311,9 @@ const Admin = () => {
                   onChange={(e) =>
                     setUserModal((p) => ({ ...p, knowsJavaScript: e.target.checked }))
                   }
-                  className="rounded border-[#252c3a] bg-[#161c28] text-[#4e9a8e]"
+                  className="rounded bg-blue-800 text-blue-400 accent-blue-400"
                 />
-                <label htmlFor="knowsJs" className="text-[13px] text-[#9a9080]">
+                <label htmlFor="knowsJs" className="text-[13px] text-blue-300">
                   Knows JavaScript
                 </label>
               </div>
@@ -1288,14 +1321,14 @@ const Admin = () => {
             <div className="flex justify-end gap-2 mt-6">
               <button
                 onClick={() => closeUserModal()}
-                className="px-4 py-2 text-[13px] font-medium text-[#9a9080] hover:text-white hover:bg-[#1c2230] rounded-xl transition-colors"
+                className="px-4 py-2 text-[13px] font-semibold text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveUser}
                 disabled={saving}
-                className="px-4 py-2 bg-[#1c2230] border border-[#2e3648] text-[#d8d0c4] text-[13px] font-medium hover:bg-[#242c3c] rounded-xl transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-[13px] font-semibold rounded-xl shadow-md shadow-cyan-500/25 hover:brightness-110 transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {saving ? 'Saving...' : 'Save'}
               </button>
@@ -1307,49 +1340,49 @@ const Admin = () => {
       {/* Module add/edit modal */}
       {moduleModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/75 backdrop-blur-sm overflow-y-auto"
           onClick={() => closeModuleModal()}
           role="presentation"
         >
           <div
-            className="bg-[#111620] border border-[#252c3a] rounded-2xl w-full max-w-2xl p-6 shadow-xl my-8"
+            className="bg-blue-900 rounded-3xl w-full max-w-2xl p-6 shadow-2xl shadow-black/60 my-8"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
           >
-            <h3 className="text-lg font-semibold text-[#d8d0c4] mb-4">
+            <h3 className="text-lg font-semibold text-blue-50 mb-4">
               {moduleModal.id ? 'Edit module' : 'Add module'}
             </h3>
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
               <div>
-                <label className="block text-[11px] font-medium text-[#706858] mb-1">Title</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">Title</label>
                 <input
                   type="text"
                   value={moduleModal.title}
                   onChange={(e) => setModuleModal((p) => ({ ...p, title: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-[#706858] mb-1">
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">
                   Description
                 </label>
                 <input
                   type="text"
                   value={moduleModal.description}
                   onChange={(e) => setModuleModal((p) => ({ ...p, description: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-medium text-[#706858] mb-1">
+                  <label className="block text-[11px] font-medium text-blue-300 mb-1">
                     Category
                   </label>
                   <select
                     value={moduleModal.category}
                     onChange={(e) => setModuleModal((p) => ({ ...p, category: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                    className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                   >
                     {MODULE_CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
@@ -1359,13 +1392,13 @@ const Admin = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-[#706858] mb-1">
+                  <label className="block text-[11px] font-medium text-blue-300 mb-1">
                     Difficulty
                   </label>
                   <select
                     value={moduleModal.difficulty}
                     onChange={(e) => setModuleModal((p) => ({ ...p, difficulty: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                    className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                   >
                     {DIFFICULTIES.map((d) => (
                       <option key={d} value={d}>
@@ -1376,37 +1409,37 @@ const Admin = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-[#706858] mb-1">Order</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">Order</label>
                 <input
                   type="number"
                   value={moduleModal.order}
                   onChange={(e) => setModuleModal((p) => ({ ...p, order: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-[#706858] mb-1">
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">
                   Content (markdown)
                 </label>
                 <textarea
                   value={moduleModal.content}
                   onChange={(e) => setModuleModal((p) => ({ ...p, content: e.target.value }))}
                   rows={4}
-                  className="w-full px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258] font-mono"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50 font-mono"
                 />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <button
                 onClick={() => closeModuleModal()}
-                className="px-4 py-2 text-[13px] font-medium text-[#9a9080] hover:text-white hover:bg-[#1c2230] rounded-xl transition-colors"
+                className="px-4 py-2 text-[13px] font-semibold text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveModule}
                 disabled={saving || !moduleModal.title?.trim()}
-                className="px-4 py-2 bg-[#1c2230] border border-[#2e3648] text-[#d8d0c4] text-[13px] font-medium hover:bg-[#242c3c] rounded-xl transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-[13px] font-semibold rounded-xl shadow-md shadow-cyan-500/25 hover:brightness-110 transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {saving ? 'Saving...' : 'Save'}
               </button>
@@ -1418,27 +1451,27 @@ const Admin = () => {
       {/* Grant achievement modal */}
       {grantModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/75 backdrop-blur-sm"
           onClick={() => setGrantModal(null)}
           role="presentation"
         >
           <div
-            className="bg-[#111620] border border-[#252c3a] rounded-2xl w-full max-w-md p-6 shadow-xl"
+            className="bg-blue-900 rounded-3xl w-full max-w-md p-6 shadow-2xl shadow-black/60"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
           >
-            <h3 className="text-lg font-semibold text-[#d8d0c4] mb-4 flex items-center gap-2">
-              <FaAward className="text-[#c8a040]" /> Grant achievement
+            <h3 className="text-lg font-bold text-blue-50 mb-4 flex items-center gap-2">
+              <FaAward className="text-blue-50" /> Grant achievement
             </h3>
             {grantModal.userId ? (
               <>
-                <p className="text-[#9a9080] text-[13px] mb-3">
+                <p className="text-blue-300 text-[13px] mb-3">
                   Grant an achievement to{' '}
-                  <span className="text-[#d8d0c4] font-medium">{grantModal.userName}</span>
+                  <span className="text-blue-50 font-medium">{grantModal.userName}</span>
                 </p>
                 <div>
-                  <label className="block text-[11px] font-medium text-[#706858] mb-1">
+                  <label className="block text-[11px] font-medium text-blue-300 mb-1">
                     Achievement
                   </label>
                   <select
@@ -1449,7 +1482,7 @@ const Admin = () => {
                         achievementId: e.target.value === '' ? null : Number(e.target.value),
                       }))
                     }
-                    className="w-full px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                    className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                   >
                     <option value="">Select achievement</option>
                     {achievements.map((a) => (
@@ -1462,13 +1495,13 @@ const Admin = () => {
               </>
             ) : (
               <>
-                <p className="text-[#9a9080] text-[13px] mb-3">
+                <p className="text-blue-300 text-[13px] mb-3">
                   Grant{' '}
-                  <span className="text-[#d8d0c4] font-medium">{grantModal.achievementName}</span>{' '}
+                  <span className="text-blue-50 font-medium">{grantModal.achievementName}</span>{' '}
                   to a user
                 </p>
                 <div>
-                  <label className="block text-[11px] font-medium text-[#706858] mb-1">User</label>
+                  <label className="block text-[11px] font-medium text-blue-300 mb-1">User</label>
                   <select
                     value={grantModal.userId != null ? grantModal.userId : ''}
                     onChange={(e) => {
@@ -1480,7 +1513,7 @@ const Admin = () => {
                       const u = users.find((x) => x.id === id);
                       setGrantModal((p) => ({ ...p, userId: id, userName: u?.name || '' }));
                     }}
-                    className="w-full px-3 py-2 bg-[#161c28] border border-[#252c3a] text-[#d8d0c4] text-[13px] rounded-xl focus:outline-none focus:border-[#3a4258]"
+                    className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                   >
                     <option value="">Select user</option>
                     {users.map((u) => (
@@ -1495,14 +1528,14 @@ const Admin = () => {
             <div className="flex justify-end gap-2 mt-6">
               <button
                 onClick={() => setGrantModal(null)}
-                className="px-4 py-2 text-[13px] font-medium text-[#9a9080] hover:text-white hover:bg-[#1c2230] rounded-xl transition-colors"
+                className="px-4 py-2 text-[13px] font-semibold text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleGrantAchievement}
                 disabled={grantSaving || !grantModal.userId || grantModal.achievementId == null}
-                className="px-4 py-2 bg-[#4e9a8e]/20 border border-[#4e9a8e]/40 text-[#4e9a8e] text-[13px] font-medium hover:bg-[#4e9a8e]/30 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-[13px] font-semibold rounded-xl shadow-md shadow-cyan-500/25 hover:brightness-110 transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {grantSaving ? 'Granting...' : 'Grant'}
               </button>
@@ -1521,7 +1554,7 @@ const Admin = () => {
         }}
         onCancel={() => setConfirmModal((p) => ({ ...p, open: false }))}
       />
-    </GameLayout>
+    </>
   );
 };
 

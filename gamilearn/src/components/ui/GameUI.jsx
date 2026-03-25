@@ -30,7 +30,12 @@ export const ParticleBackground = ({ count = 30, className = '' }) => {
   const [particles] = useState(() => generateParticles(count));
 
   return (
-    <div className={`particles-bg ${className}`}>
+    <motion.div
+      className={`particles-bg ${className}`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.8, ease: 'easeOut' }}
+    >
       {particles.map((p) => (
         <span
           key={p.id}
@@ -44,7 +49,7 @@ export const ParticleBackground = ({ count = 30, className = '' }) => {
           }}
         />
       ))}
-    </div>
+    </motion.div>
   );
 };
 
@@ -80,7 +85,7 @@ export const XPBar = ({
     <div className={`w-full ${className}`}>
       {showLabel && label && (
         <div className="flex justify-between items-center mb-2 text-sm">
-          <span className="text-slate-300 font-medium">{label}</span>
+          <span className="text-blue-200 font-medium">{label}</span>
           <span className="text-neon-gold font-bold">
             {current} / {max}
           </span>
@@ -112,8 +117,8 @@ export const LevelBadge = ({ level, size = 'md', animated = true, className = ''
     <motion.div
       className={`relative flex items-center justify-center rounded-xl font-bold ${sizeClasses[size]} ${className}`}
       style={{
-        background: 'rgba(200, 160, 64, 0.12)',
-        border: '2px solid rgba(200, 160, 64, 0.4)',
+        background: 'rgba(82, 124, 176, 0.14)',
+        boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
       }}
       animate={animated ? { scale: [1, 1.05, 1] } : {}}
       transition={{ duration: 2, repeat: Infinity }}
@@ -137,32 +142,32 @@ export const StatCard = ({
 }) => {
   const colorClasses = {
     cyan: {
-      bg: 'rgba(0, 245, 255, 0.1)',
-      border: 'rgba(0, 245, 255, 0.3)',
+      bg: 'rgba(82, 124, 176, 0.12)',
+      border: 'rgba(118, 154, 196, 0.35)',
       text: 'text-neon-cyan',
       glow: 'hover:shadow-glow-cyan',
     },
     purple: {
-      bg: 'rgba(185, 79, 255, 0.1)',
-      border: 'rgba(185, 79, 255, 0.3)',
+      bg: 'rgba(58, 98, 158, 0.14)',
+      border: 'rgba(82, 124, 176, 0.38)',
       text: 'text-neon-purple',
       glow: 'hover:shadow-glow-purple',
     },
     gold: {
-      bg: 'rgba(255, 215, 0, 0.1)',
-      border: 'rgba(255, 215, 0, 0.3)',
+      bg: 'rgba(154, 182, 216, 0.1)',
+      border: 'rgba(186, 206, 232, 0.32)',
       text: 'text-neon-gold',
       glow: 'hover:shadow-glow-gold',
     },
     green: {
-      bg: 'rgba(0, 255, 136, 0.1)',
-      border: 'rgba(0, 255, 136, 0.3)',
+      bg: 'rgba(118, 154, 196, 0.11)',
+      border: 'rgba(154, 182, 216, 0.32)',
       text: 'text-neon-green',
       glow: 'hover:shadow-glow-green',
     },
     orange: {
-      bg: 'rgba(255, 107, 53, 0.1)',
-      border: 'rgba(255, 107, 53, 0.3)',
+      bg: 'rgba(42, 76, 128, 0.18)',
+      border: 'rgba(58, 98, 158, 0.45)',
       text: 'text-neon-orange',
       glow: 'hover:shadow-glow-gold',
     },
@@ -175,7 +180,7 @@ export const StatCard = ({
       className={`game-card p-4 transition-all duration-300 ${colors.glow} ${className}`}
       style={{
         background: colors.bg,
-        borderColor: colors.border,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
       }}
       whileHover={{ scale: 1.02, y: -2 }}
     >
@@ -187,9 +192,9 @@ export const StatCard = ({
           <Icon className="text-xl" />
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wider text-slate-400">{label}</p>
+          <p className="text-xs uppercase tracking-wider text-blue-300">{label}</p>
           <p className={`text-2xl font-bold ${colors.text}`}>{value}</p>
-          {subValue && <p className="text-xs text-slate-500">{subValue}</p>}
+          {subValue && <p className="text-xs text-blue-400">{subValue}</p>}
         </div>
       </div>
     </motion.div>
@@ -210,26 +215,26 @@ export const AchievementBadge = ({
   className = '',
 }) => {
   const rarityColors = {
-    common: { bg: 'rgba(148, 163, 184, 0.2)', border: '#94a3b8', glow: 'none' },
+    common: { bg: 'rgba(82, 124, 176, 0.12)', border: '#769AC4', glow: 'none' },
     uncommon: {
-      bg: 'rgba(0, 255, 136, 0.2)',
-      border: '#00ff88',
-      glow: 'var(--glow-green)',
+      bg: 'rgba(118, 154, 196, 0.1)',
+      border: '#9AB6D8',
+      glow: '0 0 12px rgba(82, 124, 176, 0.18)',
     },
     rare: {
-      bg: 'rgba(77, 124, 255, 0.2)',
-      border: '#4d7cff',
-      glow: '0 0 20px rgba(77, 124, 255, 0.5)',
+      bg: 'rgba(82, 124, 176, 0.18)',
+      border: '#527CB0',
+      glow: '0 0 20px rgba(82, 124, 176, 0.32)',
     },
     epic: {
-      bg: 'rgba(185, 79, 255, 0.2)',
-      border: '#b94fff',
-      glow: 'var(--glow-purple)',
+      bg: 'rgba(58, 98, 158, 0.2)',
+      border: '#3A629E',
+      glow: '0 0 20px rgba(58, 98, 158, 0.35)',
     },
     legendary: {
-      bg: 'rgba(255, 215, 0, 0.2)',
-      border: '#ffd700',
-      glow: 'var(--glow-gold)',
+      bg: 'rgba(186, 206, 232, 0.1)',
+      border: '#BACEE8',
+      glow: '0 0 24px rgba(186, 206, 232, 0.22)',
     },
   };
 
@@ -259,9 +264,8 @@ export const AchievementBadge = ({
     <motion.div
       className={`achievement-card ${earned ? 'unlocked' : 'locked'} cursor-pointer ${sizeClasses[size]} ${className}`}
       style={{
-        background: earned ? colors.bg : 'rgba(30, 41, 59, 0.5)',
-        borderColor: earned ? colors.border : 'rgba(255, 255, 255, 0.1)',
-        boxShadow: earned ? colors.glow : 'none',
+        background: earned ? colors.bg : 'rgba(14, 28, 54, 0.65)',
+        boxShadow: earned ? colors.glow : '0 2px 10px rgba(0,0,0,0.2)',
       }}
       whileHover={{ scale: earned ? 1.05 : 1.02 }}
       whileTap={{ scale: 0.98 }}
@@ -271,14 +275,13 @@ export const AchievementBadge = ({
         className={`achievement-icon ${iconSizes[size]} ${!earned && 'grayscale opacity-50'}`}
         style={{
           background: earned ? colors.bg : 'rgba(255, 255, 255, 0.05)',
-          borderColor: earned ? colors.border : 'rgba(255, 255, 255, 0.1)',
         }}
       >
-        {!earned ? <FaLock className="text-slate-500" /> : renderIcon()}
+        {!earned ? <FaLock className="text-blue-400" /> : renderIcon()}
       </div>
       <div className="flex-1 min-w-0">
-        <p className={`font-bold truncate ${earned ? 'text-white' : 'text-slate-500'}`}>{name}</p>
-        <p className={`text-xs truncate ${earned ? 'text-slate-300' : 'text-slate-600'}`}>
+        <p className={`font-bold truncate ${earned ? 'text-blue-50' : 'text-blue-400'}`}>{name}</p>
+        <p className={`text-xs truncate ${earned ? 'text-blue-200' : 'text-blue-500'}`}>
           {description}
         </p>
         <span
@@ -286,7 +289,6 @@ export const AchievementBadge = ({
           style={{
             background: colors.bg,
             color: colors.border,
-            border: `1px solid ${colors.border}`,
           }}
         >
           {rarity}
@@ -314,30 +316,30 @@ export const QuestCard = ({
 }) => {
   const difficultyColors = {
     beginner: {
-      badge: 'bg-neon-green/20 text-neon-green border-neon-green/40',
+      badge: 'bg-neon-green/20 text-neon-green',
       icon: FaStar,
     },
     intermediate: {
-      badge: 'bg-neon-gold/20 text-neon-gold border-neon-gold/40',
+      badge: 'bg-neon-gold/20 text-neon-gold',
       icon: FaFire,
     },
     advanced: {
-      badge: 'bg-hp-red/20 text-hp-red border-hp-red/40',
+      badge: 'bg-hp-red/20 text-hp-red',
       icon: FaGem,
     },
   };
 
   const statusStyles = {
     available: {
-      border: 'border-white/20 hover:border-neon-cyan/50',
+      extra: 'shadow-md shadow-black/20',
       bg: 'bg-white/5',
     },
     active: {
-      border: 'border-neon-cyan/50 hover:border-neon-cyan',
+      extra: 'shadow-md shadow-neon-cyan/15',
       bg: 'bg-neon-cyan/10',
     },
-    completed: { border: 'border-neon-green/50', bg: 'bg-neon-green/10' },
-    locked: { border: 'border-white/10', bg: 'bg-white/5 opacity-60' },
+    completed: { extra: 'shadow-md shadow-neon-green/15', bg: 'bg-neon-green/10' },
+    locked: { extra: '', bg: 'bg-white/5 opacity-60' },
   };
 
   const diff = difficultyColors[difficulty] || difficultyColors.beginner;
@@ -346,7 +348,7 @@ export const QuestCard = ({
 
   return (
     <motion.div
-      className={`game-card p-5 rounded-2xl border-2 ${style.border} ${style.bg} cursor-pointer transition-all ${className}`}
+      className={`game-card p-5 rounded-2xl ${style.bg} ${style.extra} cursor-pointer transition-all ${className}`}
       whileHover={status !== 'locked' ? { scale: 1.02, y: -4 } : {}}
       whileTap={status !== 'locked' ? { scale: 0.98 } : {}}
       onClick={status !== 'locked' ? onClick : undefined}
@@ -355,24 +357,24 @@ export const QuestCard = ({
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 flex-wrap">
           <span
-            className={`px-2 py-1 rounded-lg text-xs font-bold border ${diff.badge} flex items-center gap-1`}
+            className={`px-2 py-1 rounded-lg text-xs font-bold ${diff.badge} flex items-center gap-1`}
           >
             <diff.icon className="text-[10px]" />
             {difficulty}
           </span>
           {category && (
-            <span className="px-2 py-1 rounded-lg bg-white/10 text-slate-400 text-xs capitalize">
+            <span className="px-2 py-1 rounded-lg bg-white/10 text-blue-300 text-xs capitalize">
               {category.replace('-', ' ')}
             </span>
           )}
         </div>
         {status === 'completed' && (
-          <span className="px-2 py-1 rounded-lg bg-neon-green/20 text-neon-green text-xs font-bold border border-neon-green/40">
+          <span className="px-2 py-1 rounded-lg bg-neon-green/20 text-neon-green text-xs font-bold">
             ✓ DONE
           </span>
         )}
         {status === 'active' && (
-          <span className="px-2 py-1 rounded-lg bg-neon-cyan/20 text-neon-cyan text-xs font-bold border border-neon-cyan/40 animate-pulse">
+          <span className="px-2 py-1 rounded-lg bg-neon-cyan/20 text-neon-cyan text-xs font-bold animate-pulse">
             ACTIVE
           </span>
         )}
@@ -380,23 +382,23 @@ export const QuestCard = ({
 
       {/* Title & Description */}
       <h3
-        className={`font-bold text-lg mb-2 ${status === 'locked' ? 'text-slate-500' : 'text-white'}`}
+        className={`font-bold text-lg mb-2 ${status === 'locked' ? 'text-blue-400' : 'text-blue-50'}`}
       >
         {title}
       </h3>
       <p
-        className={`text-sm line-clamp-2 ${status === 'locked' ? 'text-slate-600' : 'text-slate-400'}`}
+        className={`text-sm line-clamp-2 ${status === 'locked' ? 'text-blue-500' : 'text-blue-300'}`}
       >
         {description}
       </p>
 
       {/* Footer */}
-      <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10">
-        <div className="flex items-center gap-3 text-xs text-slate-500">
+      <div className="flex items-center justify-between mt-4 pt-3">
+        <div className="flex items-center gap-3 text-xs text-blue-400">
           {objectives > 0 && <span>{objectives} tasks</span>}
         </div>
         {xpReward && (
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-neon-gold/10 border border-neon-gold/30">
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-neon-gold/10">
             <FaBolt className="text-neon-gold text-xs" />
             <span className="text-neon-gold font-bold text-xs">+{xpReward} XP</span>
           </div>
@@ -505,7 +507,7 @@ export const GameButton = ({
 export const FloatingXP = ({ amount, x, y }) => {
   return (
     <motion.div
-      className="fixed pointer-events-none z-50 flex items-center gap-1 px-3 py-1.5 rounded-full bg-neon-gold/20 border border-neon-gold/50"
+      className="fixed pointer-events-none z-50 flex items-center gap-1 px-3 py-1.5 rounded-full bg-neon-gold/20 shadow-lg shadow-neon-gold/20"
       style={{ left: x, top: y }}
       initial={{ opacity: 1, y: 0, scale: 1 }}
       animate={{ opacity: 0, y: -50, scale: 1.2 }}
@@ -549,12 +551,12 @@ export const GameAvatar = ({
         )}
       </div>
       {level && (
-        <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-neon-gold flex items-center justify-center text-game-void font-bold text-xs border-2 border-game-void">
+        <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-neon-gold flex items-center justify-center text-game-void font-bold text-xs shadow-lg shadow-black/40">
           {level}
         </div>
       )}
       {online && (
-        <div className="absolute top-0 right-0 w-3 h-3 rounded-full bg-neon-green border-2 border-game-void animate-pulse" />
+        <div className="absolute top-0 right-0 w-3 h-3 rounded-full bg-neon-green shadow-md shadow-black/50 animate-pulse" />
       )}
     </div>
   );
@@ -572,11 +574,11 @@ export const MiniStat = ({ icon: Icon, value, label, color = 'cyan' }) => {
   };
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 shadow-md shadow-black/15">
       <Icon className={`text-lg ${colors[color]}`} />
       <div>
         <p className={`font-bold ${colors[color]}`}>{value}</p>
-        {label && <p className="text-[10px] uppercase tracking-wider text-slate-500">{label}</p>}
+        {label && <p className="text-[10px] uppercase tracking-wider text-blue-400">{label}</p>}
       </div>
     </div>
   );
@@ -588,7 +590,7 @@ export const MiniStat = ({ icon: Icon, value, label, color = 'cyan' }) => {
 export const StreakCounter = ({ count, label = 'Day Streak' }) => {
   return (
     <motion.div
-      className="flex items-center gap-3 px-4 py-3 rounded-xl bg-neon-orange/15 border border-neon-orange/30"
+      className="flex items-center gap-3 px-4 py-3 rounded-xl bg-neon-orange/15 shadow-md shadow-neon-orange/10"
       animate={{ scale: [1, 1.02, 1] }}
       transition={{ duration: 2, repeat: Infinity }}
     >
@@ -598,7 +600,7 @@ export const StreakCounter = ({ count, label = 'Day Streak' }) => {
       </div>
       <div>
         <p className="text-2xl font-bold text-neon-orange">{count}</p>
-        <p className="text-xs text-slate-400">{label}</p>
+        <p className="text-xs text-blue-300">{label}</p>
       </div>
     </motion.div>
   );

@@ -396,7 +396,7 @@ async function generateLectureNotes(opts) {
     ? `\nThe student's experience level: ${userLevel}. Adapt explanations to be accessible but not overly basic.`
     : "";
 
-  const prompt = `You are a friendly programming instructor. Create LECTURE SLIDES from the learning overview below. Your output will be split into 2–4 slides — each \`##\` heading starts a new slide.
+  const prompt = `You are a friendly programming instructor. Create LECTURE SLIDES from the learning overview below. Your output will be split into 2–4 slides - each \`##\` heading starts a new slide.
 
 MODULE: ${moduleTitle}
 DIFFICULTY: ${difficulty}
@@ -408,19 +408,19 @@ ${String(overview).substring(0, 2000)}
 ---
 
 LECTURE SLIDE STRUCTURE (use exactly 2–4 slides):
-- Slide 1: Start with \`## What You'll Learn\` — 3–4 concise bullet points of key takeaways.
+- Slide 1: Start with \`## What You'll Learn\` - 3–4 concise bullet points of key takeaways.
 - Slides 2–3 (or 2–4): Each \`##\` heading begins a new slide. One main concept per slide. Use clear headings like \`## Creating a Room\`, \`## How It Works\`, \`## Key Concepts\`.
-- Last slide: End with \`## Recap\` or \`## Summary\` — 2–3 bullet points reinforcing what was covered.
+- Last slide: End with \`## Recap\` or \`## Summary\` - 2–3 bullet points reinforcing what was covered.
 
 RULES:
-1. Output RAW markdown only — never wrap your response in \`\`\`markdown or code fences.
-2. Use \`##\` for every slide heading. Do NOT use \`#\` — only \`##\` so each section becomes a slide.
+1. Output RAW markdown only - never wrap your response in \`\`\`markdown or code fences.
+2. Use \`##\` for every slide heading. Do NOT use \`#\` - only \`##\` so each section becomes a slide.
 3. Keep each slide concise (2–5 bullet points or 1–2 short paragraphs). Slides are viewed one at a time.
 4. Explain WHY concepts matter, not just WHAT they are. Be pedagogical and encouraging.
-5. Do NOT include full code solutions — only brief snippets if they illustrate a concept, wrapped in \`\`\`javascript\`\`\`.
+5. Do NOT include full code solutions - only brief snippets if they illustrate a concept, wrapped in \`\`\`javascript\`\`\`.
 6. Write for a ${difficulty} learner. Use simple language, avoid jargon unless you explain it.
 7. MARKDOWN FORMATTING:
-   - For variable/state names: use INLINE code, e.g. \`roomCode\`, \`socket\` — never separate code blocks for single words.
+   - For variable/state names: use INLINE code, e.g. \`roomCode\`, \`socket\` - never separate code blocks for single words.
    - Only use fenced code blocks (\`\`\`js\`\`\` or \`\`\`javascript\`\`\`) for multi-line code examples.
    - Use \`---\` between major sections if it improves readability.
    - No stray backticks or quotes on their own lines.`;
