@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const { isAdminEmail } = require('../utils/admin');
 
 const POPULATE_OPTS = [
   { path: 'completedModules.moduleId', select: 'title category' },
@@ -22,7 +23,7 @@ function toAdminUserView(user) {
     gameStats: user.gameStats || {},
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
-    isAdmin: (user.role || 'user') === 'admin',
+    isAdmin: isAdminEmail(user.email),
   };
 }
 
@@ -39,7 +40,8 @@ async function listUsers(req, res) {
 
     const payload = users.map((u) => toAdminUserView(u));
     return res.json({ users: payload });
-  } catch (err) {
+  } catch (error) {
+    console.error('Admin list users error:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 }
@@ -58,14 +60,15 @@ async function getUserById(req, res) {
       return res.status(404).json({ message: 'User not found' });
     }
     return res.json({ user: toAdminUserView(user) });
-  } catch (err) {
+  } catch (error) {
+    console.error('Admin get user error:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 }
 
 /**
  * PUT /api/admin/users/:id - Update a user (admin only)
- * Allowed: name, email, learningPath, gameStudioEnabled, knowsJavaScript, role
+ * Allowed: name, email, learningPath, gameStudioEnabled, knowsJavaScript
  */
 async function updateUser(req, res) {
   try {
@@ -74,7 +77,7 @@ async function updateUser(req, res) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const { name, email, learningPath, gameStudioEnabled, knowsJavaScript, role } = req.body;
+    const { name, email, learningPath, gameStudioEnabled, knowsJavaScript } = req.body;
 
     if (typeof name === 'string' && name.trim()) {
       user.name = name.trim();
@@ -107,11 +110,6 @@ async function updateUser(req, res) {
     if (typeof knowsJavaScript === 'boolean') {
       user.knowsJavaScript = knowsJavaScript;
     }
-    if (role !== undefined) {
-      if (role === 'user' || role === 'admin') {
-        user.role = role;
-      }
-    }
 
     await user.save();
 
@@ -121,7 +119,8 @@ async function updateUser(req, res) {
       .populate(POPULATE_OPTS[1].path, POPULATE_OPTS[1].select);
 
     return res.json({ message: 'User updated', user: toAdminUserView(updated) });
-  } catch (err) {
+  } catch (error) {
+    console.error('Admin update user error:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 }
@@ -141,7 +140,8 @@ async function deleteUser(req, res) {
       return res.status(404).json({ message: 'User not found' });
     }
     return res.json({ message: 'User deleted' });
-  } catch (err) {
+  } catch (error) {
+    console.error('Admin delete user error:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 }

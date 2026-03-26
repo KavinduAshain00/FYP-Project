@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import mermaid from "mermaid";
-import { tutorAPI, achievementsAPI } from "../api/api";
+import { tutorAPI, diagramsAPI, achievementsAPI } from "../api/api";
 import {
   FaRocket,
   FaLightbulb,
@@ -316,8 +316,25 @@ const GamePlanningBoard = () => {
       return;
     }
 
-    // Use default flowchart template (diagram generation is client-side only)
-    const defaultFlow = `stateDiagram-v2
+    try {
+      const description = `Game flow diagram for "${gameConcept.name}".
+        Description: ${gameConcept.description}
+        Mechanics: ${mechanicsText || "General gameplay"}
+        Game loop: ${gameLoopText || "Start → Play → End"}
+        Show the main game states: Menu, Playing, Paused, Game Over, Victory.
+        Include transitions and player actions.`;
+
+      const response = await diagramsAPI.generate(
+        description,
+        "stateDiagram-v2",
+      );
+      setFlowchartCode(response.data.mermaidCode);
+      awardXP(30, "Generated Game Flow");
+      setPlanningProgress((prev) => ({ ...prev, planFlow: true }));
+    } catch {
+      toast.error("We couldn't generate the flowchart. Try again.");
+      // Fallback flowchart
+      setFlowchartCode(`stateDiagram-v2
     [*] --> Menu
     Menu --> Playing: Start Game
     Playing --> Paused: Pause
@@ -328,11 +345,10 @@ const GamePlanningBoard = () => {
     GameOver --> Menu: Restart
     Victory --> Menu: Play Again
     GameOver --> [*]
-    Victory --> [*]`;
-    setFlowchartCode(defaultFlow);
-    awardXP(30, "Generated Game Flow");
-    setPlanningProgress((prev) => ({ ...prev, planFlow: true }));
-    setFlowchartLoading(false);
+    Victory --> [*]`);
+    } finally {
+      setFlowchartLoading(false);
+    }
   };
 
   // Get AI recommendations for the game (uses full plan)
@@ -664,7 +680,7 @@ export default App;
   padding: 20px;
   font-family: 'Segoe UI', sans-serif;
   text-align: center;
-  background: #1a1a2e;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   min-height: 100vh;
   color: white;
 }
@@ -699,7 +715,7 @@ export default App;
 .reset-btn {
   padding: 15px 30px;
   font-size: 1.2rem;
-  background: #667eea;
+  background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
   border: none;
   border-radius: 10px;

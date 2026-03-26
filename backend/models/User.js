@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema(
   {
@@ -15,14 +15,9 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
-    role: {
-      type: String,
-      enum: ["user", "admin"],
-      default: "user",
-    },
     avatarUrl: {
       type: String,
-      default: "",
+      default: '',
     },
     password: {
       type: String,
@@ -35,21 +30,21 @@ const userSchema = new mongoose.Schema(
     learningPath: {
       type: String,
       enum: [
-        "javascript-basics",
-        "game-development",
-        "react-basics",
-        "multiplayer",
-        "advanced-concepts",
-        "advanced",
-        "none",
+        'javascript-basics',
+        'game-development',
+        'react-basics',
+        'multiplayer',
+        'advanced-concepts',
+        'advanced',
+        'none',
       ],
-      default: "none",
+      default: 'none',
     },
     completedModules: [
       {
         moduleId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Module",
+          ref: 'Module',
         },
         completedAt: {
           type: Date,
@@ -59,7 +54,7 @@ const userSchema = new mongoose.Schema(
     ],
     currentModule: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Module",
+      ref: 'Module',
     },
     earnedAchievements: [
       {
@@ -90,30 +85,30 @@ const userSchema = new mongoose.Schema(
     aiPreferences: {
       tone: {
         type: String,
-        enum: ["friendly", "formal", "concise"],
-        default: "friendly",
+        enum: ['friendly', 'formal', 'concise'],
+        default: 'friendly',
       },
       hintDetail: {
         type: String,
-        enum: ["minimal", "moderate", "detailed"],
-        default: "moderate",
+        enum: ['minimal', 'moderate', 'detailed'],
+        default: 'moderate',
       },
       assistanceFrequency: {
         type: String,
-        enum: ["low", "normal", "high"],
-        default: "normal",
+        enum: ['low', 'normal', 'high'],
+        default: 'normal',
       },
     },
   },
   {
     timestamps: true,
-  },
+  }
 );
 
 // Hash password before saving
 // Use async pre-save middleware without next() when returning a promise
-userSchema.pre("save", async function () {
-  if (!this.isModified("password")) return;
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
@@ -124,4 +119,4 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model('User', userSchema);
