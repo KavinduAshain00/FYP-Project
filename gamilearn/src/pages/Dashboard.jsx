@@ -1,68 +1,92 @@
-import { useMemo, useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { userAPI } from "../api/api";
-import { toast } from "react-toastify";
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
+import { useShellPagesCache } from '../context/ShellPagesCacheContext';
+import { userAPI } from '../api/api';
+import { toast } from 'react-toastify';
 import {
   FaArrowRight,
   FaBookOpen,
-  FaChevronRight,
-  FaCode,
+  FaBolt,
   FaCompass,
-  FaDoorOpen,
-  FaGamepad,
-  FaLayerGroup,
   FaLock,
-  FaMapMarkerAlt,
   FaPlay,
   FaRocket,
+  FaStar,
   FaTrophy,
-  FaUser,
   FaUserCircle,
   FaCheckCircle,
-} from "react-icons/fa";
-import { GameLayout } from "../components/layout/GameLayout";
+  FaChevronRight,
+} from 'react-icons/fa';
+import LoadingScreen from '../components/ui/LoadingScreen';
+import { toModuleId } from '../utils/ids';
+import { getLastWorkedEditorModuleId } from '../utils/draftStorage';
+
+const ease = [0.25, 0.1, 0.25, 1];
+
+const difficultyRankLabel = (d) => {
+  if (d === 'advanced') return 'Elite';
+  if (d === 'intermediate') return 'Veteran';
+  return 'Trainee';
+};
 
 const Dashboard = () => {
-  const [modules, setModules] = useState([]);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { peek, put } = useShellPagesCache();
+  const cached = peek('dashboard');
+  const [dashboardData, setDashboardData] = useState(() => cached?.dashboardData ?? null);
+  const [loading, setLoading] = useState(() => (cached?.dashboardData != null ? false : true));
+  const [lastWorkedModuleId, setLastWorkedModuleId] = useState(() => cached?.lastWorkedModuleId ?? null);
   const [searchParams] = useSearchParams();
   const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
-  const [achievements, setAchievements] = useState([]);
-  const [ongoingGames, setOngoingGames] = useState([]);
+
+  const snapshotRef = useRef({});
+  snapshotRef.current = { dashboardData, lastWorkedModuleId, loading };
+  useEffect(() => () => put('dashboard', snapshotRef.current), [put]);
+
+  const dashboardDataRef = useRef(dashboardData);
+  dashboardDataRef.current = dashboardData;
 
   useEffect(() => {
-    const fetchData = async () => {
+    const basicsMsg = searchParams.get('message') === 'start-basics';
+    if (dashboardDataRef.current != null && !basicsMsg) return;
+
+    let cancelled = false;
+    (async () => {
       try {
+        setLoading(true);
         const res = await userAPI.getDashboard();
-        const data = res.data;
-        setModules(data.modules || []);
-        setProfile(data.user || null);
-        setAchievements(data.achievements || []);
-        setLoading(false);
-        try {
-          const saved = localStorage.getItem("savedGameProjects");
-          if (saved) {
-            const list = JSON.parse(saved);
-            setOngoingGames(Array.isArray(list) ? list : []);
-          }
-        } catch {
-          setOngoingGames([]);
-        }
-        if (searchParams.get("message") === "start-basics") {
+        if (cancelled) return;
+        setDashboardData(res.data || null);
+        if (basicsMsg) {
           toast.info(
-            "Welcome! We've prepared JavaScript basics modules for you to start with.",
+            'Welcome! Your JavaScript basics modules are ready - start from the first lesson on your path.'
           );
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
-        setLoading(false);
+        console.error('Error fetching data:', error);
+        if (!cancelled) setDashboardData(null);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
+    })();
+    return () => {
+      cancelled = true;
     };
-    fetchData();
   }, [searchParams]);
+
+  useEffect(() => {
+    let active = true;
+    const loadLastWorkedModule = async () => {
+      const moduleId = await getLastWorkedEditorModuleId();
+      if (active) setLastWorkedModuleId(moduleId);
+    };
+    loadLastWorkedModule();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleStartModule = async (moduleId) => {
     try {
@@ -70,473 +94,593 @@ const Dashboard = () => {
       if (refreshProfile) await refreshProfile();
       navigate(`/editor/${moduleId}`);
     } catch (error) {
-      console.error("Error starting module:", error);
+      console.error('Error starting module:', error);
     }
   };
 
-  const completedModuleIds = useMemo(() => {
-    if (!profile?.completedModules) return [];
-    return profile.completedModules
-      .map((m) => {
-        if (m.moduleId && typeof m.moduleId === "object" && m.moduleId._id)
-          return m.moduleId._id.toString();
-        if (m.moduleId) return m.moduleId.toString();
-        return null;
-      })
-      .filter(Boolean);
-  }, [profile]);
+  const profile = dashboardData?.user ?? null;
+  const modules = useMemo(() => dashboardData?.modules ?? [], [dashboardData?.modules]);
+  const achievements = useMemo(
+    () => dashboardData?.achievements ?? [],
+    [dashboardData?.achievements]
+  );
+  const completedModuleIds = useMemo(
+    () => (dashboardData?.completedModuleIds ?? []).map((id) => (id && id.toString()) || id),
+    [dashboardData?.completedModuleIds]
+  );
 
-  const levelInfo = profile?.levelInfo || user?.levelInfo || null;
+  const levelInfo = profile?.levelInfo ?? user?.levelInfo ?? null;
   const completionPercentage =
-    modules.length > 0
-      ? Math.round((completedModuleIds.length / modules.length) * 100)
-      : 0;
-  const experienceRank = levelInfo?.rank || { name: "Apprentice" };
-  const totalPoints =
-    levelInfo?.totalPoints ?? profile?.totalPoints ?? user?.totalPoints ?? 0;
+    dashboardData?.completionPercentage ??
+    (modules.length > 0 ? Math.round((completedModuleIds.length / modules.length) * 100) : 0);
+  const experienceRank = levelInfo?.rank || { name: 'Apprentice' };
+  const totalPoints = levelInfo?.totalPoints ?? profile?.totalPoints ?? user?.totalPoints ?? 0;
   const level = levelInfo?.level ?? profile?.level ?? user?.level ?? 1;
   const xpToNextLevel = levelInfo?.xpProgress?.xpToNext ?? 200;
-  const hasCurrentModule = profile?.currentModule && profile.currentModule._id;
-  const earnedAchievements = achievements.filter((a) => a.earned).length;
-
+  const currentModuleFromCatalog = useMemo(() => {
+    const id = toModuleId(profile?.currentModule?._id);
+    if (!id) return null;
+    return modules.find((m) => toModuleId(m._id) === id) || null;
+  }, [modules, profile?.currentModule?._id]);
+  const hasCurrentModule =
+    Boolean(profile?.currentModule && profile.currentModule._id) &&
+    !(
+      profile?.learningPath === 'advanced' &&
+      currentModuleFromCatalog?.category === 'javascript-basics'
+    );
   const modulePath = useMemo(() => {
     const pathCategories = profile?.pathCategories;
     const filtered = pathCategories?.length
       ? modules.filter((m) => pathCategories.includes(m.category))
       : modules;
-    return [...filtered].sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [modules, profile?.pathCategories]);
+    const withoutBasics =
+      profile?.learningPath === 'advanced'
+        ? filtered.filter((m) => m?.category !== 'javascript-basics')
+        : filtered;
+    return [...withoutBasics].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [modules, profile?.pathCategories, profile?.learningPath]);
+  const continueModuleFromStorage = useMemo(() => {
+    const id = toModuleId(lastWorkedModuleId);
+    if (!id) return null;
+    return modulePath.find((m) => toModuleId(m._id) === id) || null;
+  }, [modulePath, lastWorkedModuleId]);
+  const continueModule =
+    continueModuleFromStorage || (hasCurrentModule ? currentModuleFromCatalog : null);
+  const continueModuleId = toModuleId(continueModule?._id);
+  const earnedAchievements = achievements.filter((a) => a.earned).length;
 
-  const toId = (id) => (id && typeof id === "object" && id._id ? String(id._id) : String(id));
+  const nextModule = modulePath.find((m) => !completedModuleIds.includes(toModuleId(m._id)));
 
-  const nextModule = modulePath.find(
-    (m) => !completedModuleIds.includes(toId(m._id)),
-  );
+  const pathCompletedCount = useMemo(() => {
+    const pathIds = new Set(modulePath.map((m) => toModuleId(m._id)));
+    return completedModuleIds.filter((id) => pathIds.has(id)).length;
+  }, [modulePath, completedModuleIds]);
+
+  const pathProgressPercent = modulePath.length
+    ? Math.min(100, Math.round((pathCompletedCount / modulePath.length) * 100))
+    : 0;
 
   if (loading) {
     return (
-      <GameLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex items-center justify-center text-gray-400 min-h-[50vh]">
-          Loading...
-        </div>
-      </GameLayout>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 lg:min-h-0 lg:max-h-[100dvh] lg:overflow-hidden lg:h-[100dvh] lg:flex lg:items-center lg:justify-center lg:py-6">
+        <LoadingScreen
+            message="Loading your home"
+            subMessage="Pulling up your progress, path, and next steps"
+          />
+      </div>
     );
   }
 
-  const btnClass =
-    "px-3 py-2 border border-gray-600 bg-gray-800 text-gray-200 text-sm font-medium hover:bg-gray-700 rounded";
-  const btnPrimaryClass =
-    "px-3 py-2 border border-gray-600 bg-gray-700 text-gray-100 text-sm font-medium hover:bg-gray-600 rounded";
+  const btnPrimary =
+    'inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-sm font-semibold shadow-lg shadow-cyan-500/30 hover:brightness-110 active:scale-[0.99] transition-all w-full sm:w-auto';
+
+  const pathLabel = profile?.learningPath?.replace('-', ' ') || 'All topics';
+
+  const heroHeadline = continueModule
+    ? continueModule.title
+    : nextModule
+      ? nextModule.title
+      : 'You are caught up';
+  const heroSub =
+    continueModule
+      ? 'Your work is saved automatically - pick up right where you left off.'
+      : nextModule
+        ? 'When you are ready, open the next lesson on your path.'
+        : 'Browse the full catalog anytime for more lessons.';
 
   return (
-    <GameLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 text-gray-200">
-        <div className="border border-gray-700 bg-gray-900/50 p-6 mb-6 rounded-lg">
-          <div className="flex flex-col sm:flex-row gap-6 items-start">
-            <div className="flex items-center gap-4">
-              {user?.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt="Avatar"
-                  className="w-20 h-20 border border-gray-600 object-cover rounded-lg"
-                />
-              ) : (
-                <div className="w-20 h-20 border border-gray-600 flex items-center justify-center rounded-lg">
-                  <FaUserCircle className="text-3xl text-gray-500" />
+    <div
+      className={
+        'max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-20 text-blue-50 ' +
+        'lg:py-4 lg:pb-4 lg:h-[100dvh] lg:max-h-[100dvh] lg:min-h-0 lg:overflow-hidden lg:flex lg:flex-col'
+      }
+    >
+        {/* -- Top: command center -- */}
+        <motion.section
+          className="shrink-0 rounded-3xl overflow-hidden relative mb-10 lg:mb-3"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-900 to-neutral-900" />
+          <div className="absolute -top-10 right-20 w-64 h-64 rounded-full bg-cyan-400/20 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-16 left-10 w-72 h-72 rounded-full bg-violet-500/15 blur-3xl pointer-events-none" />
+
+          <div className="relative p-6 sm:p-8 lg:p-5">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-3 items-stretch">
+              <div className="lg:col-span-8 rounded-2xl bg-blue-900/70 p-5 lg:p-5 shadow-lg shadow-black/30">
+                <div className="flex gap-4 sm:gap-5 items-start">
+                  <div className="relative shrink-0">
+                    {profile?.avatarUrl || user?.avatarUrl ? (
+                      <img
+                        src={profile?.avatarUrl || user?.avatarUrl}
+                        alt={`${profile?.name ?? user?.name ?? 'Your'} profile photo`}
+                        className="w-[4.25rem] h-[4.25rem] sm:w-[4.75rem] sm:h-[4.75rem] rounded-full object-cover object-center shadow-xl shadow-black/45"
+                      />
+                    ) : (
+                      <div
+                        className="w-[4.25rem] h-[4.25rem] sm:w-[4.75rem] sm:h-[4.75rem] rounded-full flex items-center justify-center bg-gradient-to-br from-blue-500 via-blue-600 to-blue-800 shadow-xl shadow-black/40"
+                        aria-hidden
+                      >
+                        <FaUserCircle className="text-[2.85rem] sm:text-[3.1rem] text-blue-100/90 -mb-0.5" />
+                      </div>
+                    )}
+                    <span
+                      className="absolute -bottom-0.5 -right-0.5 min-w-[1.625rem] h-7 px-1.5 rounded-full bg-blue-300 text-blue-950 text-[11px] font-bold font-display flex items-center justify-center shadow-md tabular-nums"
+                      title={`Level ${level}`}
+                    >
+                      {level}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0 pt-0.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-blue-200">
+                      Home
+                    </p>
+                    <h1 className="mt-1.5 text-3xl sm:text-4xl lg:text-3xl xl:text-[2rem] font-bold text-blue-50 leading-tight tracking-tight">
+                      Hi,{' '}
+                      <span className="text-blue-200">{profile?.name ?? user?.name ?? 'there'}</span>
+                    </h1>
+                    <p className="mt-2.5 text-blue-200 text-sm lg:text-xs leading-relaxed">
+                      <span className="text-blue-50 font-medium">{experienceRank.name}</span> ·{' '}
+                      <span className="text-blue-200 font-medium capitalize">{pathLabel}</span> track ·
+                      level {level}
+                    </p>
+                  </div>
                 </div>
-              )}
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-xl font-bold text-gray-100">
-                    {user?.name}
-                  </h1>
-                  <span className="px-2 py-0.5 border border-gray-500 text-xs font-bold text-gray-400 rounded">
-                    {experienceRank.name.toUpperCase()}
-                  </span>
+                <div className="mt-4">
+                  <div className="flex justify-between text-[11px] text-blue-300 mb-1.5">
+                    <span>XP to level {level + 1}</span>
+                    <span className="tabular-nums">{xpToNextLevel} XP left</span>
+                  </div>
+                  <div className="h-2.5 rounded-full bg-blue-800 overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-300"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${((totalPoints % 200) / 200) * 100}%` }}
+                      transition={{ duration: 0.8, ease }}
+                    />
+                  </div>
                 </div>
-                <p className="text-gray-400 text-sm">{user?.email}</p>
-                <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                  <span>
-                    Level {level} → {level + 1}
-                  </span>
-                  <span>{xpToNextLevel} XP to next</span>
+              </div>
+
+              <div className="lg:col-span-4 rounded-2xl bg-blue-900/75 p-5 lg:p-4 shadow-lg shadow-black/30 flex flex-col">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-blue-300 uppercase tracking-wider">Suggested next</p>
+                    <p className="text-sm font-semibold text-blue-50 leading-snug line-clamp-2">
+                      {heroHeadline}
+                    </p>
+                  </div>
                 </div>
-                <div className="h-1.5 bg-gray-700 mt-1 overflow-hidden w-48 rounded">
-                  <div
-                    className="h-full bg-gray-500 rounded"
-                    style={{ width: `${((totalPoints % 200) / 200) * 100}%` }}
-                  />
+                <p className="text-xs text-blue-300 leading-relaxed">{heroSub}</p>
+                <div className="mt-4">
+                  {continueModule ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/editor/${continueModuleId}`)}
+                      className={btnPrimary}
+                    >
+                      <FaPlay className="text-xs" /> Continue in editor
+                    </button>
+                  ) : nextModule ? (
+                    <button
+                      type="button"
+                      onClick={() => handleStartModule(nextModule._id)}
+                      className={btnPrimary}
+                    >
+                      <FaRocket className="text-xs" /> Start next lesson
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => navigate('/modules')} className={btnPrimary}>
+                      <FaCompass className="text-xs" /> Browse modules
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </motion.section>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          <div className="border border-gray-700 bg-gray-900/50 p-4 rounded-lg">
-            <div className="text-xs text-gray-500 uppercase font-medium mb-1">
-              Total XP
+        {/* -- Metrics ribbon -- */}
+        <motion.div
+          className="shrink-0 flex flex-wrap gap-3 sm:gap-4 mb-12 lg:mb-3 lg:gap-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.12, duration: 0.4, ease }}
+        >
+          {[
+            { icon: FaBolt, label: 'Total XP', value: totalPoints, accent: 'text-amber-300' },
+            {
+              icon: FaCheckCircle,
+              label: 'Modules done',
+              value: `${completedModuleIds.length}/${modulePath.length || modules.length}`,
+              accent: 'text-emerald-300',
+            },
+            { icon: FaTrophy, label: 'Achievements', value: earnedAchievements, accent: 'text-violet-300' },
+            {
+              icon: FaBookOpen,
+              label: 'Path progress',
+              value: `${completionPercentage}%`,
+              accent: 'text-cyan-300',
+            },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="flex items-center gap-3 min-w-[140px] flex-1 sm:flex-none sm:min-w-[160px] lg:min-w-0 lg:flex-1 rounded-2xl bg-blue-900 px-4 py-3 lg:px-3 lg:py-2 shadow-lg shadow-black/25"
+            >
+              <span className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-blue-800/90 flex items-center justify-center shrink-0">
+                <item.icon className={`text-sm ${item.accent}`} />
+              </span>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-blue-300">{item.label}</p>
+                <p
+                  className={`text-lg lg:text-base font-bold tabular-nums ${item.accent}`}
+                >
+                  {item.value}
+                </p>
+              </div>
             </div>
-            <div className="text-xl font-bold text-gray-100">{totalPoints}</div>
-          </div>
-          <div className="border border-gray-700 bg-gray-900/50 p-4 rounded-lg">
-            <div className="text-xs text-gray-500 uppercase font-medium mb-1">
-              Modules Done
-            </div>
-            <div className="text-xl font-bold text-gray-100">
-              {completedModuleIds.length}
-            </div>
-          </div>
-          <div className="border border-gray-700 bg-gray-900/50 p-4 rounded-lg">
-            <div className="text-xs text-gray-500 uppercase font-medium mb-1">
-              Achievements
-            </div>
-            <div className="text-xl font-bold text-gray-100">
-              {earnedAchievements}
-            </div>
-          </div>
-          <div className="border border-gray-700 bg-gray-900/50 p-4 rounded-lg">
-            <div className="text-xs text-gray-500 uppercase font-medium mb-1">
-              Progress
-            </div>
-            <div className="text-xl font-bold text-gray-100">
-              {completionPercentage}%
-            </div>
-          </div>
-        </div>
+          ))}
+        </motion.div>
 
-        <section className="mb-6">
-          <h2 className="text-lg font-bold text-gray-100 mb-4 flex items-center gap-2">
-            <FaMapMarkerAlt className="text-gray-400" /> Current Quest
-          </h2>
-          <div className="border border-gray-700 bg-gray-900/50 p-6 rounded-lg">
-            {hasCurrentModule ? (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <div className="w-14 h-14 border border-gray-600 flex items-center justify-center shrink-0 rounded-lg">
-                  <FaCode className="text-xl text-gray-400" />
-                </div>
-                <div className="flex-1">
-                  <span className="inline-block px-2 py-0.5 border border-gray-500 text-xs font-bold text-gray-400 mb-2 rounded">
-                    IN PROGRESS
-                  </span>
-                  <h3 className="text-lg font-bold text-gray-100 mb-1">
-                    {profile.currentModule?.title || "Current Module"}
-                  </h3>
-                  <p className="text-gray-400 text-sm">
-                    Continue where you left off
+        <div
+          className={
+            'flex flex-col gap-8 xl:gap-6 min-h-0 flex-1 ' +
+            'lg:overflow-y-auto xl:overflow-hidden xl:grid xl:grid-cols-12'
+          }
+        >
+          {/* -- Path: vertical list -- */}
+          <motion.section
+            className="flex flex-col min-h-0 xl:col-span-7 xl:h-full"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.4, ease }}
+          >
+            <div className="shrink-0 flex items-end justify-between gap-4 mb-3 lg:mb-2">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-blue-300/90 font-display mb-1">
+                  Quest map
+                </p>
+                <h2 className="text-xl lg:text-lg font-bold text-blue-50 font-display tracking-tight">
+                  Your path
+                </h2>
+                <p className="text-sm lg:text-xs text-blue-300 mt-1 line-clamp-2 xl:line-clamp-1">
+                  Clear stages in order—each victory unlocks the next checkpoint on your run.
+                </p>
+              </div>
+            </div>
+            <div className="rounded-3xl bg-gradient-to-b from-blue-800/25 via-blue-900 to-neutral-900 shadow-xl shadow-black/35 overflow-hidden flex-1 min-h-0 flex flex-col relative">
+              <div
+                className="pointer-events-none absolute inset-0 opacity-[0.07]"
+                style={{
+                  backgroundImage:
+                    'repeating-linear-gradient(-12deg, transparent, transparent 12px, rgba(56,220,240,0.2) 12px, rgba(56,220,240,0.2) 13px)',
+                }}
+              />
+              {modulePath.length === 0 ? (
+                <p className="text-sm text-blue-300 p-8 text-center relative z-[1]">
+                  Nothing listed on this path yet.{' '}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/modules')}
+                    className="text-blue-200 font-semibold hover:underline"
+                  >
+                    Browse all modules
+                  </button>
+                </p>
+              ) : (
+                <>
+                  <div className="shrink-0 px-4 sm:px-5 pt-4 pb-3 relative z-[1]">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-200">
+                        Campaign progress
+                      </p>
+                      <p className="text-xs font-bold tabular-nums text-blue-100">
+                        {pathCompletedCount}
+                        <span className="text-blue-400 font-medium"> / </span>
+                        {modulePath.length}
+                        <span className="text-blue-400 font-medium ml-1">stages</span>
+                      </p>
+                    </div>
+                    <div className="mt-2 h-2 rounded-full bg-neutral-900 overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full bg-gradient-to-r from-blue-500 via-blue-400 to-blue-300"
+                        initial={false}
+                        animate={{ width: `${pathProgressPercent}%` }}
+                        transition={{ type: 'spring', stiffness: 120, damping: 22 }}
+                      />
+                    </div>
+                  </div>
+                  <div className="overflow-y-auto min-h-0 flex-1 lg:max-xl:max-h-[min(42vh,24rem)] xl:max-h-none scrollbar-hide px-3 sm:px-5 py-4 relative z-[1]">
+                    <div className="space-y-0">
+                      {modulePath.map((module, index) => {
+                        const moduleIdStr = toModuleId(module._id);
+                        const prevIdStr = modulePath[index - 1]
+                          ? toModuleId(modulePath[index - 1]._id)
+                          : null;
+                        const isCompleted = completedModuleIds.includes(moduleIdStr);
+                        const isCurrent = toModuleId(profile?.currentModule?._id) === moduleIdStr;
+                        const isNext = nextModule ? toModuleId(nextModule._id) === moduleIdStr : false;
+                        const isLocked =
+                          profile?.learningPath === 'javascript-basics' &&
+                          !isCompleted &&
+                          !isCurrent &&
+                          !isNext &&
+                          index > 0 &&
+                          prevIdStr !== null &&
+                          !completedModuleIds.includes(prevIdStr);
+                        const isLast = index === modulePath.length - 1;
+                        const connectorClass = isCompleted
+                          ? 'bg-gradient-to-b from-blue-400 via-blue-500 to-blue-600'
+                          : isLocked
+                            ? 'bg-blue-900/90 opacity-70'
+                            : 'bg-blue-700/50';
+
+                        const nodeClass = (() => {
+                          if (isCompleted) {
+                            return 'bg-blue-400 text-blue-950 shadow-lg shadow-blue-400/35';
+                          }
+                          if (isCurrent) {
+                            return 'bg-blue-500 text-blue-50 shadow-lg shadow-blue-400/45 animate-pulse';
+                          }
+                          if (isNext && !isLocked) {
+                            return 'bg-blue-200 text-blue-950 shadow-lg shadow-blue-300/50';
+                          }
+                          if (isLocked) {
+                            return 'bg-neutral-900 text-blue-500 opacity-75';
+                          }
+                          return 'bg-blue-800 text-blue-100 shadow-md shadow-black/20';
+                        })();
+
+                        return (
+                          <div key={module._id} className="flex gap-3 sm:gap-4 items-start">
+                            <div className="flex flex-col items-center w-12 sm:w-14 shrink-0">
+                              <motion.div
+                                initial={{ scale: 0.85, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: index * 0.045, duration: 0.35, ease }}
+                                className={`relative z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm font-bold font-display ${nodeClass}`}
+                              >
+                                {isCompleted ? (
+                                  <FaCheckCircle className="text-xl sm:text-2xl" />
+                                ) : isLocked ? (
+                                  <FaLock className="text-base" />
+                                ) : isCurrent ? (
+                                  <FaPlay className="text-sm ml-0.5" />
+                                ) : (
+                                  <span className="tabular-nums">{index + 1}</span>
+                                )}
+                              </motion.div>
+                              {!isLast && (
+                                <div
+                                  className={`w-1 sm:w-1.5 h-10 sm:h-12 mt-1.5 rounded-full shrink-0 ${connectorClass}`}
+                                />
+                              )}
+                            </div>
+                            <motion.div
+                              className={`flex-1 min-w-0 ${isLast ? '' : 'pb-5 sm:pb-6'}`}
+                              initial={{ opacity: 0, x: 8 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.08 + index * 0.04, duration: 0.35, ease }}
+                            >
+                              <button
+                                type="button"
+                                disabled={isLocked}
+                                onClick={() => !isLocked && handleStartModule(module._id)}
+                                className={`w-full text-left rounded-2xl p-3.5 sm:p-4 transition-all duration-200 ${
+                                  isLocked
+                                    ? 'bg-neutral-900/60 cursor-not-allowed opacity-80'
+                                    : isCurrent
+                                      ? 'bg-blue-800/50 shadow-lg shadow-blue-950/40 hover:bg-blue-800/70'
+                                      : isNext
+                                        ? 'bg-blue-900/70 hover:bg-blue-800/60 shadow-md shadow-blue-950/30'
+                                        : isCompleted
+                                          ? 'bg-blue-900/35 hover:bg-blue-900/55'
+                                          : 'bg-blue-900/50 hover:bg-blue-800/55'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">
+                                        Stage {index + 1}
+                                      </span>
+                                      <span className="text-[9px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-neutral-900 text-blue-200">
+                                        {difficultyRankLabel(module.difficulty)}
+                                      </span>
+                                    </div>
+                                    <h3 className="mt-1.5 font-display font-bold text-blue-50 text-base sm:text-[15px] leading-snug">
+                                      {module.title}
+                                    </h3>
+                                    {module.description && (
+                                      <p className="text-xs text-blue-300 line-clamp-2 mt-1.5 leading-relaxed">
+                                        {module.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                  {!isLocked && (
+                                    <span className="shrink-0 flex flex-col items-end gap-1.5">
+                                      {isNext && !isCompleted && (
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg bg-blue-50 text-blue-950 shadow-sm">
+                                          <FaStar className="text-[10px]" /> Next
+                                        </span>
+                                      )}
+                                      {isCurrent && (
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg bg-blue-500 text-blue-50">
+                                          <FaBolt className="text-[10px]" /> Active
+                                        </span>
+                                      )}
+                                      {isCompleted && (
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-blue-300">
+                                          Cleared
+                                        </span>
+                                      )}
+                                      <FaChevronRight className="text-blue-400 text-sm mt-0.5" />
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                            </motion.div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.section>
+
+          {/* -- Achievements + quick lessons -- */}
+          <div className="flex flex-col gap-8 xl:gap-4 min-h-0 xl:col-span-5 xl:h-full xl:min-h-0">
+            <motion.section
+              className="shrink-0"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.4, ease }}
+            >
+              <div className="flex items-end justify-between gap-3 mb-2">
+                <div>
+                  <h2 className="text-xl lg:text-lg font-bold text-blue-50">Achievements</h2>
+                  <p className="text-sm lg:text-xs text-blue-300 mt-1">
+                    Recent achievements badges.
                   </p>
                 </div>
                 <button
-                  onClick={() =>
-                    navigate(`/editor/${profile.currentModule._id}`)
-                  }
-                  className={btnPrimaryClass}
+                  type="button"
+                  onClick={() => navigate('/profile')}
+                  className="text-xs sm:text-sm font-semibold text-blue-200 hover:text-blue-100 shrink-0"
                 >
-                  <span className="flex items-center gap-2">
-                    <FaPlay /> Continue
-                  </span>
+                  Open profile →
                 </button>
               </div>
-            ) : nextModule ? (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <div className="w-14 h-14 border border-gray-600 flex items-center justify-center shrink-0 rounded-lg">
-                  <FaRocket className="text-xl text-gray-400" />
-                </div>
-                <div className="flex-1">
-                  <span className="inline-block px-2 py-0.5 border border-gray-500 text-xs font-bold text-gray-400 mb-2 rounded">
-                    NEXT
-                  </span>
-                  <h3 className="text-lg font-bold text-gray-100 mb-1">
-                    {nextModule.title}
-                  </h3>
-                  <p className="text-gray-400 text-sm">Ready to start</p>
-                </div>
-                <button
-                  onClick={() => handleStartModule(nextModule._id)}
-                  className={btnPrimaryClass}
-                >
-                  <span className="flex items-center gap-2">
-                    <FaPlay /> Start
-                  </span>
-                </button>
-              </div>
-            ) : (
-              <div className="text-center py-4">
-                <div className="w-14 h-14 border border-gray-600 flex items-center justify-center mx-auto mb-3 rounded-lg">
-                  <FaTrophy className="text-2xl text-gray-400" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-100 mb-2">
-                  All Quests Complete!
-                </h3>
-                <button
-                  onClick={() => navigate("/modules")}
-                  className={btnClass}
-                >
-                  <span className="flex items-center gap-2">
-                    <FaCompass /> Browse Modules
-                  </span>
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
 
-        <section className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-100 flex items-center gap-2">
-              <FaLayerGroup className="text-gray-400" /> Your Quest Map
-            </h2>
-            <button
-              onClick={() => navigate("/modules")}
-              className="text-sm text-cyan-400 hover:underline flex items-center gap-1"
-            >
-              All Modules <FaChevronRight />
-            </button>
-          </div>
-          <p className="text-xs text-gray-500 mb-2">
-            Modules in your chosen path: {profile?.learningPath?.replace("-", " ") || "All"}
-          </p>
-          <div className="border border-gray-700 bg-gray-900/50 p-4 overflow-x-auto rounded-lg">
-            <div className="flex items-center gap-2 min-w-max pb-2">
-              {modulePath.map((module, index) => {
-                const moduleIdStr = toId(module._id);
-                const prevIdStr = modulePath[index - 1] ? toId(modulePath[index - 1]._id) : null;
-                const isCompleted = completedModuleIds.includes(moduleIdStr);
-                const isCurrent = toId(profile?.currentModule?._id) === moduleIdStr;
-                const isNext = nextModule ? toId(nextModule._id) === moduleIdStr : false;
-                const isLocked =
-                  !isCompleted &&
-                  !isCurrent &&
-                  !isNext &&
-                  index > 0 &&
-                  prevIdStr !== null &&
-                  !completedModuleIds.includes(prevIdStr);
-                return (
-                  <div key={module._id} className="flex items-center gap-2">
-                    <button
-                      onClick={() => !isLocked && handleStartModule(module._id)}
-                      disabled={isLocked}
-                      className={`flex flex-col items-center p-2 border-2 min-w-[72px] text-center rounded-lg ${
-                        isCompleted
-                          ? "border-gray-500 bg-gray-800"
-                          : isCurrent
-                            ? "border-cyan-500/60 bg-gray-800"
-                            : isNext
-                              ? "border-gray-500 bg-gray-800"
-                              : isLocked
-                                ? "border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed"
-                                : "border-gray-600 hover:border-gray-500 bg-gray-800/50"
-                      }`}
-                    >
-                      <div className="w-7 h-7 border border-gray-600 flex items-center justify-center mb-1 text-xs font-bold rounded">
-                        {isCompleted ? (
-                          <FaCheckCircle className="text-emerald-400 text-sm" />
-                        ) : isLocked ? (
-                          <FaLock className="text-gray-500 text-xs" />
-                        ) : (
-                          index + 1
-                        )}
+              <div className="rounded-3xl p-4 lg:p-3 bg-blue-900 shadow-xl shadow-black/30">
+                <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4 gap-2.5">
+                  {[...achievements]
+                    .sort((a, b) => (a.earned === b.earned ? 0 : a.earned ? -1 : 1))
+                    .slice(0, 8)
+                    .map((ach) => (
+                      <div
+                        key={ach.id}
+                        title={ach.name}
+                        className={`rounded-2xl p-3 transition-colors ${
+                          ach.earned
+                            ? 'bg-blue-800'
+                            : 'bg-blue-900'
+                        }`}
+                      >
+                        <div
+                          className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center mb-2 ${
+                            ach.earned ? 'bg-blue-700' : 'bg-blue-800'
+                          }`}
+                        >
+                          {ach.icon ? (
+                            <img
+                              src={ach.icon}
+                              alt=""
+                              className="w-6 h-6 object-contain brightness-0 invert"
+                            />
+                          ) : ach.earned ? (
+                            <FaTrophy className="text-blue-50" />
+                          ) : (
+                            <FaLock className="text-blue-50 text-sm" />
+                          )}
+                        </div>
+                        <p className="text-[10px] font-semibold text-blue-50 text-center line-clamp-2 leading-tight">
+                          {ach.name}
+                        </p>
+                        <p
+                          className={`mt-1 text-[10px] font-semibold text-center uppercase tracking-wide ${
+                            ach.earned ? 'text-blue-200' : 'text-blue-300'
+                          }`}
+                        >
+                          {ach.earned ? 'Unlocked' : 'Locked'}
+                        </p>
                       </div>
-                      <span className="text-[10px] font-medium text-gray-200 truncate w-full max-w-[64px]">
-                        {module.title.length > 8 ? module.title.slice(0, 8) + "…" : module.title}
-                      </span>
-                    </button>
-                    {index < modulePath.length - 1 && (
-                      <span className="w-2 h-0.5 bg-gray-600 shrink-0" />
-                    )}
-                  </div>
-                );
-              })}
-              {modulePath.length === 0 && (
-                <p className="text-sm text-gray-500 py-2">
-                  No modules in your path. <button onClick={() => navigate("/modules")} className="text-cyan-400 hover:underline">Pick modules</button>
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className="mb-6">
-          <h2 className="text-lg font-bold text-gray-100 mb-4 flex items-center gap-2">
-            <FaGamepad className="text-gray-400" /> Game Studio
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <button
-              onClick={() =>
-                profile?.gameStudioEnabled
-                  ? navigate("/custom-game")
-                  : toast.info(
-                      "Complete your learning path to unlock Game Studio.",
-                    )
-              }
-              className={`border-2 p-4 flex items-center gap-4 text-left rounded-lg ${
-                profile?.gameStudioEnabled
-                  ? "border-gray-600 bg-gray-900/50 hover:border-gray-500"
-                  : "border-gray-700 bg-gray-900/30 opacity-60"
-              }`}
-            >
-              <div className="w-12 h-12 border border-gray-600 flex items-center justify-center shrink-0 rounded-lg">
-                {profile?.gameStudioEnabled ? (
-                  <FaRocket className="text-gray-400" />
-                ) : (
-                  <FaLock className="text-gray-500" />
-                )}
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-100">Create Game</h3>
-                <p className="text-xs text-gray-400">Build from scratch</p>
-              </div>
-            </button>
-            <button
-              onClick={() =>
-                profile?.gameStudioEnabled
-                  ? navigate("/game-planning", {
-                      state: { fromDashboard: true },
-                    })
-                  : toast.info(
-                      "Complete your learning path to unlock Game Studio.",
-                    )
-              }
-              className={`border-2 p-4 flex items-center gap-4 text-left rounded-lg ${
-                profile?.gameStudioEnabled
-                  ? "border-gray-600 bg-gray-900/50 hover:border-gray-500"
-                  : "border-gray-700 bg-gray-900/30 opacity-60"
-              }`}
-            >
-              <div className="w-12 h-12 border border-gray-600 flex items-center justify-center shrink-0 rounded-lg">
-                {profile?.gameStudioEnabled ? (
-                  <FaCompass className="text-gray-400" />
-                ) : (
-                  <FaLock className="text-gray-500" />
-                )}
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-100">Plan Game</h3>
-                <p className="text-xs text-gray-400">Game planning</p>
-              </div>
-            </button>
-          </div>
-
-          {profile?.gameStudioEnabled && ongoingGames.length > 0 && (
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold text-gray-400 mb-2">Ongoing game creations</h3>
-              <div className="grid sm:grid-cols-2 gap-2">
-                {ongoingGames.slice(0, 6).map((project) => (
-                  <button
-                    key={project.name + (project.timestamp || "")}
-                    onClick={() =>
-                      navigate("/custom-game", {
-                        state: { loadProject: project },
-                      })
-                    }
-                    className="border border-gray-600 bg-gray-800/50 p-3 text-left rounded-lg hover:border-gray-500 hover:bg-gray-800"
-                  >
-                    <span className="font-medium text-gray-100 block truncate">{project.name || "Untitled"}</span>
-                    <span className="text-xs text-gray-500">
-                      {project.timestamp ? new Date(project.timestamp).toLocaleDateString() : ""} · {Object.keys(project.files || {}).length} files
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-100 flex items-center gap-2">
-              <FaTrophy className="text-gray-400" /> Achievements
-            </h3>
-            <button
-              onClick={() => navigate("/profile")}
-              className="text-sm text-cyan-400 hover:underline"
-            >
-              View All
-            </button>
-          </div>
-          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
-            {[...achievements]
-              .sort((a, b) => (a.earned === b.earned ? 0 : a.earned ? -1 : 1))
-              .slice(0, 6)
-              .map((ach) => (
-                <div
-                  key={ach.id}
-                  className={`flex items-center gap-2 p-2 border rounded-lg ${
-                    ach.earned
-                      ? "border-gray-500 bg-gray-800"
-                      : "border-gray-700 bg-gray-800/50 opacity-80"
-                  }`}
-                  title={ach.name}
-                >
-                  <div className="w-8 h-8 shrink-0 flex items-center justify-center rounded overflow-hidden bg-gray-800">
-                    {ach.icon ? (
-                      <img
-                        src={ach.icon}
-                        alt=""
-                        className="w-5 h-5 object-contain"
-                      />
-                    ) : ach.earned ? (
-                      <FaTrophy className="text-amber-400 text-sm" />
-                    ) : (
-                      <FaLock className="text-gray-500 text-sm" />
-                    )}
-                  </div>
-                  <span className="text-xs font-medium text-gray-200 truncate flex-1 min-w-0">
-                    {ach.name}
-                  </span>
+                    ))}
                 </div>
-              ))}
-          </div>
-        </section>
+              </div>
+            </motion.section>
 
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-100 flex items-center gap-2">
-              <FaBookOpen className="text-gray-400" /> Available Quests
-            </h2>
-            <button onClick={() => navigate("/modules")} className={btnClass}>
-              <span className="flex items-center gap-2">
-                Browse All <FaChevronRight />
-              </span>
-            </button>
+            <motion.section
+              className="flex flex-col min-h-0 flex-1 xl:min-h-0"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25, duration: 0.4, ease }}
+            >
+              <div className="shrink-0 flex items-center justify-between gap-2 mb-3 lg:mb-2">
+                <div>
+                  <h2 className="text-xl lg:text-lg font-bold text-blue-50">Next actions</h2>
+                  <p className="text-sm lg:text-xs text-blue-300 mt-1">
+                    Quick shortcuts for what to do next.
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-3xl bg-blue-900 p-4 shadow-lg shadow-black/25 space-y-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    continueModule
+                      ? navigate(`/editor/${continueModuleId}`)
+                      : nextModule
+                        ? handleStartModule(nextModule._id)
+                        : navigate('/modules')
+                  }
+                  className="w-full text-left rounded-2xl bg-blue-800 px-4 py-3 hover:bg-blue-600 transition-colors"
+                >
+                  <p className="text-[11px] uppercase tracking-wider text-blue-300">Continue learning</p>
+                  <p className="text-sm text-blue-50 mt-1">
+                    {continueModule
+                      ? `Resume "${continueModule.title}" from where you stopped.`
+                      : 'Open the next lesson on your path.'}
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/profile')}
+                  className="w-full text-left rounded-2xl bg-blue-800 px-4 py-3 hover:bg-blue-600 transition-colors"
+                >
+                  <p className="text-[11px] uppercase tracking-wider text-blue-300">Review progress</p>
+                  <p className="text-sm text-blue-50 mt-1">See badges, level updates, and account settings.</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/modules')}
+                  className="w-full text-left rounded-2xl bg-blue-800 px-4 py-3 hover:bg-blue-600 transition-colors"
+                >
+                  <p className="text-[11px] uppercase tracking-wider text-blue-300">Explore modules</p>
+                  <p className="text-sm text-blue-50 mt-1 flex items-center gap-1">
+                    Browse by topic and difficulty <FaArrowRight className="text-xs text-blue-200" />
+                  </p>
+                </button>
+              </div>
+            </motion.section>
           </div>
-          {modules.length === 0 ? (
-            <div className="border border-gray-700 bg-gray-900/50 p-8 text-center text-gray-400 rounded-lg">
-              No modules available
-            </div>
-          ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {modules.slice(0, 6).map((module) => {
-                const isCompleted = completedModuleIds.includes(module._id);
-                const isCurrent = profile?.currentModule?._id === module._id;
-                return (
-                  <button
-                    key={module._id}
-                    onClick={() => handleStartModule(module._id)}
-                    className="border border-gray-700 bg-gray-900/50 p-4 text-left rounded-lg hover:border-gray-600 hover:bg-gray-800/50"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-gray-100 truncate">
-                        {module.title}
-                      </span>
-                      {isCompleted && (
-                        <FaCheckCircle className="text-gray-400 shrink-0" />
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400 line-clamp-2">
-                      {module.description}
-                    </p>
-                    <span className="inline-block mt-2 text-xs text-gray-500 border border-gray-600 px-2 py-0.5 rounded">
-                      {isCompleted ? "Done" : isCurrent ? "Active" : "Start"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </div>
-    </GameLayout>
+        </div>
+    </div>
   );
 };
 

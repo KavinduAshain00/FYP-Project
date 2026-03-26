@@ -11,6 +11,12 @@ function assessQuestionConfidence(message, context) {
     if (codeLen > 20) confidence += 0.2;
   }
   if (context?.errorMessage) confidence += 0.15;
+  if (
+    context?.recentErrors &&
+    Array.isArray(context.recentErrors) &&
+    context.recentErrors.length > 0
+  )
+    confidence += 0.15;
   if (context?.currentFile) confidence += 0.1;
 
   const vaguePatterns = [/^why$/i, /doesn't work/i, /not working/i, /help me/i, /^how$/i];
@@ -83,19 +89,29 @@ INSTEAD:
 
   // UC8: Apply user's preferred TONE
   const toneInstructions = {
-    friendly: 'Use a warm, encouraging tone. Use casual language and occasional light encouragement (e.g. "You\'re on the right track!").',
-    formal: 'Use a clear, professional tone. Be precise and avoid casual language. Stay instructive and neutral.',
-    concise: 'Be brief and to the point. Use short sentences. Avoid filler; give only essential guidance.',
+    friendly:
+      'Use a warm, encouraging tone. Use casual language and occasional light encouragement (e.g. "You\'re on the right track!").',
+    formal:
+      'Use a clear, professional tone. Be precise and avoid casual language. Stay instructive and neutral.',
+    concise:
+      'Be brief and to the point. Use short sentences. Avoid filler; give only essential guidance.',
   };
-  promptParts.push(`\nTONE (user preference): ${toneInstructions[tone] || toneInstructions.friendly}`);
+  promptParts.push(
+    `\nTONE (user preference): ${toneInstructions[tone] || toneInstructions.friendly}`
+  );
 
   // UC8: Apply user's preferred HINT DETAIL level
   const detailInstructions = {
-    minimal: 'Give very short hints (1-2 sentences). Point to the area only; avoid long explanations.',
-    moderate: 'Give focused hints with one short explanation. Balance brevity with one key concept.',
-    detailed: 'You may explain a bit more: why something works, one small example, and a follow-up suggestion.',
+    minimal:
+      'Give very short hints (1-2 sentences). Point to the area only; avoid long explanations.',
+    moderate:
+      'Give focused hints with one short explanation. Balance brevity with one key concept.',
+    detailed:
+      'You may explain a bit more: why something works, one small example, and a follow-up suggestion.',
   };
-  promptParts.push(`\nHINT DETAIL (user preference): ${detailInstructions[hintDetail] || detailInstructions.moderate}`);
+  promptParts.push(
+    `\nHINT DETAIL (user preference): ${detailInstructions[hintDetail] || detailInstructions.moderate}`
+  );
 
   // UC8: Apply user's ASSISTANCE FREQUENCY (how much extra guidance to offer)
   const frequencyInstructions = {
@@ -103,16 +119,18 @@ INSTEAD:
     normal: 'Answer the question and optionally suggest one natural next step if relevant.',
     high: 'After answering, briefly suggest 1-2 follow-up things to try or check, and offer to help with the next step.',
   };
-  promptParts.push(`\nASSISTANCE FREQUENCY (user preference): ${frequencyInstructions[assistanceFrequency] || frequencyInstructions.normal}`);
+  promptParts.push(
+    `\nASSISTANCE FREQUENCY (user preference): ${frequencyInstructions[assistanceFrequency] || frequencyInstructions.normal}`
+  );
 
   switch (hintStyle) {
     case 'error-explanation':
-      promptParts.push(`\nHINT STYLE: Error Explanation
-- Focus on explaining what the error message means in simple terms
-- Explain WHY this type of error occurs (the underlying cause)
-- Point to common mistakes that lead to this error
-- Suggest what part of the code to examine
-- DO NOT fix the error directly`);
+      promptParts.push(`\nHINT STYLE: Error Explanation (DIRECTIVE)
+- Explain what the error message means in simple terms and what to fix
+- Explain WHY this type of error occurs (underlying cause)
+- Point to common mistakes (typo, wrong type, missing bracket, etc.)
+- Suggest what part of the code to examine; do NOT write the full fix
+- Keep the response focused and under the word limit`);
       break;
     case 'logic-guidance':
       promptParts.push(`\nHINT STYLE: Logic Guidance
@@ -163,10 +181,26 @@ INSTEAD:
 - Explain what they need to add and where, so they can get started properly.`);
   }
   if (context?.codeSummary) {
-    promptParts.push(`\nSTUDENT'S CODE (summary for context only - do not invent code):\n${context.codeSummary}`);
+    promptParts.push(
+      `\nSTUDENT'S CODE (summary for context only - do not invent code):\n${context.codeSummary}`
+    );
   }
-  if (context?.errorMessage) {
-    promptParts.push(`\nERROR MESSAGE: ${context.errorMessage}`);
+  const hasErrorContext =
+    context?.errorMessage || (context?.recentErrors && context.recentErrors.length > 0);
+  if (hasErrorContext) {
+    promptParts.push(
+      `\nPRIORITY: The student has an error. Explain this error in simple terms and what to check or fix. Do NOT give the full solution; guide them.`
+    );
+    if (context.errorMessage) {
+      promptParts.push(`\nERROR MESSAGE (primary): ${context.errorMessage}`);
+    }
+    if (context.recentErrors && context.recentErrors.length > 0) {
+      const errList = context.recentErrors
+        .slice(0, 5)
+        .map((e) => `- ${e}`)
+        .join('\n');
+      promptParts.push(`\nRECENT CONSOLE ERRORS:\n${errList}`);
+    }
   }
   if (context?.moduleTitle) {
     promptParts.push(`\nMODULE: ${context.moduleTitle}`);
@@ -174,12 +208,15 @@ INSTEAD:
   if (context?.objectives && Array.isArray(context.objectives)) {
     promptParts.push(`\nLEARNING OBJECTIVES: ${context.objectives.join(', ')}`);
   }
-  const hasCurrentStep = context?.currentStepDescription !== undefined && context?.currentStepDescription !== '' ||
+  const hasCurrentStep =
+    (context?.currentStepDescription !== undefined && context?.currentStepDescription !== '') ||
     (context?.currentStepIndex !== undefined && context?.currentStepIndex !== null);
   if (hasCurrentStep) {
     const stepIdx = typeof context.currentStepIndex === 'number' ? context.currentStepIndex : '?';
     const stepDesc = context.currentStepDescription || 'current step';
-    promptParts.push(`\nCURRENT STEP THE STUDENT IS ON (index ${stepIdx}): "${stepDesc}". Use this to tutor them toward this step.`);
+    promptParts.push(
+      `\nCURRENT STEP THE STUDENT IS ON (index ${stepIdx}): "${stepDesc}". Use this to tutor them toward this step.`
+    );
   }
 
   promptParts.push(`\nSTUDENT'S QUESTION: ${message}`);

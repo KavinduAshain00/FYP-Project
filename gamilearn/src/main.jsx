@@ -1,11 +1,11 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import "./index.css";
-import App from "./App.jsx";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import 'react-toastify/dist/ReactToastify.css';
+import './index.css';
+import App from './App.jsx';
+import { ToastContainer } from 'react-toastify';
 
-createRoot(document.getElementById("root")).render(
+createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
     <ToastContainer
@@ -13,12 +13,17 @@ createRoot(document.getElementById("root")).render(
       theme="dark"
       autoClose={4000}
       hideProgressBar={false}
-      newestOnTop={false}
-      closeOnClick
+      newestOnTop
+      closeOnClick={false}
       rtl={false}
       pauseOnFocusLoss
       draggable
       pauseOnHover
+      closeButton
+      toastClassName="gamilearn-toast"
+      bodyClassName="gamilearn-toast-body"
+      progressClassName="gamilearn-toast-progress"
+      className="gamilearn-toast-container"
     />
-  </StrictMode>,
+  </StrictMode>
 );

@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import { toast } from "react-toastify";
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { toast } from 'react-toastify';
 import {
   FaEdit,
   FaPlus,
@@ -9,71 +9,164 @@ import {
   FaLayerGroup,
   FaChartBar,
   FaSearch,
-} from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
-import { adminAPI, modulesAPI, achievementsAPI } from "../api/api";
-import { GameLayout, PageHeader } from "../components/layout/GameLayout";
-import ConfirmModal from "../components/ui/ConfirmModal";
+  FaTrophy,
+  FaFileExport,
+  FaSort,
+  FaSortUp,
+  FaSortDown,
+  FaAward,
+  FaCalendarAlt,
+  FaBolt,
+  FaUserPlus,
+  FaUserMinus,
+} from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
+import { useShellPagesCache } from '../context/ShellPagesCacheContext';
+import { adminAPI, modulesAPI, achievementsAPI } from '../api/api';
+import { PageHeader } from '../components/layout/GameLayout';
+import ConfirmModal from '../components/ui/ConfirmModal';
+import LoadingScreen from '../components/ui/LoadingScreen';
 
-const LEARNING_PATHS = [
-  "none",
-  "javascript-basics",
-  "game-development",
-  "react-basics",
-  "multiplayer",
-  "advanced-concepts",
-  "advanced",
-];
+const LEARNING_PATHS = ['none', 'javascript-basics', 'advanced'];
 
 const MODULE_CATEGORIES = [
-  "javascript-basics",
-  "game-development",
-  "multiplayer",
-  "advanced-concepts",
-  "react-fundamentals",
-  "react-game-dev",
+  'javascript-basics',
+  'game-development',
+  'multiplayer',
+  'advanced-concepts',
+  'react-fundamentals',
+  'react-game-dev',
 ];
 
-const DIFFICULTIES = ["beginner", "intermediate", "advanced"];
+const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'];
 
 const Admin = () => {
   const { user } = useAuth();
-  const [tab, setTab] = useState("overview");
-  const [users, setUsers] = useState([]);
-  const [modules, setModules] = useState([]);
-  const [achievements, setAchievements] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { peek, put } = useShellPagesCache();
+  const savedAdmin = peek('admin');
+  const hydratedAdmin = !!savedAdmin?.hydrated;
+
+  const [tab, setTab] = useState(() => savedAdmin?.tab ?? 'overview');
+  const [users, setUsers] = useState(() => savedAdmin?.users ?? []);
+  const [modules, setModules] = useState(() => savedAdmin?.modules ?? []);
+  const [achievements, setAchievements] = useState(() => savedAdmin?.achievements ?? []);
+  const [loading, setLoading] = useState(() => !hydratedAdmin);
   const [userModal, setUserModal] = useState(null);
   const [moduleModal, setModuleModal] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [userSearch, setUserSearch] = useState("");
-  const [moduleSearch, setModuleSearch] = useState("");
-  const [userFilterPath, setUserFilterPath] = useState("");
-  const [moduleFilterCategory, setModuleFilterCategory] = useState("");
+  const [userSearch, setUserSearch] = useState(() => savedAdmin?.userSearch ?? '');
+  const [moduleSearch, setModuleSearch] = useState(() => savedAdmin?.moduleSearch ?? '');
+  const [userFilterPath, setUserFilterPath] = useState(() => savedAdmin?.userFilterPath ?? '');
+  const [moduleFilterCategory, setModuleFilterCategory] = useState(
+    () => savedAdmin?.moduleFilterCategory ?? ''
+  );
+  const [moduleFilterDifficulty, setModuleFilterDifficulty] = useState(
+    () => savedAdmin?.moduleFilterDifficulty ?? ''
+  );
+  const [userSortBy, setUserSortBy] = useState(() => savedAdmin?.userSortBy ?? 'createdAt');
+  const [userSortOrder, setUserSortOrder] = useState(() => savedAdmin?.userSortOrder ?? 'desc');
+  const [userPage, setUserPage] = useState(() => savedAdmin?.userPage ?? 1);
+  const [userPageSize, setUserPageSize] = useState(() => savedAdmin?.userPageSize ?? 10);
+  const [userPagination, setUserPagination] = useState(
+    () =>
+      savedAdmin?.userPagination ?? {
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      }
+  );
+  const [stats, setStats] = useState(
+    () =>
+      savedAdmin?.stats ?? {
+        totalUsers: 0,
+        totalXp: 0,
+        totalCompleted: 0,
+        avgLevel: 0,
+        recentSignups: [],
+      }
+  );
+  const [moduleSortBy, setModuleSortBy] = useState(() => savedAdmin?.moduleSortBy ?? 'order');
+  const [moduleSortOrder, setModuleSortOrder] = useState(() => savedAdmin?.moduleSortOrder ?? 'asc');
+  const [modulePage, setModulePage] = useState(() => savedAdmin?.modulePage ?? 1);
+  const [achievementSearch, setAchievementSearch] = useState(
+    () => savedAdmin?.achievementSearch ?? ''
+  );
+  const MODULE_PAGE_SIZE = 10;
+  const [grantModal, setGrantModal] = useState(null);
+  const [grantSaving, setGrantSaving] = useState(false);
+  const [adminActionUserId, setAdminActionUserId] = useState(null);
   const [confirmModal, setConfirmModal] = useState({
     open: false,
-    title: "",
-    message: "",
+    title: '',
+    message: '',
     onConfirm: null,
   });
   const initialUserModalRef = useRef(null);
   const initialModuleModalRef = useRef(null);
+  const skipBootstrapLoad = useRef(hydratedAdmin);
+  const skipUsersFetchOnce = useRef(hydratedAdmin);
 
-  const loadUsers = async () => {
+  const adminSnapshotRef = useRef({});
+  adminSnapshotRef.current = {
+    hydrated: true,
+    tab,
+    users,
+    modules,
+    achievements,
+    loading,
+    userSearch,
+    moduleSearch,
+    userFilterPath,
+    moduleFilterCategory,
+    moduleFilterDifficulty,
+    userSortBy,
+    userSortOrder,
+    userPage,
+    userPageSize,
+    userPagination,
+    stats,
+    moduleSortBy,
+    moduleSortOrder,
+    modulePage,
+    achievementSearch,
+  };
+  useEffect(() => () => put('admin', adminSnapshotRef.current), [put]);
+
+  const loadUsers = async (page = userPage) => {
     try {
-      const res = await adminAPI.getUsers();
+      const res = await adminAPI.getUsers({
+        page,
+        limit: userPageSize,
+        search: userSearch.trim() || undefined,
+        learningPath: userFilterPath || undefined,
+        sortBy: userSortBy,
+        sortOrder: userSortOrder,
+      });
       setUsers(res.data.users || []);
+      if (res.data.pagination) setUserPagination(res.data.pagination);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to load users");
+      toast.error(err.response?.data?.message || 'Failed to load users');
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const res = await adminAPI.getStats();
+      setStats(
+        res.data || { totalUsers: 0, totalXp: 0, totalCompleted: 0, avgLevel: 0, recentSignups: [] }
+      );
+    } catch {
+      setStats({ totalUsers: 0, totalXp: 0, totalCompleted: 0, avgLevel: 0, recentSignups: [] });
     }
   };
 
   const loadModules = async () => {
     try {
-      const res = await modulesAPI.getAll("all");
+      const res = await modulesAPI.getAll('all');
       setModules(res.data.modules || []);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to load modules");
+      toast.error(err.response?.data?.message || 'Failed to load modules');
     }
   };
 
@@ -82,18 +175,33 @@ const Admin = () => {
       const res = await achievementsAPI.getAll();
       setAchievements(res.data.achievements || []);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to load achievements");
+      toast.error(err.response?.data?.message || 'Failed to load achievements');
     }
   };
 
   useEffect(() => {
+    if (skipBootstrapLoad.current) {
+      skipBootstrapLoad.current = false;
+      return;
+    }
     const load = async () => {
       setLoading(true);
-      await Promise.all([loadUsers(), loadModules(), loadAchievements()]);
+      await Promise.all([loadStats(), loadModules(), loadAchievements()]);
       setLoading(false);
     };
     load();
   }, []);
+
+  // loadUsers intentionally depends on multiple pieces of component state, so it is not stable.
+  // We keep the effect dependency list focused on those inputs and suppress the lint warning here.
+  useEffect(() => {
+    if (skipUsersFetchOnce.current) {
+      skipUsersFetchOnce.current = false;
+      return;
+    }
+    loadUsers(userPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userPage, userSearch, userFilterPath, userSortBy, userSortOrder, userPageSize]);
 
   const handleSaveUser = async () => {
     if (!userModal?.id) return;
@@ -103,15 +211,14 @@ const Admin = () => {
         name: userModal.name,
         email: userModal.email,
         learningPath: userModal.learningPath,
-        gameStudioEnabled: userModal.gameStudioEnabled,
         knowsJavaScript: userModal.knowsJavaScript,
       });
-      toast.success("User updated");
+      toast.success('User updated');
       setUserModal(null);
       initialUserModalRef.current = null;
       await loadUsers();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update user");
+      toast.error(err.response?.data?.message || 'Failed to update user');
     } finally {
       setSaving(false);
     }
@@ -119,12 +226,12 @@ const Admin = () => {
 
   const handleDeleteUser = (u) => {
     if (u.id === user?.id) {
-      toast.error("You cannot delete your own account");
+      toast.error('You cannot delete your own account');
       return;
     }
     setConfirmModal({
       open: true,
-      title: "Delete user",
+      title: 'Delete user',
       message: `Delete "${u.name}" (${u.email})? This cannot be undone.`,
       onConfirm: () => confirmDeleteUser(u),
     });
@@ -134,12 +241,56 @@ const Admin = () => {
     setConfirmModal((p) => ({ ...p, open: false }));
     try {
       await adminAPI.deleteUser(u.id);
-      toast.success("User deleted");
+      toast.success('User deleted');
       setUserModal(null);
       initialUserModalRef.current = null;
       await loadUsers();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete user");
+      toast.error(err.response?.data?.message || 'Failed to delete user');
+    }
+  };
+
+  const handleGrantAdmin = async (u) => {
+    if (u.isAdmin) return;
+    setAdminActionUserId(u.id);
+    try {
+      const res = await adminAPI.grantAdmin(u.id);
+      setUsers((prev) =>
+        prev.map((x) =>
+          x.id === u.id
+            ? res.data?.user
+              ? { ...x, ...res.data.user }
+              : { ...x, isAdmin: true }
+            : x
+        )
+      );
+      toast.success(`${u.name} is now an admin`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to grant admin');
+    } finally {
+      setAdminActionUserId(null);
+    }
+  };
+
+  const handleRevokeAdmin = async (u) => {
+    if (!u.isAdmin || u.id === user?.id) return;
+    setAdminActionUserId(u.id);
+    try {
+      const res = await adminAPI.revokeAdmin(u.id);
+      setUsers((prev) =>
+        prev.map((x) =>
+          x.id === u.id
+            ? res.data?.user
+              ? { ...x, ...res.data.user }
+              : { ...x, isAdmin: false }
+            : x
+        )
+      );
+      toast.success(`Admin revoked from ${u.name}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to revoke admin');
+    } finally {
+      setAdminActionUserId(null);
     }
   };
 
@@ -151,13 +302,13 @@ const Admin = () => {
       category: moduleModal.category,
       difficulty: moduleModal.difficulty,
       order: Number(moduleModal.order) || 0,
-      content: moduleModal.content || "",
-      moduleType: moduleModal.moduleType || "vanilla",
+      content: moduleModal.content || '',
+      moduleType: moduleModal.moduleType || 'vanilla',
       starterCode: moduleModal.starterCode || {
-        html: "<!DOCTYPE html>...",
-        css: "",
-        javascript: "// Start here",
-        jsx: "",
+        html: '<!DOCTYPE html>...',
+        css: '',
+        javascript: '// Start here',
+        jsx: '',
       },
       objectives: Array.isArray(moduleModal.objectives) ? moduleModal.objectives : [],
       hints: Array.isArray(moduleModal.hints) ? moduleModal.hints : [],
@@ -166,16 +317,16 @@ const Admin = () => {
     try {
       if (moduleModal.id) {
         await modulesAPI.update(moduleModal.id, payload);
-        toast.success("Module updated");
+        toast.success('Module updated');
       } else {
         await modulesAPI.create(payload);
-        toast.success("Module created");
+        toast.success('Module created');
       }
       setModuleModal(null);
       initialModuleModalRef.current = null;
       await loadModules();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to save module");
+      toast.error(err.response?.data?.message || 'Failed to save module');
     } finally {
       setSaving(false);
     }
@@ -184,7 +335,7 @@ const Admin = () => {
   const handleDeleteModule = (m) => {
     setConfirmModal({
       open: true,
-      title: "Delete module",
+      title: 'Delete module',
       message: `Delete module "${m.title}"? This cannot be undone.`,
       onConfirm: () => confirmDeleteModule(m),
     });
@@ -194,12 +345,12 @@ const Admin = () => {
     setConfirmModal((p) => ({ ...p, open: false }));
     try {
       await modulesAPI.delete(m._id);
-      toast.success("Module deleted");
+      toast.success('Module deleted');
       setModuleModal(null);
       initialModuleModalRef.current = null;
       await loadModules();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete module");
+      toast.error(err.response?.data?.message || 'Failed to delete module');
     }
   };
 
@@ -210,7 +361,6 @@ const Admin = () => {
       userModal.name !== a.name ||
       userModal.email !== a.email ||
       userModal.learningPath !== a.learningPath ||
-      userModal.gameStudioEnabled !== a.gameStudioEnabled ||
       userModal.knowsJavaScript !== a.knowsJavaScript
     );
   };
@@ -224,7 +374,7 @@ const Admin = () => {
       moduleModal.category !== a.category ||
       moduleModal.difficulty !== a.difficulty ||
       String(moduleModal.order) !== String(a.order) ||
-      (moduleModal.content || "") !== (a.content || "")
+      (moduleModal.content || '') !== (a.content || '')
     );
   };
 
@@ -232,8 +382,8 @@ const Admin = () => {
     if (!force && isUserModalDirty()) {
       setConfirmModal({
         open: true,
-        title: "Discard changes?",
-        message: "You have unsaved changes. Close without saving?",
+        title: 'Discard changes?',
+        message: 'You have unsaved changes. Close without saving?',
         onConfirm: () => {
           setConfirmModal((p) => ({ ...p, open: false }));
           setUserModal(null);
@@ -250,8 +400,8 @@ const Admin = () => {
     if (!force && isModuleModalDirty()) {
       setConfirmModal({
         open: true,
-        title: "Discard changes?",
-        message: "You have unsaved changes. Close without saving?",
+        title: 'Discard changes?',
+        message: 'You have unsaved changes. Close without saving?',
         onConfirm: () => {
           setConfirmModal((p) => ({ ...p, open: false }));
           setModuleModal(null);
@@ -269,8 +419,7 @@ const Admin = () => {
       id: u.id,
       name: u.name,
       email: u.email,
-      learningPath: u.learningPath || "none",
-      gameStudioEnabled: u.gameStudioEnabled ?? false,
+      learningPath: u.learningPath || 'none',
       knowsJavaScript: u.knowsJavaScript ?? false,
     };
     initialUserModalRef.current = { ...data };
@@ -280,14 +429,14 @@ const Admin = () => {
   const openEditModule = (m) => {
     if (!m) {
       const data = {
-        title: "",
-        description: "",
-        category: "javascript-basics",
-        difficulty: "beginner",
+        title: '',
+        description: '',
+        category: 'javascript-basics',
+        difficulty: 'beginner',
         order: 0,
-        content: "",
-        moduleType: "vanilla",
-        starterCode: { html: "", css: "", javascript: "", jsx: "" },
+        content: '',
+        moduleType: 'vanilla',
+        starterCode: { html: '', css: '', javascript: '', jsx: '' },
         objectives: [],
         hints: [],
       };
@@ -302,9 +451,9 @@ const Admin = () => {
       category: m.category,
       difficulty: m.difficulty,
       order: m.order ?? 0,
-      content: m.content ?? "",
-      moduleType: m.moduleType || "vanilla",
-      starterCode: m.starterCode || { html: "", css: "", javascript: "", jsx: "" },
+      content: m.content ?? '',
+      moduleType: m.moduleType || 'vanilla',
+      starterCode: m.starterCode || { html: '', css: '', javascript: '', jsx: '' },
       objectives: m.objectives || [],
       hints: m.hints || [],
     };
@@ -312,21 +461,32 @@ const Admin = () => {
     setModuleModal(data);
   };
 
-  const filteredUsers = useMemo(() => {
-    let list = users;
-    const q = userSearch.trim().toLowerCase();
-    if (q) {
-      list = list.filter(
-        (u) =>
-          (u.name || "").toLowerCase().includes(q) ||
-          (u.email || "").toLowerCase().includes(q)
-      );
-    }
-    if (userFilterPath) {
-      list = list.filter((u) => (u.learningPath || "none") === userFilterPath);
-    }
-    return list;
-  }, [users, userSearch, userFilterPath]);
+  const totalUserPages = Math.max(1, userPagination.totalPages || 1);
+  const overviewStats = {
+    totalXp: stats.totalXp ?? 0,
+    totalCompleted: stats.totalCompleted ?? 0,
+    avgLevel: stats.avgLevel ?? 0,
+    recentSignups: stats.recentSignups || [],
+  };
+
+  const achievementEarnedCount = useMemo(() => {
+    const map = {};
+    achievements.forEach((a) => {
+      map[a.id] = users.filter((u) => u.earnedAchievements?.includes(a.id)).length;
+    });
+    return map;
+  }, [achievements, users]);
+
+  const filteredAchievements = useMemo(() => {
+    const q = achievementSearch.trim().toLowerCase();
+    if (!q) return achievements;
+    return achievements.filter(
+      (a) =>
+        (a.name || '').toLowerCase().includes(q) ||
+        (a.description || '').toLowerCase().includes(q) ||
+        (a.category || '').toLowerCase().includes(q)
+    );
+  }, [achievements, achievementSearch]);
 
   const filteredModules = useMemo(() => {
     let list = [...modules];
@@ -334,168 +494,452 @@ const Admin = () => {
     if (q) {
       list = list.filter(
         (m) =>
-          (m.title || "").toLowerCase().includes(q) ||
-          (m.category || "").toLowerCase().includes(q) ||
-          (m.description || "").toLowerCase().includes(q)
+          (m.title || '').toLowerCase().includes(q) ||
+          (m.category || '').toLowerCase().includes(q) ||
+          (m.description || '').toLowerCase().includes(q)
       );
     }
     if (moduleFilterCategory) {
-      list = list.filter((m) => (m.category || "") === moduleFilterCategory);
+      list = list.filter((m) => (m.category || '') === moduleFilterCategory);
     }
-    return list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  }, [modules, moduleSearch, moduleFilterCategory]);
+    if (moduleFilterDifficulty) {
+      list = list.filter((m) => (m.difficulty || '') === moduleFilterDifficulty);
+    }
+    const key = moduleSortBy;
+    const order = moduleSortOrder === 'asc' ? 1 : -1;
+    list.sort((a, b) => {
+      let va = a[key];
+      let vb = b[key];
+      if (key === 'order' || key === 'title') {
+        if (key === 'order') {
+          va = Number(va) || 0;
+          vb = Number(vb) || 0;
+          return order * (va - vb);
+        }
+        va = (va || '').toLowerCase();
+        vb = (vb || '').toLowerCase();
+        return order * (va < vb ? -1 : va > vb ? 1 : 0);
+      }
+      va = (va || '').toLowerCase();
+      vb = (vb || '').toLowerCase();
+      return order * (va < vb ? -1 : va > vb ? 1 : 0);
+    });
+    return list;
+  }, [
+    modules,
+    moduleSearch,
+    moduleFilterCategory,
+    moduleFilterDifficulty,
+    moduleSortBy,
+    moduleSortOrder,
+  ]);
+
+  const totalModulePages = Math.max(1, Math.ceil(filteredModules.length / MODULE_PAGE_SIZE));
+  const paginatedModulesForAdmin = useMemo(() => {
+    const start = (modulePage - 1) * MODULE_PAGE_SIZE;
+    return filteredModules.slice(start, start + MODULE_PAGE_SIZE);
+  }, [filteredModules, modulePage]);
+
+  const handleGrantAchievement = async () => {
+    if (!grantModal?.userId || grantModal?.achievementId == null) return;
+    setGrantSaving(true);
+    try {
+      await adminAPI.grantAchievement(grantModal.userId, grantModal.achievementId);
+      toast.success('Achievement granted');
+      setGrantModal(null);
+      await loadUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to grant achievement');
+    } finally {
+      setGrantSaving(false);
+    }
+  };
+
+  const exportUsersCSV = async () => {
+    const headers = ['Name', 'Email', 'Level', 'XP', 'Completed', 'Path', 'Role'];
+    const res = await adminAPI
+      .getUsers({ page: 1, limit: 10000 })
+      .catch(() => ({ data: { users: [] } }));
+    const allUsers = res.data.users || [];
+    const rows = allUsers.map((u) => [
+      u.name || '',
+      u.email || '',
+      u.level ?? 1,
+      u.totalPoints ?? 0,
+      u.completedModules?.length ?? 0,
+      u.learningPath || 'none',
+      u.isAdmin ? 'Admin' : 'User',
+    ]);
+    const csv = [
+      headers.join(','),
+      ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')),
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gamilearn-users-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('CSV exported');
+  };
+
+  const toggleUserSort = (key) => {
+    setUserPage(1);
+    if (userSortBy === key) setUserSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+    else setUserSortBy(key);
+  };
+
+  const toggleModuleSort = (key) => {
+    if (moduleSortBy === key) setModuleSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+    else setModuleSortBy(key);
+  };
 
   return (
-    <GameLayout>
+    <>
       <PageHeader
         title="Admin"
-        subtitle="Manage users and modules"
+        subtitle="Users, content, and achievements - all in one place"
         icon={FaShieldAlt}
         badge="Admin"
       />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        <div className="flex gap-2 border-b border-[#1f1f1f] mb-6">
-          <button
-            onClick={() => setTab("overview")}
-            className={`flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
-              tab === "overview"
-                ? "border-[#a3a3a3] text-white"
-                : "border-transparent text-[#737373] hover:text-[#e5e5e5]"
-            }`}
-          >
-            <FaChartBar />
-            Overview
-          </button>
-          <button
-            onClick={() => setTab("users")}
-            className={`flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
-              tab === "users"
-                ? "border-[#a3a3a3] text-white"
-                : "border-transparent text-[#737373] hover:text-[#e5e5e5]"
-            }`}
-          >
-            <FaUsers />
-            Users
-          </button>
-          <button
-            onClick={() => setTab("modules")}
-            className={`flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
-              tab === "modules"
-                ? "border-[#a3a3a3] text-white"
-                : "border-transparent text-[#737373] hover:text-[#e5e5e5]"
-            }`}
-          >
-            <FaLayerGroup />
-            Modules
-          </button>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 text-blue-50">
+        <p className="text-sm text-blue-300 mb-3">
+          Pick a tab to work in. Search and filters stay where you left them while you move between
+          these pages.
+        </p>
+        <div className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-blue-900 shadow-lg shadow-black/30 mb-8 max-w-3xl">
+          {[
+            { id: 'overview', label: 'Overview', icon: FaChartBar },
+            { id: 'users', label: 'Users', icon: FaUsers },
+            { id: 'modules', label: 'Modules', icon: FaLayerGroup },
+            { id: 'achievements', label: 'Achievements', icon: FaTrophy },
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
+                tab === id
+                  ? 'bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 shadow-md shadow-cyan-500/30'
+                  : 'text-blue-200 hover:text-blue-50 hover:bg-blue-800'
+              }`}
+            >
+              <Icon className="text-sm" />
+              {label}
+            </button>
+          ))}
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16 text-[#737373]">
-            Loading...
+          <LoadingScreen
+            message="Loading admin tools"
+            subMessage="Gathering platform stats, users, and content"
+            inline
+          />
+        ) : tab === 'overview' ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-xl bg-blue-700 text-blue-200">
+                    <FaUsers className="text-xl" />
+                  </div>
+                  <span className="text-[13px] font-medium text-blue-300">Total users</span>
+                </div>
+                <p className="text-2xl font-semibold text-blue-50">{stats.totalUsers}</p>
+              </div>
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-xl bg-blue-700 text-blue-200">
+                    <FaLayerGroup className="text-xl" />
+                  </div>
+                  <span className="text-[13px] font-medium text-blue-300">Total modules</span>
+                </div>
+                <p className="text-2xl font-semibold text-blue-50">{modules.length}</p>
+              </div>
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-xl bg-blue-700 text-blue-50">
+                    <FaTrophy className="text-xl" />
+                  </div>
+                  <span className="text-[13px] font-medium text-blue-300">Achievements</span>
+                </div>
+                <p className="text-2xl font-semibold text-blue-50">{achievements.length}</p>
+              </div>
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-xl bg-blue-700 text-blue-200">
+                    <FaBolt className="text-xl" />
+                  </div>
+                  <span className="text-[13px] font-medium text-blue-300">Total XP</span>
+                </div>
+                <p className="text-2xl font-semibold text-blue-50">
+                  {overviewStats.totalXp.toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-xl bg-blue-700 text-blue-50">
+                    <FaAward className="text-xl" />
+                  </div>
+                  <span className="text-[13px] font-medium text-blue-300">Avg level</span>
+                </div>
+                <p className="text-2xl font-semibold text-blue-50">{overviewStats.avgLevel}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
+                <h3 className="text-sm font-semibold text-blue-50 mb-3 flex items-center gap-2">
+                  <FaBolt className="text-blue-50" /> Platform activity
+                </h3>
+                <p className="text-blue-300 text-[13px]">
+                  <span className="text-blue-50 font-medium">{overviewStats.totalCompleted}</span>{' '}
+                  modules completed across all users
+                </p>
+              </div>
+              <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
+                <h3 className="text-sm font-semibold text-blue-50 mb-3 flex items-center gap-2">
+                  <FaCalendarAlt className="text-blue-400" /> Recent signups (last 7 days)
+                </h3>
+                {overviewStats.recentSignups.length === 0 ? (
+                  <p className="text-blue-300 text-[13px]">No signups in the last 7 days.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {overviewStats.recentSignups.map((u) => (
+                      <li
+                        key={u._id || u.id || u.email}
+                        className="flex items-center justify-between text-[13px]"
+                      >
+                        <span className="text-blue-50">{u.name}</span>
+                        <span className="text-blue-300">{u.email}</span>
+                        <span className="text-blue-300 text-[12px]">
+                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : ''}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </div>
-        ) : tab === "overview" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="bg-[#0c0c0c] border border-[#1f1f1f] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded-lg bg-[#1a1a1a] text-[#a3a3a3]">
-                  <FaUsers className="text-xl" />
-                </div>
-                <span className="text-[13px] font-medium text-[#737373]">Total users</span>
-              </div>
-              <p className="text-2xl font-semibold text-[#e5e5e5]">{users.length}</p>
-            </div>
-            <div className="bg-[#0c0c0c] border border-[#1f1f1f] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded-lg bg-[#1a1a1a] text-[#a3a3a3]">
-                  <FaLayerGroup className="text-xl" />
-                </div>
-                <span className="text-[13px] font-medium text-[#737373]">Total modules</span>
-              </div>
-              <p className="text-2xl font-semibold text-[#e5e5e5]">{modules.length}</p>
-            </div>
-            <div className="bg-[#0c0c0c] border border-[#1f1f1f] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded-lg bg-[#1a1a1a] text-[#a3a3a3]">
-                  <FaShieldAlt className="text-xl" />
-                </div>
-                <span className="text-[13px] font-medium text-[#737373]">Achievements</span>
-              </div>
-              <p className="text-2xl font-semibold text-[#e5e5e5]">{achievements.length}</p>
-            </div>
-          </div>
-        ) : tab === "users" ? (
+        ) : tab === 'users' ? (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative flex-1 min-w-[200px] max-w-xs">
-                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#737373] text-sm" />
-                <input
-                  type="text"
-                  placeholder="Search by name or email..."
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-[#141414] border border-[#262626] text-[#e5e5e5] text-[13px] rounded focus:outline-none focus:border-[#404040]"
-                />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[200px] max-w-xs">
+                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
+                  <input
+                    type="text"
+                    placeholder="Search by name or email..."
+                    value={userSearch}
+                    onChange={(e) => {
+                      setUserSearch(e.target.value);
+                      setUserPage(1);
+                    }}
+                    className="w-full pl-9 pr-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
+                  />
+                </div>
+                <select
+                  value={userFilterPath}
+                  onChange={(e) => {
+                    setUserFilterPath(e.target.value);
+                    setUserPage(1);
+                  }}
+                  className="px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
+                >
+                  <option value="">All paths</option>
+                  {LEARNING_PATHS.map((path) => (
+                    <option key={path} value={path}>
+                      {path}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={userPageSize}
+                  onChange={(e) => {
+                    setUserPageSize(Number(e.target.value));
+                    setUserPage(1);
+                  }}
+                  className="px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
+                >
+                  <option value={10}>10 per page</option>
+                  <option value={25}>25 per page</option>
+                  <option value={50}>50 per page</option>
+                </select>
               </div>
-              <select
-                value={userFilterPath}
-                onChange={(e) => setUserFilterPath(e.target.value)}
-                className="px-3 py-2 bg-[#141414] border border-[#262626] text-[#e5e5e5] text-[13px] rounded focus:outline-none focus:border-[#404040]"
+              <button
+                onClick={exportUsersCSV}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors"
               >
-                <option value="">All paths</option>
-                {LEARNING_PATHS.map((path) => (
-                  <option key={path} value={path}>
-                    {path}
-                  </option>
-                ))}
-              </select>
+                <FaFileExport /> Export CSV
+              </button>
             </div>
-            <div className="bg-[#0c0c0c] border border-[#1f1f1f] overflow-hidden">
+            <div className="bg-blue-900 overflow-hidden rounded-2xl shadow-xl shadow-black/35">
               <div className="overflow-x-auto">
                 <table className="w-full text-[13px]">
                   <thead>
-                    <tr className="border-b border-[#1f1f1f] bg-[#0a0a0a]">
-                      <th className="text-left py-3 px-4 font-medium text-[#737373]">Name</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#737373]">Email</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#737373]">Level</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#737373]">Path</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#737373]">Role</th>
-                      <th className="text-right py-3 px-4 font-medium text-[#737373]">Actions</th>
+                    <tr className="bg-blue-900">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        <button
+                          type="button"
+                          onClick={() => toggleUserSort('name')}
+                          className="flex items-center gap-1 hover:text-blue-50"
+                        >
+                          Name{' '}
+                          {userSortBy === 'name' ? (
+                            userSortOrder === 'asc' ? (
+                              <FaSortUp />
+                            ) : (
+                              <FaSortDown />
+                            )
+                          ) : (
+                            <FaSort className="text-blue-400" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        <button
+                          type="button"
+                          onClick={() => toggleUserSort('email')}
+                          className="flex items-center gap-1 hover:text-blue-50"
+                        >
+                          Email{' '}
+                          {userSortBy === 'email' ? (
+                            userSortOrder === 'asc' ? (
+                              <FaSortUp />
+                            ) : (
+                              <FaSortDown />
+                            )
+                          ) : (
+                            <FaSort className="text-blue-400" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        <button
+                          type="button"
+                          onClick={() => toggleUserSort('level')}
+                          className="flex items-center gap-1 hover:text-blue-50"
+                        >
+                          Level{' '}
+                          {userSortBy === 'level' ? (
+                            userSortOrder === 'asc' ? (
+                              <FaSortUp />
+                            ) : (
+                              <FaSortDown />
+                            )
+                          ) : (
+                            <FaSort className="text-blue-400" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        <button
+                          type="button"
+                          onClick={() => toggleUserSort('totalPoints')}
+                          className="flex items-center gap-1 hover:text-blue-50"
+                        >
+                          XP{' '}
+                          {userSortBy === 'totalPoints' ? (
+                            userSortOrder === 'asc' ? (
+                              <FaSortUp />
+                            ) : (
+                              <FaSortDown />
+                            )
+                          ) : (
+                            <FaSort className="text-blue-400" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">Completed</th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        <button
+                          type="button"
+                          onClick={() => toggleUserSort('learningPath')}
+                          className="flex items-center gap-1 hover:text-blue-50"
+                        >
+                          Path{' '}
+                          {userSortBy === 'learningPath' ? (
+                            userSortOrder === 'asc' ? (
+                              <FaSortUp />
+                            ) : (
+                              <FaSortDown />
+                            )
+                          ) : (
+                            <FaSort className="text-blue-400" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">Role</th>
+                      <th className="text-right py-3 px-4 font-medium text-blue-300">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredUsers.map((u) => (
-                      <tr key={u.id} className="border-b border-[#1a1a1a] hover:bg-[#0f0f0f]">
-                        <td className="py-3 px-4 text-[#e5e5e5]">{u.name}</td>
-                        <td className="py-3 px-4 text-[#a3a3a3]">{u.email}</td>
-                        <td className="py-3 px-4 text-[#a3a3a3]">Lv.{u.level ?? 1}</td>
-                        <td className="py-3 px-4 text-[#a3a3a3]">{u.learningPath || "none"}</td>
+                    {users.map((u) => (
+                      <tr key={u.id} className="even:bg-blue-900/50 hover:bg-blue-800 transition-colors">
+                        <td className="py-3 px-4 text-blue-50">{u.name}</td>
+                        <td className="py-3 px-4 text-blue-300">{u.email}</td>
+                        <td className="py-3 px-4 text-blue-300">Lv.{u.level ?? 1}</td>
+                        <td className="py-3 px-4 text-blue-50">{u.totalPoints ?? 0}</td>
+                        <td className="py-3 px-4 text-blue-300">
+                          {u.completedModules?.length ?? 0}
+                        </td>
+                        <td className="py-3 px-4 text-blue-300">{u.learningPath || 'none'}</td>
                         <td className="py-3 px-4">
                           {u.isAdmin ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-blue-800 text-blue-50">
                               <FaShieldAlt className="text-[10px]" /> Admin
                             </span>
                           ) : (
-                            <span className="text-[#525252]">—</span>
+                            <span className="text-blue-700">-</span>
                           )}
                         </td>
                         <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => openEditUser(u)}
-                          className="p-2 text-[#737373] hover:text-white hover:bg-[#1a1a1a] rounded transition-colors"
-                          title="Edit"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(u)}
-                          disabled={u.id === user?.id}
-                          className="p-2 text-[#737373] hover:text-red-400 hover:bg-[#1a1a1a] rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Delete"
-                        >
-                          <FaTrash />
-                        </button>
+                          {u.isAdmin ? (
+                            <button
+                              onClick={() => handleRevokeAdmin(u)}
+                              disabled={u.id === user?.id || adminActionUserId === u.id}
+                              className="p-2 text-blue-300 hover:text-blue-200 hover:bg-blue-700 rounded-xl transition-colors disabled:text-blue-400 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                              title="Revoke admin"
+                            >
+                              <FaUserMinus />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleGrantAdmin(u)}
+                              disabled={adminActionUserId === u.id}
+                              className="p-2 text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors disabled:text-blue-400 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                              title="Make admin"
+                            >
+                              <FaUserPlus />
+                            </button>
+                          )}
+                          <button
+                            onClick={() =>
+                              setGrantModal({ userId: u.id, userName: u.name, achievementId: null })
+                            }
+                            className="p-2 text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
+                            title="Grant achievement"
+                          >
+                            <FaAward />
+                          </button>
+                          <button
+                            onClick={() => openEditUser(u)}
+                            className="p-2 text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
+                            title="Edit"
+                          >
+                            <FaEdit />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(u)}
+                            disabled={u.id === user?.id}
+                            className="p-2 text-blue-300 hover:text-blue-200 hover:bg-blue-700 rounded-xl transition-colors disabled:text-blue-400 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                            title="Delete"
+                          >
+                            <FaTrash />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -503,25 +947,129 @@ const Admin = () => {
                 </table>
               </div>
             </div>
+            {totalUserPages > 1 && (
+              <div className="flex items-center justify-between">
+                <p className="text-blue-300 text-[13px]">
+                  Showing {(userPage - 1) * userPageSize + 1}–
+                  {Math.min(userPage * userPageSize, userPagination.total)} of{' '}
+                  {userPagination.total}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+                    disabled={userPage <= 1}
+                    className="px-4 py-2 rounded-xl bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-3 py-1.5 text-blue-300 text-[13px]">
+                    Page {userPage} of {totalUserPages}
+                  </span>
+                  <button
+                    onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
+                    disabled={userPage >= totalUserPages}
+                    className="px-4 py-2 rounded-xl bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : tab === 'achievements' ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[200px] max-w-xs">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
+                <input
+                  type="text"
+                  placeholder="Search achievements..."
+                  value={achievementSearch}
+                  onChange={(e) => setAchievementSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
+                />
+              </div>
+            </div>
+            <div className="bg-blue-900 overflow-hidden rounded-2xl shadow-xl shadow-black/35">
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="bg-blue-900">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">Name</th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        Description
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">Points</th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">Category</th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">Earned by</th>
+                      <th className="text-right py-3 px-4 font-medium text-blue-300">
+                        Grant to user
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAchievements.map((a) => (
+                      <tr key={a.id} className="even:bg-blue-900/50 hover:bg-blue-800 transition-colors">
+                        <td className="py-3 px-4 text-blue-50 font-medium">{a.name}</td>
+                        <td className="py-3 px-4 text-blue-300 max-w-[200px] truncate">
+                          {a.description}
+                        </td>
+                        <td className="py-3 px-4 text-blue-50">+{a.points ?? 0}</td>
+                        <td className="py-3 px-4 text-blue-300">{a.category || '-'}</td>
+                        <td className="py-3 px-4 text-blue-300">
+                          {achievementEarnedCount[a.id] ?? 0} users
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() =>
+                              setGrantModal({
+                                userId: null,
+                                userName: null,
+                                achievementId: a.id,
+                                achievementName: a.name,
+                              })
+                            }
+                            className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-blue-700 text-blue-100 hover:bg-blue-700"
+                          >
+                            Grant to user
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {filteredAchievements.length === 0 && (
+              <p className="text-blue-300 text-[13px] py-4 text-center">
+                No achievements match your search.
+              </p>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative flex-1 min-w-[200px] max-w-xs">
-                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#737373] text-sm" />
+                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                   <input
                     type="text"
                     placeholder="Search by title, category..."
                     value={moduleSearch}
-                    onChange={(e) => setModuleSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-[#141414] border border-[#262626] text-[#e5e5e5] text-[13px] rounded focus:outline-none focus:border-[#404040]"
+                    onChange={(e) => {
+                      setModuleSearch(e.target.value);
+                      setModulePage(1);
+                    }}
+                    className="w-full pl-9 pr-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                   />
                 </div>
                 <select
                   value={moduleFilterCategory}
-                  onChange={(e) => setModuleFilterCategory(e.target.value)}
-                  className="px-3 py-2 bg-[#141414] border border-[#262626] text-[#e5e5e5] text-[13px] rounded focus:outline-none focus:border-[#404040]"
+                  onChange={(e) => {
+                    setModuleFilterCategory(e.target.value);
+                    setModulePage(1);
+                  }}
+                  className="px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 >
                   <option value="">All categories</option>
                   {MODULE_CATEGORIES.map((cat) => (
@@ -530,57 +1078,177 @@ const Admin = () => {
                     </option>
                   ))}
                 </select>
+                <select
+                  value={moduleFilterDifficulty}
+                  onChange={(e) => {
+                    setModuleFilterDifficulty(e.target.value);
+                    setModulePage(1);
+                  }}
+                  className="px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
+                >
+                  <option value="">All difficulties</option>
+                  {DIFFICULTIES.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
               </div>
-            <div className="flex justify-end">
               <button
                 onClick={() => openEditModule(null)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] border border-[#262626] text-[#e5e5e5] text-[13px] font-medium hover:bg-[#262626] rounded transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors"
               >
                 <FaPlus />
                 Add module
               </button>
             </div>
-            </div>
-            <div className="bg-[#0c0c0c] border border-[#1f1f1f] overflow-hidden">
+            <div className="bg-blue-900 overflow-hidden rounded-2xl shadow-xl shadow-black/35">
               <div className="overflow-x-auto">
                 <table className="w-full text-[13px]">
                   <thead>
-                    <tr className="border-b border-[#1f1f1f] bg-[#0a0a0a]">
-                      <th className="text-left py-3 px-4 font-medium text-[#737373]">Title</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#737373]">Category</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#737373]">Difficulty</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#737373]">Order</th>
-                      <th className="text-right py-3 px-4 font-medium text-[#737373]">Actions</th>
+                    <tr className="bg-blue-900">
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        <button
+                          type="button"
+                          onClick={() => toggleModuleSort('title')}
+                          className="flex items-center gap-1 hover:text-blue-50"
+                        >
+                          Title{' '}
+                          {moduleSortBy === 'title' ? (
+                            moduleSortOrder === 'asc' ? (
+                              <FaSortUp />
+                            ) : (
+                              <FaSortDown />
+                            )
+                          ) : (
+                            <FaSort className="text-blue-400" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        Description
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        <button
+                          type="button"
+                          onClick={() => toggleModuleSort('category')}
+                          className="flex items-center gap-1 hover:text-blue-50"
+                        >
+                          Category{' '}
+                          {moduleSortBy === 'category' ? (
+                            moduleSortOrder === 'asc' ? (
+                              <FaSortUp />
+                            ) : (
+                              <FaSortDown />
+                            )
+                          ) : (
+                            <FaSort className="text-blue-400" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        <button
+                          type="button"
+                          onClick={() => toggleModuleSort('difficulty')}
+                          className="flex items-center gap-1 hover:text-blue-50"
+                        >
+                          Difficulty{' '}
+                          {moduleSortBy === 'difficulty' ? (
+                            moduleSortOrder === 'asc' ? (
+                              <FaSortUp />
+                            ) : (
+                              <FaSortDown />
+                            )
+                          ) : (
+                            <FaSort className="text-blue-400" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        <button
+                          type="button"
+                          onClick={() => toggleModuleSort('order')}
+                          className="flex items-center gap-1 hover:text-blue-50"
+                        >
+                          Order{' '}
+                          {moduleSortBy === 'order' ? (
+                            moduleSortOrder === 'asc' ? (
+                              <FaSortUp />
+                            ) : (
+                              <FaSortDown />
+                            )
+                          ) : (
+                            <FaSort className="text-blue-400" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="text-right py-3 px-4 font-medium text-blue-300">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredModules.map((m) => (
-                        <tr key={m._id} className="border-b border-[#1a1a1a] hover:bg-[#0f0f0f]">
-                          <td className="py-3 px-4 text-[#e5e5e5]">{m.title}</td>
-                          <td className="py-3 px-4 text-[#a3a3a3]">{m.category}</td>
-                          <td className="py-3 px-4 text-[#a3a3a3]">{m.difficulty}</td>
-                          <td className="py-3 px-4 text-[#a3a3a3]">{m.order ?? 0}</td>
-                          <td className="py-3 px-4 text-right">
-                            <button
-                              onClick={() => openEditModule(m)}
-                              className="p-2 text-[#737373] hover:text-white hover:bg-[#1a1a1a] rounded transition-colors"
-                              title="Edit"
-                            >
-                              <FaEdit />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteModule(m)}
-                              className="p-2 text-[#737373] hover:text-red-400 hover:bg-[#1a1a1a] rounded transition-colors"
-                              title="Delete"
-                            >
-                              <FaTrash />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                    {paginatedModulesForAdmin.map((m) => (
+                      <tr key={m._id} className="even:bg-blue-900/50 hover:bg-blue-800 transition-colors">
+                        <td className="py-3 px-4 text-blue-50 font-medium">{m.title}</td>
+                        <td
+                          className="py-3 px-4 text-blue-300 max-w-[220px] truncate"
+                          title={m.description}
+                        >
+                          {m.description || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-blue-300">{m.category}</td>
+                        <td className="py-3 px-4 text-blue-300">{m.difficulty || '-'}</td>
+                        <td className="py-3 px-4 text-blue-300">{m.order ?? 0}</td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => openEditModule(m)}
+                            className="p-2 text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
+                            title="Edit"
+                          >
+                            <FaEdit />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteModule(m)}
+                            className="p-2 text-blue-300 hover:text-blue-200 hover:bg-blue-700 rounded-xl transition-colors"
+                            title="Delete"
+                          >
+                            <FaTrash />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
+              {totalModulePages > 1 && (
+                <div className="mt-4 flex items-center justify-between px-4">
+                  <p className="text-blue-300 text-[13px]">
+                    Showing {(modulePage - 1) * MODULE_PAGE_SIZE + 1}–
+                    {Math.min(modulePage * MODULE_PAGE_SIZE, filteredModules.length)} of{' '}
+                    {filteredModules.length}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setModulePage((p) => Math.max(1, p - 1))}
+                      disabled={modulePage <= 1}
+                      className="px-4 py-2 rounded-xl bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
+                    >
+                      Previous
+                    </button>
+                    <span className="px-3 py-1.5 text-blue-300 text-[13px]">
+                      Page {modulePage} of {totalModulePages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setModulePage((p) => Math.min(totalModulePages, p + 1))}
+                      disabled={modulePage >= totalModulePages}
+                      className="px-4 py-2 rounded-xl bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -589,42 +1257,44 @@ const Admin = () => {
       {/* User edit modal */}
       {userModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/75 backdrop-blur-sm"
           onClick={() => closeUserModal()}
           role="presentation"
         >
           <div
-            className="bg-[#0c0c0c] border border-[#1f1f1f] rounded-lg w-full max-w-md p-6 shadow-xl"
+            className="bg-blue-900 rounded-3xl w-full max-w-md p-6 shadow-2xl shadow-black/60"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
           >
-            <h3 className="text-lg font-semibold text-[#e5e5e5] mb-4">Edit user</h3>
+            <h3 className="text-lg font-bold text-blue-50 mb-4">Edit user</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-[11px] font-medium text-[#737373] mb-1">Name</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">Name</label>
                 <input
                   type="text"
                   value={userModal.name}
                   onChange={(e) => setUserModal((p) => ({ ...p, name: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#141414] border border-[#262626] text-[#e5e5e5] text-[13px] rounded focus:outline-none focus:border-[#404040]"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-[#737373] mb-1">Email</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">Email</label>
                 <input
                   type="email"
                   value={userModal.email}
                   onChange={(e) => setUserModal((p) => ({ ...p, email: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#141414] border border-[#262626] text-[#e5e5e5] text-[13px] rounded focus:outline-none focus:border-[#404040]"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-[#737373] mb-1">Learning path</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">
+                  Learning path
+                </label>
                 <select
                   value={userModal.learningPath}
                   onChange={(e) => setUserModal((p) => ({ ...p, learningPath: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#141414] border border-[#262626] text-[#e5e5e5] text-[13px] rounded focus:outline-none focus:border-[#404040]"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 >
                   {LEARNING_PATHS.map((path) => (
                     <option key={path} value={path}>
@@ -636,28 +1306,14 @@ const Admin = () => {
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  id="gameStudio"
-                  checked={userModal.gameStudioEnabled}
-                  onChange={(e) =>
-                    setUserModal((p) => ({ ...p, gameStudioEnabled: e.target.checked }))
-                  }
-                  className="rounded border-[#262626] bg-[#141414] text-[#a3a3a3]"
-                />
-                <label htmlFor="gameStudio" className="text-[13px] text-[#a3a3a3]">
-                  Game Studio enabled
-                </label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
                   id="knowsJs"
                   checked={userModal.knowsJavaScript}
                   onChange={(e) =>
                     setUserModal((p) => ({ ...p, knowsJavaScript: e.target.checked }))
                   }
-                  className="rounded border-[#262626] bg-[#141414] text-[#a3a3a3]"
+                  className="rounded bg-blue-800 text-blue-400 accent-blue-400"
                 />
-                <label htmlFor="knowsJs" className="text-[13px] text-[#a3a3a3]">
+                <label htmlFor="knowsJs" className="text-[13px] text-blue-300">
                   Knows JavaScript
                 </label>
               </div>
@@ -665,16 +1321,16 @@ const Admin = () => {
             <div className="flex justify-end gap-2 mt-6">
               <button
                 onClick={() => closeUserModal()}
-                className="px-4 py-2 text-[13px] font-medium text-[#a3a3a3] hover:text-white hover:bg-[#1a1a1a] rounded transition-colors"
+                className="px-4 py-2 text-[13px] font-semibold text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveUser}
                 disabled={saving}
-                className="px-4 py-2 bg-[#262626] text-[#e5e5e5] text-[13px] font-medium hover:bg-[#404040] rounded transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-[13px] font-semibold rounded-xl shadow-md shadow-cyan-500/25 hover:brightness-110 transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
@@ -684,45 +1340,49 @@ const Admin = () => {
       {/* Module add/edit modal */}
       {moduleModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/75 backdrop-blur-sm overflow-y-auto"
           onClick={() => closeModuleModal()}
           role="presentation"
         >
           <div
-            className="bg-[#0c0c0c] border border-[#1f1f1f] rounded-lg w-full max-w-2xl p-6 shadow-xl my-8"
+            className="bg-blue-900 rounded-3xl w-full max-w-2xl p-6 shadow-2xl shadow-black/60 my-8"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
           >
-            <h3 className="text-lg font-semibold text-[#e5e5e5] mb-4">
-              {moduleModal.id ? "Edit module" : "Add module"}
+            <h3 className="text-lg font-semibold text-blue-50 mb-4">
+              {moduleModal.id ? 'Edit module' : 'Add module'}
             </h3>
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
               <div>
-                <label className="block text-[11px] font-medium text-[#737373] mb-1">Title</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">Title</label>
                 <input
                   type="text"
                   value={moduleModal.title}
                   onChange={(e) => setModuleModal((p) => ({ ...p, title: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#141414] border border-[#262626] text-[#e5e5e5] text-[13px] rounded focus:outline-none focus:border-[#404040]"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-[#737373] mb-1">Description</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">
+                  Description
+                </label>
                 <input
                   type="text"
                   value={moduleModal.description}
                   onChange={(e) => setModuleModal((p) => ({ ...p, description: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#141414] border border-[#262626] text-[#e5e5e5] text-[13px] rounded focus:outline-none focus:border-[#404040]"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-medium text-[#737373] mb-1">Category</label>
+                  <label className="block text-[11px] font-medium text-blue-300 mb-1">
+                    Category
+                  </label>
                   <select
                     value={moduleModal.category}
                     onChange={(e) => setModuleModal((p) => ({ ...p, category: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[#141414] border border-[#262626] text-[#e5e5e5] text-[13px] rounded focus:outline-none focus:border-[#404040]"
+                    className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                   >
                     {MODULE_CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
@@ -732,11 +1392,13 @@ const Admin = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-[#737373] mb-1">Difficulty</label>
+                  <label className="block text-[11px] font-medium text-blue-300 mb-1">
+                    Difficulty
+                  </label>
                   <select
                     value={moduleModal.difficulty}
                     onChange={(e) => setModuleModal((p) => ({ ...p, difficulty: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[#141414] border border-[#262626] text-[#e5e5e5] text-[13px] rounded focus:outline-none focus:border-[#404040]"
+                    className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                   >
                     {DIFFICULTIES.map((d) => (
                       <option key={d} value={d}>
@@ -747,37 +1409,135 @@ const Admin = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-[#737373] mb-1">Order</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">Order</label>
                 <input
                   type="number"
                   value={moduleModal.order}
                   onChange={(e) => setModuleModal((p) => ({ ...p, order: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#141414] border border-[#262626] text-[#e5e5e5] text-[13px] rounded focus:outline-none focus:border-[#404040]"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-[#737373] mb-1">Content (markdown)</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">
+                  Content (markdown)
+                </label>
                 <textarea
                   value={moduleModal.content}
                   onChange={(e) => setModuleModal((p) => ({ ...p, content: e.target.value }))}
                   rows={4}
-                  className="w-full px-3 py-2 bg-[#141414] border border-[#262626] text-[#e5e5e5] text-[13px] rounded focus:outline-none focus:border-[#404040] font-mono"
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50 font-mono"
                 />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <button
                 onClick={() => closeModuleModal()}
-                className="px-4 py-2 text-[13px] font-medium text-[#a3a3a3] hover:text-white hover:bg-[#1a1a1a] rounded transition-colors"
+                className="px-4 py-2 text-[13px] font-semibold text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveModule}
                 disabled={saving || !moduleModal.title?.trim()}
-                className="px-4 py-2 bg-[#262626] text-[#e5e5e5] text-[13px] font-medium hover:bg-[#404040] rounded transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-[13px] font-semibold rounded-xl shadow-md shadow-cyan-500/25 hover:brightness-110 transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grant achievement modal */}
+      {grantModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/75 backdrop-blur-sm"
+          onClick={() => setGrantModal(null)}
+          role="presentation"
+        >
+          <div
+            className="bg-blue-900 rounded-3xl w-full max-w-md p-6 shadow-2xl shadow-black/60"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <h3 className="text-lg font-bold text-blue-50 mb-4 flex items-center gap-2">
+              <FaAward className="text-blue-50" /> Grant achievement
+            </h3>
+            {grantModal.userId ? (
+              <>
+                <p className="text-blue-300 text-[13px] mb-3">
+                  Grant an achievement to{' '}
+                  <span className="text-blue-50 font-medium">{grantModal.userName}</span>
+                </p>
+                <div>
+                  <label className="block text-[11px] font-medium text-blue-300 mb-1">
+                    Achievement
+                  </label>
+                  <select
+                    value={grantModal.achievementId != null ? grantModal.achievementId : ''}
+                    onChange={(e) =>
+                      setGrantModal((p) => ({
+                        ...p,
+                        achievementId: e.target.value === '' ? null : Number(e.target.value),
+                      }))
+                    }
+                    className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
+                  >
+                    <option value="">Select achievement</option>
+                    {achievements.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} (+{a.points} XP)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-blue-300 text-[13px] mb-3">
+                  Grant{' '}
+                  <span className="text-blue-50 font-medium">{grantModal.achievementName}</span>{' '}
+                  to a user
+                </p>
+                <div>
+                  <label className="block text-[11px] font-medium text-blue-300 mb-1">User</label>
+                  <select
+                    value={grantModal.userId != null ? grantModal.userId : ''}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      if (!id) {
+                        setGrantModal((p) => ({ ...p, userId: null, userName: null }));
+                        return;
+                      }
+                      const u = users.find((x) => x.id === id);
+                      setGrantModal((p) => ({ ...p, userId: id, userName: u?.name || '' }));
+                    }}
+                    className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
+                  >
+                    <option value="">Select user</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => setGrantModal(null)}
+                className="px-4 py-2 text-[13px] font-semibold text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleGrantAchievement}
+                disabled={grantSaving || !grantModal.userId || grantModal.achievementId == null}
+                className="px-4 py-2 bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-[13px] font-semibold rounded-xl shadow-md shadow-cyan-500/25 hover:brightness-110 transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {grantSaving ? 'Granting...' : 'Grant'}
               </button>
             </div>
           </div>
@@ -789,12 +1549,12 @@ const Admin = () => {
         title={confirmModal.title}
         message={confirmModal.message}
         onConfirm={() => {
-          if (typeof confirmModal.onConfirm === "function") confirmModal.onConfirm();
+          if (typeof confirmModal.onConfirm === 'function') confirmModal.onConfirm();
           setConfirmModal((p) => ({ ...p, open: false }));
         }}
         onCancel={() => setConfirmModal((p) => ({ ...p, open: false }))}
       />
-    </GameLayout>
+    </>
   );
 };
 

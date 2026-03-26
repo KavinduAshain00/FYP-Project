@@ -1,4 +1,5 @@
 const ai = require('../services/aiService');
+const { AI_CODER_MODEL } = require('../constants/ai');
 const {
   assessQuestionConfidence,
   getFallbackHints,
@@ -12,33 +13,45 @@ async function generateMCQs(req, res) {
     return res.status(400).json({ error: 'stepTitle (string) is required' });
   }
   try {
+    console.log('[Tutor] generateMCQs', { stepTitle: stepTitle?.slice(0, 40), moduleTitle });
     const result = await ai.generateMCQs(
       stepTitle,
       stepConcept || '',
       moduleTitle || '',
       typeof count === 'number' ? Math.min(2, Math.max(1, count)) : 2
     );
+    console.log('[Tutor] generateMCQs success', { questionCount: result?.questions?.length ?? 0 });
     return res.json(result);
   } catch (err) {
-    console.error('MCQ generate error:', err.message || err);
-    return res.status(500).json({ error: 'MCQ generation failed', questions: [] });
+    console.error('[Tutor] generateMCQs error', err.message || err);
+    return res
+      .status(500)
+      .json({ error: "We couldn't load the quiz. Please try again.", questions: [] });
   }
 }
 
 /** POST /api/tutor/mcq/verify - Verify MCQ answer and return explanation if wrong (qwen3-coder:480b) */
 async function verifyMCQ(req, res) {
   const { question, options, correctIndex, selectedIndex } = req.body;
-  if (!question || !Array.isArray(options) || typeof correctIndex !== 'number' || typeof selectedIndex !== 'number') {
-    return res.status(400).json({ error: 'question, options (array), correctIndex, and selectedIndex are required' });
+  if (
+    !question ||
+    !Array.isArray(options) ||
+    typeof correctIndex !== 'number' ||
+    typeof selectedIndex !== 'number'
+  ) {
+    return res
+      .status(400)
+      .json({ error: 'question, options (array), correctIndex, and selectedIndex are required' });
   }
   try {
+    console.log('[Tutor] verifyMCQ', { correct: selectedIndex === correctIndex });
     const result = await ai.verifyMCQAnswer(question, options, correctIndex, selectedIndex);
     return res.json(result);
   } catch (err) {
-    console.error('MCQ verify error:', err.message || err);
+    console.error('[Tutor] verifyMCQ error', err.message || err);
     return res.status(500).json({
       correct: false,
-      explanation: 'Verification failed. Please try again.',
+      explanation: "We couldn't check your answer. Please try again.",
     });
   }
 }
@@ -50,29 +63,73 @@ async function explainCode(req, res) {
     return res.status(400).json({ error: 'code (string) is required' });
   }
   try {
-    const explanation = await ai.explainCodeSnippet(code.trim(), language || 'javascript');
+    console.log('[Tutor] explainCode', {
+      language: language || 'javascript',
+      codeLen: code?.length,
+    });
+    const explanation = await ai.explain({
+      type: 'code',
+      code: code.trim(),
+      language: language || 'javascript',
+    });
     return res.json({ explanation });
   } catch (err) {
-    console.error('Explain code error:', err.message || err);
-    return res.status(500).json({ error: err.message || 'Explanation failed' });
+    console.error('[Tutor] explainCode error', err.message || err);
+    return res
+      .status(500)
+      .json({ error: err.message || "We couldn't explain that right now. Please try again." });
   }
 }
 
-/** POST /api/tutor/generate-starter-code - Generate React game starter code from planning (qwen3-coder:480b) */
-async function generateGameStarterCode(req, res) {
-  const planning = req.body?.planning || req.body;
-  if (!planning || typeof planning !== 'object') {
-    return res.status(400).json({ error: 'planning (object) is required' });
-  }
-  if (!planning.name && !planning.description) {
-    return res.status(400).json({ error: 'planning must include at least name or description' });
+/** POST /api/tutor/explain-error - Explain a runtime/syntax error message in simple terms */
+async function explainError(req, res) {
+  const { errorMessage, codeSnippet, language } = req.body;
+  if (!errorMessage || typeof errorMessage !== 'string' || !errorMessage.trim()) {
+    return res.status(400).json({ error: 'errorMessage (string) is required' });
   }
   try {
-    const code = await ai.generateGameStarterCode(planning);
-    return res.json({ answer: code });
+    console.log('[Tutor] explainError', {
+      errorLen: errorMessage?.length,
+      hasCodeSnippet: Boolean(codeSnippet),
+    });
+    const explanation = await ai.explain({
+      type: 'error',
+      errorMessage: errorMessage.trim(),
+      codeSnippet: codeSnippet && typeof codeSnippet === 'string' ? codeSnippet.trim() : '',
+      language: language || 'javascript',
+    });
+    return res.json({ explanation });
   } catch (err) {
-    console.error('Generate starter code error:', err.message || err);
-    return res.status(500).json({ error: err.message || 'Starter code generation failed' });
+    console.error('[Tutor] explainError error', err.message || err);
+    return res
+      .status(500)
+      .json({ error: err.message || "We couldn't explain that error. Please try again." });
+  }
+}
+
+/** POST /api/tutor/lecture-notes - Generate lecture notes from module learning overview */
+async function generateLectureNotes(req, res) {
+  const { overview, moduleTitle, difficulty, category, steps, objectives, userLevel } = req.body;
+  if (!overview || typeof overview !== 'string' || !overview.trim()) {
+    return res.status(400).json({ error: 'overview (string) is required' });
+  }
+  try {
+    console.log('[Tutor] generateLectureNotes', { moduleTitle: moduleTitle?.slice(0, 40) });
+    const notes = await ai.generateLectureNotes({
+      overview: overview.trim(),
+      moduleTitle: moduleTitle || 'This lesson',
+      difficulty: difficulty || 'beginner',
+      category: category || '',
+      steps: Array.isArray(steps) ? steps : undefined,
+      objectives: Array.isArray(objectives) ? objectives : undefined,
+      userLevel: userLevel || '',
+    });
+    return res.json({ lectureNotes: notes });
+  } catch (err) {
+    console.error('[Tutor] generateLectureNotes error', err.message || err);
+    return res
+      .status(500)
+      .json({ error: err.message || "We couldn't generate lecture notes. Please try again." });
   }
 }
 
@@ -82,11 +139,17 @@ async function generateGameStarterCode(req, res) {
  */
 async function postTutor(req, res) {
   const { message, context } = req.body;
+  const userId = req.user?._id?.toString();
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'message (string) is required' });
   }
 
   try {
+    console.log('[Tutor] postTutor', {
+      userId,
+      contextType: context?.type,
+      hintStyle: context?.hintStyle,
+    });
     if (context?.type === 'hint-mode') {
       const confidence = assessQuestionConfidence(message, context);
       const hintStyle = context?.hintStyle || 'general';
@@ -106,7 +169,15 @@ async function postTutor(req, res) {
       let codeSummary = null;
       if (!codeIsEmpty && context?.code && typeof context.code === 'object') {
         codeSummary = await ai.summarizeCodeToMarkdown(context.code);
-        const codeExcerpt = [context.code.html, context.code.css, context.code.javascript, context.code.jsx].filter(Boolean).join('\n').substring(0, 600);
+        const codeExcerpt = [
+          context.code.html,
+          context.code.css,
+          context.code.javascript,
+          context.code.jsx,
+        ]
+          .filter(Boolean)
+          .join('\n')
+          .substring(0, 600);
         const summaryOk = await ai.verifyCodeSummary(codeExcerpt, codeSummary);
         if (!summaryOk) codeSummary = 'Code context (summary could not be verified).';
       } else if (!codeIsEmpty && context?.code && typeof context.code === 'string') {
@@ -123,12 +194,26 @@ async function postTutor(req, res) {
       }
 
       const aiPreferences = req.user?.aiPreferences || {};
-      const prompt = buildPedagogicalPrompt(message, { ...context, codeSummary, codeIsEmpty }, hintStyle, confidence, aiPreferences);
-      let answer = await ai.generateText(prompt, { maxTokens: 400, temperature: 0.4 });
+      const hintContext = {
+        ...context,
+        codeSummary,
+        codeIsEmpty,
+        recentErrors: context?.recentErrors || [],
+        errorMessage: context?.errorMessage || null,
+      };
+      const prompt = buildPedagogicalPrompt(
+        message,
+        hintContext,
+        hintStyle,
+        confidence,
+        aiPreferences
+      );
+      let answer = await ai.generateTextWithModel(prompt, { maxTokens: 400, temperature: 0.4 });
 
       const verification = await ai.verifyTutorResponse(message, answer);
       if (!verification.ok) {
-        answer = "I couldn't verify that response. Please try rephrasing your question or ask about a specific part of your code.";
+        answer =
+          "I couldn't verify that response. Please try rephrasing your question or ask about a specific part of your code.";
       }
       if (!answer || !String(answer).trim()) {
         answer = "I couldn't generate a reply right now. Try asking again in a moment.";
@@ -143,39 +228,16 @@ async function postTutor(req, res) {
 
     // Other context types
     const promptParts = [];
-    if (context?.type === 'game-planning') {
-      promptParts.push(`You are an expert game design consultant and coding mentor. Help the student plan their game by:
-- Providing clear, actionable game design advice
-- Suggesting implementation strategies for React-based games
-- Explaining game mechanics and how to code them
-- Offering best practices for game development
-Be encouraging and creative while keeping suggestions practical and achievable.`);
-    } else if (context?.type === 'game-development') {
-      promptParts.push(`You are a helpful game development coding assistant in the Game Studio. The student is working on a React-based game.
-- Provide clear, concise code examples when appropriate
-- Explain debugging strategies and suggest improvements
-- Help with game mechanics, state, and React patterns
-- Be friendly and encouraging. Answer in 1-4 short paragraphs; use code blocks when relevant.
-Current file: ${context.currentFile || 'unknown'}
-${context.codeSnippet ? `Relevant code (excerpt):\n\`\`\`\n${String(context.codeSnippet).slice(0, 1200)}\n\`\`\`` : 'No code excerpt provided.'}`);
-    } else if (context?.type === 'multiplayer-game-development') {
-      promptParts.push(`You are a helpful AI coding companion in the Multiplayer Game Studio. The student is building a multiplayer React game (real-time, rooms, networking).
-- Help with multiplayer patterns: sync state, room logic, latency, reconnection
-- Provide clear code examples and debugging tips
-- Suggest best practices for real-time games and React
-- Be friendly and concise. Answer in 1-4 short paragraphs; use code blocks when relevant.
-Current file: ${context.currentFile || 'unknown'}
-${context.codeSnippet ? `Relevant code (excerpt):\n\`\`\`\n${String(context.codeSnippet).slice(0, 1200)}\n\`\`\`` : 'No code excerpt provided.'}`);
-    } else if (context?.type === 'contextual-tip') {
-      promptParts.push(`You are a friendly AI coding companion giving a short, contextual tip in the Game Studio.
-- The student may have errors, unused code, or general game-dev questions
+    if (context?.type === 'contextual-tip') {
+      promptParts.push(`You are a friendly AI coding companion giving a short, contextual tip.
+- The student may have errors, unused code, or general coding questions
 - Keep the tip concise (2-4 paragraphs max), engaging, and practical
 - Use emojis sparingly. Include a brief code example only if it helps
 - End with an encouraging line. Do not repeat the instruction verbatim.`);
     } else if (context?.type === 'code-generation') {
-      promptParts.push(`You are a code generation assistant for React game development.
+      promptParts.push(`You are a code generation assistant for React/JavaScript.
 - Generate clean, well-commented code
-- Use modern React patterns (hooks, functional components)
+- Use modern React patterns (hooks, functional components) when relevant
 - Include helpful console.log statements for debugging
 - Make the code educational and easy to understand`);
     } else {
@@ -186,9 +248,7 @@ ${context.codeSnippet ? `Relevant code (excerpt):\n\`\`\`\n${String(context.code
 
     if (context && typeof context === 'object') {
       // Avoid duplicating large codeSnippet if already in prompt
-      const ctxForJson = context.codeSnippet
-        ? { ...context, codeSnippet: '(see above)' }
-        : context;
+      const ctxForJson = context.codeSnippet ? { ...context, codeSnippet: '(see above)' } : context;
       promptParts.push(`Additional context: ${JSON.stringify(ctxForJson)}`);
     }
     if (req.user && req.user.username) {
@@ -197,19 +257,20 @@ ${context.codeSnippet ? `Relevant code (excerpt):\n\`\`\`\n${String(context.code
     promptParts.push(`Question: ${message}`);
 
     const prompt = promptParts.join('\n\n');
-    const isLongForm = ['game-planning', 'code-generation', 'game-development', 'multiplayer-game-development', 'contextual-tip'].includes(context?.type);
+    const isLongForm = ['code-generation', 'contextual-tip'].includes(context?.type);
     let maxTokens = 512;
-    if (context?.type === 'code-generation' || context?.type === 'game-planning') maxTokens = 2048;
+    if (context?.type === 'code-generation') maxTokens = 2048;
     else if (isLongForm) maxTokens = 1024;
-    let answer = await ai.generateText(prompt, { maxTokens, temperature: 0.3 });
+    let answer = await ai.generateTextWithModel(prompt, { maxTokens, temperature: 0.3 });
 
-    // Skip verification for game studio and long-form: verifier often rejects valid companion/tip responses
-    const skipVerification = context?.type === 'game-planning' || context?.type === 'code-generation' ||
-      context?.type === 'game-development' || context?.type === 'multiplayer-game-development' || context?.type === 'contextual-tip';
+    // Skip verification for long-form: verifier often rejects valid companion/tip responses
+    const skipVerification =
+      context?.type === 'code-generation' || context?.type === 'contextual-tip';
     if (!skipVerification) {
       const verification = await ai.verifyTutorResponse(message, answer);
       if (!verification.ok) {
-        answer = "I couldn't verify that response. Please try rephrasing your question or be more specific.";
+        answer =
+          "I couldn't verify that response. Please try rephrasing your question or be more specific.";
       }
     }
     if (!answer || !String(answer).trim()) {
@@ -218,7 +279,7 @@ ${context.codeSnippet ? `Relevant code (excerpt):\n\`\`\`\n${String(context.code
 
     return res.json({ answer });
   } catch (err) {
-    console.error('Tutor route error:', err.message || err);
+    console.error('[Tutor] postTutor error', { userId, error: err.message });
     return res.status(500).json({ error: 'Tutor service failed to generate a response' });
   }
 }
@@ -261,11 +322,15 @@ function isCodeEmptyForStep(normalized) {
 function parseVerificationResponse(raw) {
   const fallbackFail = {
     correct: false,
-    feedback: 'Verification could not be read. Please try again or ensure your code addresses the step.',
+    feedback:
+      'Verification could not be read. Please try again or ensure your code addresses the step.',
   };
   if (!raw || typeof raw !== 'string') return fallbackFail;
 
-  const trimmed = raw.trim().replace(/^```json?\s*|\s*```$/g, '').trim();
+  const trimmed = raw
+    .trim()
+    .replace(/^```json?\s*|\s*```$/g, '')
+    .trim();
   if (!trimmed) return fallbackFail;
 
   // 1) Try direct parse
@@ -348,16 +413,25 @@ function parseVerificationResponse(raw) {
  */
 function checkConsoleOutput(consoleOutput, expectedConsole) {
   if (!Array.isArray(consoleOutput) || consoleOutput.length === 0) {
-    return { ok: false, feedback: 'Run the code first and check the Console panel. No output was captured yet.' };
+    return {
+      ok: false,
+      feedback: 'Run the code first and check the Console panel. No output was captured yet.',
+    };
   }
-  const messages = consoleOutput.map((e) => (e && e.message ? String(e.message).trim() : '')).filter(Boolean);
+  const messages = consoleOutput
+    .map((e) => (e && e.message ? String(e.message).trim() : ''))
+    .filter(Boolean);
   if (!expectedConsole || typeof expectedConsole !== 'object') {
     return { ok: true, feedback: 'Console output captured. Step complete!' };
   }
   if (expectedConsole.type === 'any' || expectedConsole.type === 'multipleLines') {
     const needMultiple = expectedConsole.type === 'multipleLines';
     if (needMultiple && messages.length < 2) {
-      return { ok: false, feedback: 'You should see multiple lines in the console (all passage lines). Run the code and confirm several lines are logged.' };
+      return {
+        ok: false,
+        feedback:
+          'You should see multiple lines in the console (all passage lines). Run the code and confirm several lines are logged.',
+      };
     }
     return { ok: true, feedback: 'Console output looks good. Step complete!' };
   }
@@ -365,17 +439,27 @@ function checkConsoleOutput(consoleOutput, expectedConsole) {
     const expected = String(expectedConsole.exactLine).trim();
     const found = messages.some((m) => m === expected || m.includes(expected));
     if (!found) {
-      return { ok: false, feedback: `In the Console you should see exactly one line: "${expected}". Run the code after commenting out the rest.` };
+      return {
+        ok: false,
+        feedback: `In the Console you should see exactly one line: "${expected}". Run the code after commenting out the rest.`,
+      };
     }
     if (messages.length > 1) {
-      return { ok: false, feedback: 'Only one line should appear in the console. Make sure the rest of the passage is inside a multi-line comment /* ... */.' };
+      return {
+        ok: false,
+        feedback:
+          'Only one line should appear in the console. Make sure the rest of the passage is inside a multi-line comment /* ... */.',
+      };
     }
     return { ok: true, feedback: 'Correct! Only one line is logged. Step complete!' };
   }
   if (Array.isArray(expectedConsole.contains)) {
     const missing = expectedConsole.contains.filter((s) => !messages.some((m) => m.includes(s)));
     if (missing.length > 0) {
-      return { ok: false, feedback: `Console should show: ${missing.join(', ')}. Run the code and check the Console panel.` };
+      return {
+        ok: false,
+        feedback: `Console should show: ${missing.join(', ')}. Run the code and check the Console panel.`,
+      };
     }
     return { ok: true, feedback: 'Console output matches. Step complete!' };
   }
@@ -384,51 +468,87 @@ function checkConsoleOutput(consoleOutput, expectedConsole) {
 
 /**
  * Check code for comment requirements (for verifyType: checkComments).
+ * Lenient: only checks that the right type of comment exists, not exact wording.
  */
 function checkCommentsStep(stepDescription, normalized) {
   const stepLower = (stepDescription || '').toLowerCase();
-  const js = (normalized && normalized.js) ? normalized.js : '';
-  const jsLines = js.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const js = normalized && normalized.js ? normalized.js : '';
+  const jsLines = js
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
 
-  // Single-line comment on line 1 that says "Opening line"
-  if (stepLower.includes('single-line comment') && (stepLower.includes("'opening line'") || stepLower.includes('opening line'))) {
-    const hasOpeningLineComment = jsLines.some((line) => line.startsWith('//') && /opening\s*line/i.test(line));
-    if (hasOpeningLineComment) {
-      return { correct: true, feedback: 'Step complete! You added the single-line comment correctly.' };
+  if (stepLower.includes('single-line comment')) {
+    const hasSingleLine = jsLines.some((line) => line.startsWith('//') && line.length > 3);
+    if (hasSingleLine) {
+      return { correct: true, feedback: 'Nice work! Single-line comment added.' };
     }
-    return { correct: false, feedback: "On line 1, add a single-line comment that says Opening line. Use // before the text." };
+    return {
+      correct: false,
+      feedback: 'Add a single-line comment using // followed by some descriptive text.',
+    };
   }
 
-  // Comment above the commented block (e.g. "Rest of passage commented out")
-  if (stepLower.includes('comment above') || stepLower.includes('above the commented block')) {
+  if (
+    stepLower.includes('comment above') ||
+    stepLower.includes('above the commented block') ||
+    stepLower.includes('multi-line comment')
+  ) {
     const hasMultiLine = js.includes('/*') && js.includes('*/');
-    const hasSingleLineNearBlock = jsLines.some((line) => line.startsWith('//') && line.length > 2);
-    if (hasMultiLine && hasSingleLineNearBlock) {
-      return { correct: true, feedback: 'Step complete! You added a comment above the block.' };
+    const hasSingleLine = jsLines.some((line) => line.startsWith('//') && line.length > 3);
+    if (hasMultiLine && hasSingleLine) {
+      return {
+        correct: true,
+        feedback: 'Great - you have both a descriptive comment and a multi-line comment block.',
+      };
     }
     if (!hasMultiLine) {
-      return { correct: false, feedback: 'Add a multi-line comment block (/* ... */) and a single-line comment above it describing what you did.' };
+      return {
+        correct: false,
+        feedback:
+          'Use /* ... */ to wrap the code you want to comment out, and add a // comment nearby describing what you did.',
+      };
     }
-    return { correct: false, feedback: "Add a single-line comment (// ...) above the multi-line comment block, e.g. // Rest of passage commented out." };
+    return {
+      correct: false,
+      feedback: 'Add a single-line comment (// ...) describing the commented-out block.',
+    };
   }
 
-  return null; // fallback to AI
+  return null;
 }
 
 /**
  * POST /api/tutor/verify - AI verify if user code satisfies current step objective
- * Body: { stepIndex, stepDescription, code, moduleTitle?, objectives?, verifyType?, consoleOutput?, expectedConsole? }
+ * Body: { stepIndex, stepDescription, stepInstruction?, stepConcept?, code, moduleTitle?, objectives?, verifyType?, consoleOutput?, expectedConsole? }
  * Returns: { correct: boolean, feedback: string }
  */
 async function verifyStep(req, res) {
-  const { stepIndex, stepDescription, code, moduleTitle, objectives, verifyType, consoleOutput, expectedConsole } = req.body;
-  if (stepDescription === null || stepDescription === undefined || typeof stepDescription !== 'string') {
+  const {
+    stepIndex,
+    stepDescription,
+    stepInstruction,
+    stepConcept,
+    code,
+    moduleTitle,
+    objectives,
+    verifyType,
+    consoleOutput,
+    expectedConsole,
+  } = req.body;
+  const userId = req.user?._id?.toString();
+  if (
+    stepDescription === null ||
+    stepDescription === undefined ||
+    typeof stepDescription !== 'string'
+  ) {
     return res.status(400).json({ error: 'stepDescription (string) is required' });
   }
   if (!code || typeof code !== 'object') {
     return res.status(400).json({ error: 'code (object with html/css/js/jsx) is required' });
   }
 
+  console.log('[Tutor] verifyStep', { userId, stepIndex, verifyType, moduleTitle });
   const normalized = getCodeForVerify(code);
 
   // --- verifyType: checkConsole (non-coding step: user must run and have console output) ---
@@ -443,12 +563,12 @@ async function verifyStep(req, res) {
     if (commentResult) {
       return res.json(commentResult);
     }
-    // Fallback: still require some code (e.g. at least one line with // or /*)
     const hasComment = (normalized.js || '').includes('//') || (normalized.js || '').includes('/*');
     if (!hasComment) {
       return res.json({
         correct: false,
-        feedback: 'Add the required comment in your code (single-line // or multi-line /* */), then click Check again.',
+        feedback:
+          'Add a comment in your code (single-line // or multi-line /* */), then click Check again.',
       });
     }
     return res.json({
@@ -461,7 +581,8 @@ async function verifyStep(req, res) {
   if (isCodeEmptyForStep(normalized)) {
     return res.json({
       correct: false,
-      feedback: 'Add code that actually implements the step before verifying. Empty or placeholder-only code cannot pass.',
+      feedback:
+        "Write some code that addresses this step before verifying. Comments or empty code won't pass.",
     });
   }
 
@@ -471,49 +592,53 @@ async function verifyStep(req, res) {
       normalized.css ? `CSS:\n${normalized.css}` : '',
       normalized.js ? `JavaScript:\n${normalized.js}` : '',
       normalized.jsx ? `JSX/React:\n${normalized.jsx}` : '',
-    ].filter(Boolean).join('\n\n---\n\n');
+    ]
+      .filter(Boolean)
+      .join('\n\n---\n\n');
 
-    // Quick pass: single-line comment "Opening line" (also used for code steps that mention it)
-    const stepLower = stepDescription.toLowerCase();
-    const jsLines = (normalized.js || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-    if (
-      stepLower.includes('single-line comment') &&
-      (stepLower.includes("'opening line'") || stepLower.includes('opening line')) &&
-      jsLines.length > 0
-    ) {
-      const hasOpeningLineComment = jsLines.some(
-        (line) => line.startsWith('//') && /opening\s*line/i.test(line)
-      );
-      if (hasOpeningLineComment) {
-        return res.json({
-          correct: true,
-          feedback: 'Step complete! You added the single-line comment correctly.',
-        });
-      }
-    }
+    const instructionCtx = stepInstruction ? `\nDETAILED INSTRUCTION: "${stepInstruction}"` : '';
+    const conceptCtx = stepConcept ? `\nCONCEPT BEING TAUGHT: "${stepConcept}"` : '';
 
-    const prompt = `You are a coding tutor. Verify ONLY the CORE requirement for THIS step. Ensure the student's code does what they were instructed to do for this step, without errors.
+    const prompt = `You are a lenient but thoughtful coding tutor verifying a beginner's work.
 
 MODULE: ${moduleTitle || 'Programming module'}
-STEP TO VERIFY (index ${stepIndex}): "${stepDescription}"
-${objectives?.length ? `All objectives for context: ${objectives.join('; ')}` : ''}
+STEP TITLE (index ${stepIndex}): "${stepDescription}"${instructionCtx}${conceptCtx}
+${objectives?.length ? `Module objectives for context: ${objectives.join('; ')}` : ''}
 
 STUDENT'S CURRENT CODE:
 ${codeBlock}
 
-VERIFICATION RULES:
-1. Check ONLY the core thing needed for THIS step. Do not require extra or unrelated code from other steps.
-2. The code must correctly implement what the step asks for and have no obvious syntax or runtime errors.
-3. Reject empty, placeholder, or non-implementing code (comments/TODOs alone are NOT enough).
-4. If the code properly does what the step instructs and runs without errors, return correct: true.
-5. Respond with ONLY this JSON, no other text: {"correct": true or false, "feedback": "one or two sentences"}
-6. For correct: false, feedback MUST explain WHY it is not working (e.g. "Did you write a single-line comment using two forward slashes?") and what to do instead. For correct: true, feedback is brief and positive.`;
+YOUR JOB - verify the student demonstrated the CONCEPT for this step:
 
-    const raw = await ai.generateText(prompt, { maxTokens: 256, temperature: 0.2 });
+1. ACCEPT if the student's code shows they understood and applied the concept correctly, even if:
+   - Variable/function names differ from the examples (e.g. "myScore" instead of "score" is fine)
+   - String values or messages differ (e.g. "Hi" instead of "Hello" is fine)
+   - They used a slightly different but valid approach (e.g. for...of instead of for loop)
+   - Formatting, spacing, or style choices differ
+   - They did more than required
+
+2. REJECT only if:
+   - The code is empty, placeholder-only, or only comments/TODOs
+   - The code has obvious syntax errors that would crash (missing brackets, typos in keywords)
+   - The student clearly did NOT attempt what the step asks (e.g. step says "use a loop" but there is no loop)
+   - The concept is fundamentally wrong (e.g. step says "use const" but they only used var)
+
+3. DO NOT require exact variable names, exact string content, exact numeric values, or pixel-perfect output. Focus on whether the right programming concept was applied.
+
+Respond with ONLY a JSON object: {"correct": true or false, "feedback": "brief sentence"}
+- If correct: positive, encouraging feedback.
+- If incorrect: explain what concept is missing and what to try, without giving the answer.`;
+
+    const raw = await ai.generateTextWithModel(
+      prompt,
+      { maxTokens: 256, temperature: 0.15 },
+      AI_CODER_MODEL
+    );
     const result = parseVerificationResponse(raw);
+    console.log('[Tutor] verifyStep result', { userId, stepIndex, correct: result.correct });
     return res.json({ correct: result.correct, feedback: result.feedback });
   } catch (err) {
-    console.error('Verify step error:', err.message || err);
+    console.error('[Tutor] verifyStep error', { userId, stepIndex, error: err.message });
     return res.status(500).json({
       correct: false,
       feedback: 'Verification service failed. Please try again.',
@@ -527,5 +652,6 @@ module.exports = {
   generateMCQs,
   verifyMCQ,
   explainCode,
-  generateGameStarterCode,
+  explainError,
+  generateLectureNotes,
 };

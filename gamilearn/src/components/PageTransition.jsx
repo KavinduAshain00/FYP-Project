@@ -1,59 +1,47 @@
-import { motion } from "framer-motion";
-import { useLocation, useNavigationType } from "react-router-dom";
+import { motion } from 'framer-motion';
+import { useLocation, useNavigationType } from 'react-router-dom';
 
 const MotionDiv = motion.div;
 
-const SWIPE_DURATION = 0.35;
-const SWIPE_EASE = [0.32, 0.72, 0, 1];
+const ease = [0.25, 0.1, 0.25, 1];
+const duration = 0.42;
 
 /**
- * Swipe-style page transition:
- * - Forward: new page slides in from right, old slides out to left
- * - Back: new page slides in from left, old slides out to right
- * - Direction comes from location.state.direction (set by nav) or navigationType (POP = back, PUSH = forward)
- * - REPLACE: crossfade
+ * Smooth route transitions: fade + gentle vertical motion.
+ * Respects navigation direction for subtle horizontal nudge (forward vs back).
  */
-const getSwipeVariants = (direction, navigationType) => {
-  const isReplace = navigationType === "REPLACE";
+const getVariants = (direction, navigationType) => {
+  const isReplace = navigationType === 'REPLACE';
   if (isReplace) {
     return {
-      initial: { opacity: 0 },
-      in: { opacity: 1 },
-      out: { opacity: 0 },
+      initial: { opacity: 0, scale: 0.992 },
+      in: { opacity: 1, scale: 1 },
+      out: { opacity: 0, scale: 0.992 },
     };
   }
 
-  const isBack = direction === "back" || (direction == null && navigationType === "POP");
-  const enterX = isBack ? "-100%" : "100%";
-  const exitX = isBack ? "100%" : "-100%";
+  const isBack = direction === 'back' || (direction == null && navigationType === 'POP');
+  const enterY = isBack ? -14 : 18;
+  const exitY = isBack ? 12 : -14;
 
   return {
-    initial: {
-      opacity: 0,
-      x: enterX,
-    },
-    in: {
-      opacity: 1,
-      x: 0,
-    },
-    out: {
-      opacity: 0.6,
-      x: exitX,
-    },
+    initial: { opacity: 0, y: enterY },
+    in: { opacity: 1, y: 0 },
+    out: { opacity: 0, y: exitY },
   };
 };
 
 const pageTransition = {
-  type: "tween",
-  ease: SWIPE_EASE,
-  duration: SWIPE_DURATION,
+  type: 'tween',
+  ease,
+  duration,
 };
 
 const PageTransition = ({ children }) => {
   const location = useLocation();
   const navigationType = useNavigationType();
   const direction = location.state?.direction;
-  const variants = getSwipeVariants(direction, navigationType);
+  const variants = getVariants(direction, navigationType);
 
   return (
     <MotionDiv
@@ -62,10 +50,10 @@ const PageTransition = ({ children }) => {
       exit="out"
       variants={variants}
       transition={pageTransition}
+      className="w-full min-h-screen bg-neutral-900"
       style={{
-        width: "100%",
-        minHeight: "100vh",
-        backgroundColor: "#000000",
+        width: '100%',
+        minHeight: '100vh',
       }}
     >
       {children}

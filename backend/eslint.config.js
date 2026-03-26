@@ -1,6 +1,5 @@
 const js = require('@eslint/js');
 const globals = require('globals');
-const eslintConfigPrettier = require('eslint-config-prettier');
 
 module.exports = [
   { ignores: ['node_modules/**', 'package-lock.json'] },
@@ -36,5 +35,4 @@ module.exports = [
       'no-trailing-spaces': 'warn',
     },
   },
-  eslintConfigPrettier,
 ];

@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema(
   {
@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema(
     },
     avatarUrl: {
       type: String,
-      default: '',
+      default: "",
     },
     password: {
       type: String,
@@ -29,22 +29,14 @@ const userSchema = new mongoose.Schema(
     },
     learningPath: {
       type: String,
-      enum: [
-        'javascript-basics',
-        'game-development',
-        'react-basics',
-        'multiplayer',
-        'advanced-concepts',
-        'advanced',
-        'none',
-      ],
-      default: 'none',
+      enum: ["javascript-basics", "advanced", "none"],
+      default: "none",
     },
     completedModules: [
       {
         moduleId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: 'Module',
+          ref: "Module",
         },
         completedAt: {
           type: Date,
@@ -54,7 +46,7 @@ const userSchema = new mongoose.Schema(
     ],
     currentModule: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Module',
+      ref: "Module",
     },
     earnedAchievements: [
       {
@@ -69,10 +61,11 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 1,
     },
-    // Whether the Game Studio is unlocked for this user
-    gameStudioEnabled: {
-      type: Boolean,
-      default: false,
+    // Role: 'user' | 'admin' (admin can manage users and modules)
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
     },
     gameStats: {
       totalEdits: { type: Number, default: 0 },
@@ -80,35 +73,39 @@ const userSchema = new mongoose.Schema(
       sessionTime: { type: Number, default: 0 },
       saveCount: { type: Number, default: 0 },
       streak: { type: Number, default: 0 },
+      aiCompanionUses: { type: Number, default: 0 },
+      aiHintRequests: { type: Number, default: 0 },
+      aiExplainCodeUses: { type: Number, default: 0 },
+      aiExplainErrorUses: { type: Number, default: 0 },
     },
     // UC8: Personalize AI Guide – tone, hint detail, assistance frequency
     aiPreferences: {
       tone: {
         type: String,
-        enum: ['friendly', 'formal', 'concise'],
-        default: 'friendly',
+        enum: ["friendly", "formal", "concise"],
+        default: "friendly",
       },
       hintDetail: {
         type: String,
-        enum: ['minimal', 'moderate', 'detailed'],
-        default: 'moderate',
+        enum: ["minimal", "moderate", "detailed"],
+        default: "moderate",
       },
       assistanceFrequency: {
         type: String,
-        enum: ['low', 'normal', 'high'],
-        default: 'normal',
+        enum: ["low", "normal", "high"],
+        default: "normal",
       },
     },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Hash password before saving
 // Use async pre-save middleware without next() when returning a promise
-userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
@@ -119,4 +116,4 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model("User", userSchema);

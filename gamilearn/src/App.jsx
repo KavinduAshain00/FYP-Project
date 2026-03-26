@@ -4,119 +4,115 @@ import {
   Route,
   Navigate,
   useLocation,
-} from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import { AnimatePresence } from "framer-motion";
-import ProtectedRoute from "./components/ProtectedRoute";
-import PageTransition from "./components/PageTransition";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import Dashboard from "./pages/Dashboard";
-import Modules from "./pages/Modules";
-import CodeEditor from "./pages/CodeEditor";
-import CustomGameStudio from "./pages/CustomGameStudio";
-import MultiplayerGameStudio from "./pages/MultiplayerGameStudio";
-import GamePlanningBoard from "./pages/GamePlanningBoard";
-import Profile from "./pages/Profile";
-import Admin from "./pages/Admin";
+  Outlet,
+} from 'react-router-dom';
+import { useEffect } from 'react';
+import { toast } from 'react-toastify';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { AnimatePresence } from 'framer-motion';
+import ProtectedRoute from './components/ProtectedRoute';
+import PageTransition from './components/PageTransition';
+import AppShellLayout from './components/layout/AppShellLayout';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import Dashboard from './pages/Dashboard';
+import Modules from './pages/Modules';
+import CodeEditor from './pages/CodeEditor';
+import Profile from './pages/Profile';
+import Admin from './pages/Admin';
 
-function AnimatedRoutes() {
+function PublicLayout() {
   const location = useLocation();
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <PageTransition key={location.pathname}>
+        <Outlet />
+      </PageTransition>
+    </AnimatePresence>
+  );
+}
+
+function EditorShell() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <PageTransition key={location.pathname}>
+        <CodeEditor />
+      </PageTransition>
+    </AnimatePresence>
+  );
+}
+
+function AdminPageGate() {
+  const { user } = useAuth();
+  if (!user?.isAdmin) {
+    toast.error('You need admin access to view this page.');
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <Admin />;
+}
+
+function AppRoutes() {
+  const location = useLocation();
+  const isEditorRoute = location.pathname.startsWith('/editor/');
+
+  useEffect(() => {
+    document.body.classList.toggle('prevent-text-copy', !isEditorRoute);
+    return () => {
+      document.body.classList.remove('prevent-text-copy');
+    };
+  }, [isEditorRoute]);
 
   return (
     <div
       style={{
-        position: "relative",
-        overflowX: "hidden",
-        overflowY: "auto",
-        minHeight: "100vh",
-        width: "100%",
+        position: 'relative',
+        overflowX: 'hidden',
+        overflowY: 'auto',
+        minHeight: '100vh',
+        width: '100%',
       }}
     >
-      <AnimatePresence mode="wait" initial={false}>
-        <PageTransition key={location.pathname}>
-          <Routes location={location}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/modules"
-              element={
-                <ProtectedRoute>
-                  <Modules />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/editor/:moduleId"
-              element={
-                <ProtectedRoute>
-                  <CodeEditor />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/custom-game"
-              element={
-                <ProtectedRoute requireGameStudio>
-                  <CustomGameStudio />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/game-planning"
-              element={
-                <ProtectedRoute requireGameStudio>
-                  <GamePlanningBoard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/multiplayer-studio"
-              element={
-                <ProtectedRoute requireGameStudio>
-                  <MultiplayerGameStudio />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <Admin />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </PageTransition>
-      </AnimatePresence>
+      <Routes location={location}>
+        <Route element={<PublicLayout />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+        </Route>
+
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppShellLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/modules" element={<Modules />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/admin" element={<AdminPageGate />} />
+          </Route>
+        </Route>
+
+        <Route
+          path="/editor/:moduleId"
+          element={
+            <ProtectedRoute>
+              <EditorShell />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
     </div>
   );
 }
 
 function App() {
-  console.log("API URL:", import.meta.env.VITE_API_URL);
   return (
     <Router>
       <AuthProvider>
-        <AnimatedRoutes />
+        <AppRoutes />
       </AuthProvider>
     </Router>
   );

@@ -1,29 +1,32 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 import {
   FaArrowLeft,
   FaArrowRight,
   FaBookOpen,
-  FaCheckCircle,
   FaRocket,
   FaShieldAlt,
   FaStar,
   FaUser,
   FaEnvelope,
   FaLock,
-} from "react-icons/fa";
-import { GameLayout } from "../components/layout/GameLayout";
+  FaGamepad,
+} from 'react-icons/fa';
+import { GameLayout } from '../components/layout/GameLayout';
+
+const ease = [0.25, 0.1, 0.25, 1];
 
 const Signup = () => {
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
   });
   const [step, setStep] = useState(1);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const { signup } = useAuth();
@@ -35,13 +38,13 @@ const Signup = () => {
 
   const handleInitialSubmit = (e) => {
     e.preventDefault();
-    setError("");
+    setError('');
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError('Passwords do not match');
       return;
     }
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError('Password must be at least 6 characters');
       return;
     }
     setStep(2);
@@ -49,14 +52,10 @@ const Signup = () => {
 
   const handleJSAnswer = async (answer) => {
     setLoading(true);
-    setError("");
+    setError('');
     try {
-      if (
-        !formData.name.trim() ||
-        !formData.email.trim() ||
-        !formData.password
-      ) {
-        setError("Please complete all required fields");
+      if (!formData.name.trim() || !formData.email.trim() || !formData.password) {
+        setError('Please complete all required fields');
         setStep(1);
         setLoading(false);
         return;
@@ -65,122 +64,149 @@ const Signup = () => {
         formData.name.trim(),
         formData.email.trim(),
         formData.password,
-        answer,
+        answer
       );
-      if (user.learningPath === "javascript-basics") {
-        navigate("/dashboard?message=start-basics");
+      if (user.learningPath === 'javascript-basics') {
+        navigate('/dashboard?message=start-basics');
       } else {
-        navigate("/dashboard?message=start-advanced");
+        navigate('/dashboard?message=start-advanced');
       }
     } catch (err) {
-      console.error("Signup error:", err);
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Signup failed. Please try again.",
-      );
+      console.error('Signup error:', err);
+      setError(err.response?.data?.message || err.message || 'Signup failed. Please try again.');
       setStep(1);
       setLoading(false);
     }
   };
 
-  const inputClass =
-    "w-full px-3 py-2 border-0 bg-transparent text-gray-200 placeholder-gray-500 focus:outline-none";
-  const labelClass = "block text-sm font-medium text-gray-300 mb-1";
+  const fieldClass =
+    'w-full rounded-2xl bg-blue-800 pl-12 pr-4 py-3.5 text-blue-50 placeholder-blue-300 outline-none focus:outline focus:outline-2 focus:outline-blue-400/60 text-sm';
+
+  const stepIndicator = (
+    <div className="flex items-center gap-3 mb-8">
+      <div
+        className={`flex items-center justify-center w-10 h-10 rounded-xl text-sm font-bold ${
+          step === 1
+            ? 'bg-gradient-to-br from-blue-400 to-cyan-400 text-blue-950 shadow-md shadow-cyan-500/25'
+            : 'bg-blue-700 text-blue-300'
+        }`}
+      >
+        1
+      </div>
+      <div className="h-1 flex-1 max-w-[48px] rounded-full bg-blue-700 overflow-hidden">
+        <div
+          className={`h-full rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 transition-all ${step === 2 ? 'w-full' : 'w-0'}`}
+        />
+      </div>
+      <div
+        className={`flex items-center justify-center w-10 h-10 rounded-xl text-sm font-bold ${
+          step === 2
+            ? 'bg-gradient-to-br from-blue-400 to-cyan-400 text-blue-950 shadow-md shadow-cyan-500/25'
+            : 'bg-blue-700 text-blue-300'
+        }`}
+      >
+        2
+      </div>
+      <span className="text-xs text-blue-300 ml-2">Account → Path</span>
+    </div>
+  );
 
   if (step === 2) {
     return (
       <GameLayout showNavbar={false} showParticles={false}>
-        <div className="min-h-screen flex items-center justify-center px-4 py-12">
-          <div className="w-full max-w-lg border border-gray-700 bg-gray-900/80 p-6 rounded-lg backdrop-blur-sm">
-          <div className="flex items-center justify-between mb-6">
-            <button
-              onClick={() => setStep(1)}
-              className="flex items-center gap-2 text-gray-400 hover:text-gray-200 text-sm"
-            >
-              <FaArrowLeft /> Back
-            </button>
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 border border-gray-600 flex items-center justify-center text-sm font-bold text-gray-400 rounded">
-                1
+        <div className="min-h-screen flex flex-col lg:flex-row bg-neutral-900">
+          <motion.aside
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, ease }}
+            className="lg:w-[38%] flex flex-col justify-center p-8 sm:p-12 bg-gradient-to-b from-blue-900 to-neutral-900 relative overflow-hidden"
+          >
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-cyan-400/10" />
+            <div className="relative z-10 flex items-center gap-3 mb-6">
+              <span className="w-11 h-11 rounded-xl bg-blue-800 flex items-center justify-center text-blue-50">
+                <FaBookOpen />
               </span>
-              <span className="w-6 h-0.5 bg-gray-600" />
-              <span className="w-8 h-8 border-2 border-gray-500 bg-gray-800 flex items-center justify-center text-sm font-bold text-gray-200 rounded">
-                2
-              </span>
+              <span className="font-bold text-blue-50">Choose your path</span>
             </div>
-          </div>
-
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 border border-gray-600 flex items-center justify-center rounded-lg">
-              <FaBookOpen className="text-2xl text-gray-400" />
-            </div>
-          </div>
-
-          <h2 className="text-xl font-bold text-gray-100 text-center mb-2">
-            Choose Your Starting Path
-          </h2>
-          <p className="text-gray-400 text-sm text-center mb-6">
-            Select the lane that matches your JavaScript experience
-          </p>
-
-          <div className="space-y-4">
-            <button
-              onClick={() => handleJSAnswer(true)}
-              disabled={loading}
-              className="w-full p-4 border border-gray-600 bg-gray-800 text-left rounded-lg hover:border-gray-500 hover:bg-gray-700 disabled:opacity-50"
+            <p className="relative z-10 text-blue-100 text-sm leading-relaxed max-w-xs">
+              This only sets your starting modules. You can still explore everything later from the
+              modules page.
+            </p>
+          </motion.aside>
+          <div className="flex-1 flex items-center justify-center p-6 sm:p-10 lg:p-16">
+            <motion.div
+              className="w-full max-w-lg"
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.42, delay: 0.05, ease }}
             >
-              <div className="flex items-start gap-3">
-                <div className="w-12 h-12 border border-gray-500 flex items-center justify-center shrink-0 rounded">
-                  <FaRocket className="text-gray-400 text-lg" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-gray-100">
-                      Experienced Coder
-                    </h3>
-                    <span className="px-2 py-0.5 border border-gray-500 text-xs font-bold text-gray-400 rounded">
-                      FAST TRACK
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="inline-flex items-center gap-2 text-sm font-medium text-blue-200 hover:text-blue-100 mb-6"
+              >
+                <FaArrowLeft /> Back to details
+              </button>
+              {stepIndicator}
+              <h1 className="text-2xl font-bold text-blue-50">How well do you know JavaScript?</h1>
+              <p className="text-blue-300 text-sm mt-2 mb-8">
+                Pick the option that best describes you-we will line up the right first lessons.
+              </p>
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => handleJSAnswer(true)}
+                  disabled={loading}
+                  className="w-full text-left rounded-2xl bg-blue-900 p-5 shadow-lg shadow-black/30 hover:bg-blue-800 transition-all disabled:bg-blue-900 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-start gap-4">
+                    <span className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center shrink-0 text-blue-50 shadow-md shadow-cyan-500/20">
+                      <FaRocket className="text-lg" />
                     </span>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="font-bold text-blue-50">I already code in JavaScript</h3>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-gradient-to-r from-amber-400 to-orange-400 text-blue-950 shadow-sm">
+                          Fast track
+                        </span>
+                      </div>
+                      <p className="text-sm text-blue-200">
+                        Skip the basics and start closer to game projects.
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-gray-400 text-sm">
-                    I can work with JavaScript and want to dive into game
-                    development
-                  </p>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleJSAnswer(false)}
-              disabled={loading}
-              className="w-full p-4 border border-gray-600 bg-gray-800 text-left rounded-lg hover:border-gray-500 hover:bg-gray-700 disabled:opacity-50"
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-12 h-12 border border-gray-500 flex items-center justify-center shrink-0 rounded">
-                  <FaStar className="text-gray-400 text-lg" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-gray-100">New Explorer</h3>
-                    <span className="px-2 py-0.5 border border-gray-500 text-xs font-bold text-gray-400 rounded">
-                      GUIDED
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleJSAnswer(false)}
+                  disabled={loading}
+                  className="w-full text-left rounded-2xl bg-blue-900 p-5 shadow-lg shadow-black/30 hover:bg-blue-800 transition-all disabled:bg-blue-900 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-start gap-4">
+                    <span className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center shrink-0 text-white shadow-md shadow-emerald-500/25">
+                      <FaStar className="text-lg" />
                     </span>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="font-bold text-blue-50">I am new or want a full review</h3>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-emerald-400/90 text-blue-950 shadow-sm">
+                          Guided
+                        </span>
+                      </div>
+                      <p className="text-sm text-blue-200">
+                        Start from JavaScript fundamentals, then unlock the rest in order.
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-gray-400 text-sm">
-                    I'm new to JavaScript and want to learn from the basics
-                  </p>
-                </div>
+                </button>
               </div>
-            </button>
-          </div>
-
-          {loading && (
-            <div className="mt-6 flex items-center justify-center gap-2 text-gray-400 text-sm">
-              <span className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
-              Creating your account...
-            </div>
-          )}
+              {loading && (
+                <div className="mt-8 flex items-center justify-center gap-3 text-blue-300 text-sm">
+                  <span className="w-5 h-5 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+                  Creating your account…
+                </div>
+              )}
+            </motion.div>
           </div>
         </div>
       </GameLayout>
@@ -189,116 +215,139 @@ const Signup = () => {
 
   return (
     <GameLayout showNavbar={false} showParticles={false}>
-      <div className="min-h-screen flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md border border-gray-700 bg-gray-900/80 p-6 rounded-lg backdrop-blur-sm">
-        <div className="flex justify-center gap-2 mb-6">
-          <span className="w-8 h-8 border-2 border-gray-500 bg-gray-800 flex items-center justify-center text-sm font-bold text-gray-200 rounded">
-            1
-          </span>
-          <span className="w-6 h-0.5 bg-gray-600" />
-          <span className="w-8 h-8 border border-gray-600 flex items-center justify-center text-sm font-bold text-gray-500 rounded">
-            2
-          </span>
-        </div>
-
-        <div className="flex flex-col items-center mb-6">
-          <div className="w-14 h-14 border border-gray-600 flex items-center justify-center mb-2 rounded-lg">
-            <FaUser className="text-xl text-gray-400" />
+      <div className="min-h-screen flex flex-col lg:flex-row bg-neutral-900">
+        <motion.aside
+          initial={{ opacity: 0, x: -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.45, ease }}
+          className="lg:w-[44%] xl:w-[40%] flex flex-col justify-between p-8 sm:p-12 lg:p-14 bg-gradient-to-b from-blue-900 via-blue-900 to-neutral-900 relative overflow-hidden"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-cyan-400/12 via-transparent to-fuchsia-500/10" />
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-10">
+              <span className="w-12 h-12 rounded-2xl bg-blue-800 flex items-center justify-center text-blue-50 shadow-lg shadow-black/40">
+                <FaGamepad className="text-xl" />
+              </span>
+              <div>
+                <p className="font-bold text-lg text-blue-50">GamiLearn</p>
+                <p className="text-xs text-blue-300">Create your learner profile</p>
+              </div>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-blue-50 leading-tight max-w-md">
+              Two quick steps: account, then skill level
+            </h2>
           </div>
-          <h1 className="text-xl font-bold text-gray-100">
-            Create Your Character
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Begin your coding adventure
+          <p className="relative z-10 text-xs text-blue-300 hidden lg:block">
+            Already registered?{' '}
+            <Link to="/login" className="text-blue-200 font-medium hover:text-blue-100">
+              Sign in
+            </Link>
           </p>
-        </div>
+        </motion.aside>
 
-        {error && (
-          <div className="mb-4 p-3 border border-red-600 bg-red-900/30 text-red-300 text-sm flex items-center gap-2 rounded">
-            <FaShieldAlt /> {error}
-          </div>
-        )}
-
-        <form onSubmit={handleInitialSubmit} className="space-y-4">
-          <div>
-            <label className={labelClass}>Name</label>
-            <div className="flex items-center gap-2 border border-gray-600 bg-gray-800 rounded focus-within:border-gray-500">
-              <FaUser className="text-gray-500 ml-3" />
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                placeholder="Enter your name"
-                className={inputClass + " rounded"}
-              />
-            </div>
-          </div>
-          <div>
-            <label className={labelClass}>Email</label>
-            <div className="flex items-center gap-2 border border-gray-600 bg-gray-800 rounded focus-within:border-gray-500">
-              <FaEnvelope className="text-gray-500 ml-3" />
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                placeholder="you@example.com"
-                className={inputClass + " rounded"}
-              />
-            </div>
-          </div>
-          <div>
-            <label className={labelClass}>Password</label>
-            <div className="flex items-center gap-2 border border-gray-600 bg-gray-800 rounded focus-within:border-gray-500">
-              <FaLock className="text-gray-500 ml-3" />
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                placeholder="At least 6 characters"
-                className={inputClass + " rounded"}
-              />
-            </div>
-          </div>
-          <div>
-            <label className={labelClass}>Confirm Password</label>
-            <div className="flex items-center gap-2 border border-gray-600 bg-gray-800 rounded focus-within:border-gray-500">
-              <FaShieldAlt className="text-gray-500 ml-3" />
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-                placeholder="Confirm your password"
-                className={inputClass + " rounded"}
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            className="w-full py-3 border border-gray-600 bg-gray-800 text-gray-100 font-medium hover:bg-gray-700 rounded"
+        <div className="flex-1 flex items-center justify-center p-6 sm:p-10 lg:p-16">
+          <motion.div
+            className="w-full max-w-md"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.06, ease }}
           >
-            <span className="flex items-center justify-center gap-2">
-              <FaArrowRight /> Continue to Skill Selection
-            </span>
-          </button>
-        </form>
+            <div className="lg:hidden mb-6">
+              <Link to="/login" className="text-sm font-medium text-blue-200">
+                Already have an account? Sign in
+              </Link>
+            </div>
+            {stepIndicator}
+            <h1 className="text-2xl font-bold text-blue-50">Create your account</h1>
+            <p className="text-blue-300 text-sm mt-2 mb-8">
+              We use this to save XP, modules, and achievements across devices.
+            </p>
 
-        <p className="mt-6 text-center text-sm text-gray-400">
-          Already have an account?{" "}
-          <Link
-            to="/login"
-            className="font-medium text-cyan-400 hover:underline"
-          >
-            Login here
-          </Link>
-        </p>
+            {error && (
+              <div className="mb-6 rounded-2xl bg-blue-800 px-4 py-3 text-blue-200 text-sm flex items-start gap-3">
+                <FaShieldAlt className="shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleInitialSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-blue-200 mb-2">Name</label>
+                <div className="relative">
+                  <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    placeholder="How should we greet you?"
+                    className={fieldClass}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-200 mb-2">Email</label>
+                <div className="relative">
+                  <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    placeholder="you@example.com"
+                    className={fieldClass}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-200 mb-2">Password</label>
+                <div className="relative">
+                  <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                    placeholder="At least 6 characters"
+                    className={fieldClass}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-200 mb-2">
+                  Confirm password
+                </label>
+                <div className="relative">
+                  <FaShieldAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    required
+                    placeholder="Same as above"
+                    className={fieldClass}
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 font-semibold text-sm shadow-lg shadow-cyan-500/30 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                Continue <FaArrowRight className="text-xs" />
+              </button>
+            </form>
+
+            <p className="mt-8 text-center text-sm text-blue-300 hidden lg:block">
+              Already have an account?{' '}
+              <Link to="/login" className="font-semibold text-blue-200 hover:text-blue-100">
+                Login
+              </Link>
+            </p>
+          </motion.div>
         </div>
       </div>
     </GameLayout>

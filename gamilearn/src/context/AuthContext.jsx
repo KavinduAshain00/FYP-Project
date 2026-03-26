@@ -1,28 +1,59 @@
-import { createContext, useContext, useState, useEffect } from "react";
-import { authAPI, userAPI } from "../api/api";
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState, useEffect } from 'react';
+import { authAPI, userAPI, invalidateUserCaches } from '../api/api';
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Auto-login: validate token and restore user when token is present
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
-
-    if (token && userData) {
-      setUser(JSON.parse(userData));
+    const token = localStorage.getItem('token');
+    if (!token) {
+      queueMicrotask(() => setLoading(false));
+      return;
     }
-    setLoading(false);
+    let cancelled = false;
+    userAPI
+      .getProfile()
+      .then((response) => {
+        if (cancelled) return;
+        const newUser = response.data?.user;
+        if (newUser) {
+          localStorage.setItem('user', JSON.stringify(newUser));
+          setUser(newUser);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = async (email, password) => {
     const response = await authAPI.login({ email, password });
     const { token, user } = response.data;
 
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(user));
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
 
     return user;
@@ -37,8 +68,8 @@ export const AuthProvider = ({ children }) => {
     });
     const { token, user } = response.data;
 
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(user));
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
 
     return user;
@@ -48,34 +79,29 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await userAPI.getProfile();
       const newUser = response.data.user;
-      localStorage.setItem("user", JSON.stringify(newUser));
+      localStorage.setItem('user', JSON.stringify(newUser));
       setUser(newUser);
       return newUser;
     } catch (error) {
-      console.error("Error refreshing profile:", error);
+      console.error('Error refreshing profile:', error);
       return null;
     }
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    try {
+      invalidateUserCaches();
+    } catch {
+      /* ignore */
+    }
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider
-      value={{ user, login, signup, logout, refreshProfile, loading }}
-    >
+    <AuthContext.Provider value={{ user, login, signup, logout, refreshProfile, loading }}>
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return context;
 };

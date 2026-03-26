@@ -1,12 +1,13 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import CodeMirror from "@uiw/react-codemirror";
-import { html } from "@codemirror/lang-html";
-import { css } from "@codemirror/lang-css";
-import { javascript } from "@codemirror/lang-javascript";
-import { vscodeDark } from "@uiw/codemirror-theme-vscode";
-import { modulesAPI, userAPI, tutorAPI } from "../api/api";
-import { useAuth } from "../context/AuthContext";
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import CodeMirror from '@uiw/react-codemirror';
+import { html } from '@codemirror/lang-html';
+import { css } from '@codemirror/lang-css';
+import { javascript } from '@codemirror/lang-javascript';
+import { vscodeDark } from '@uiw/codemirror-theme-vscode';
+import { modulesAPI, userAPI, tutorAPI, achievementsAPI, invalidateUserCaches } from '../api/api';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 import {
   FaBookOpen,
   FaPlay,
@@ -19,40 +20,75 @@ import {
   FaReact,
   FaUsers,
   FaChevronRight,
+  FaChevronLeft,
   FaChevronDown,
+  FaChevronUp,
   FaTimes,
   FaExternalLinkAlt,
   FaUser,
-  FaColumns,
   FaMagic,
-} from "react-icons/fa";
-import { toast } from "react-toastify";
-import ConfirmModal from "../components/ui/ConfirmModal";
-import MarkdownContent from "../components/ui/MarkdownContent";
-import { loadEditorDraft, saveEditorDraft } from "../utils/draftStorage";
+  FaServer,
+  FaLock,
+  FaArrowLeft,
+  FaFire,
+  FaLightbulb,
+  FaExclamationTriangle,
+  FaCheckCircle,
+} from 'react-icons/fa';
+import { toast } from 'react-toastify';
+import ConfirmModal from '../components/ui/ConfirmModal';
+import LoadingScreen from '../components/ui/LoadingScreen';
+import MarkdownContent from '../components/ui/MarkdownContent';
+import { loadEditorDraft, saveEditorDraft } from '../utils/draftStorage';
+import { buildServerPreviewHtml, buildClientPreviewHtml } from '../utils/multiplayerRuntime';
 
 // Module type configurations (multiplayer uses HTML/CSS/JS only, no React)
 const MODULE_TYPES = {
-  "javascript-basics": { tabs: ["html", "css", "js"], defaultTab: "html" },
-  "game-development": { tabs: ["html", "css", "js"], defaultTab: "js" },
-  "react-basics": { tabs: ["jsx", "css"], defaultTab: "jsx" },
-  multiplayer: { tabs: ["html", "css", "js"], defaultTab: "html" },
-  "advanced-concepts": { tabs: ["jsx", "css", "js"], defaultTab: "jsx" },
+  'javascript-basics': { tabs: ['html', 'css', 'js'], defaultTab: 'html' },
+  'game-development': { tabs: ['html', 'css', 'js'], defaultTab: 'js' },
+  'react-basics': { tabs: ['jsx', 'css'], defaultTab: 'jsx' },
+  multiplayer: { tabs: ['server', 'html', 'css', 'js'], defaultTab: 'server' },
+  'advanced-concepts': { tabs: ['jsx', 'css', 'js'], defaultTab: 'jsx' },
 };
+
+// Context-relevant images for lecture slides: { keywords, url }
+const SLIDE_IMAGES = [
+  { keywords: ['console', 'log', 'print', 'output', 'debug'], url: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&h=400&fit=crop' },
+  { keywords: ['variable', 'const', 'let', 'var', 'assign', 'data type'], url: 'https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800&h=400&fit=crop' },
+  { keywords: ['loop', 'for', 'while', 'iterate', 'array'], url: 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=800&h=400&fit=crop' },
+  { keywords: ['function', 'call', 'return', 'parameter'], url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&h=400&fit=crop' },
+  { keywords: ['game', 'canvas', 'sprite', 'player', 'score'], url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=400&fit=crop' },
+  { keywords: ['react', 'component', 'jsx', 'hook'], url: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&h=400&fit=crop' },
+  { keywords: ['state', 'usestate', 'event', 'click'], url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop' },
+  { keywords: ['multiplayer', 'server', 'socket', 'network'], url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=400&fit=crop' },
+  { keywords: ['condition', 'if', 'else', 'switch'], url: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=400&fit=crop' },
+  { keywords: ['html', 'css', 'dom', 'element'], url: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&h=400&fit=crop' },
+];
+const DEFAULT_SLIDE_IMAGE = 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&h=400&fit=crop';
+
+function getSlideImage(slideContent, moduleTitle, category) {
+  const text = `${(slideContent || '').toLowerCase()} ${(moduleTitle || '').toLowerCase()} ${(category || '').toLowerCase()}`;
+  let best = { score: 0, url: DEFAULT_SLIDE_IMAGE };
+  for (const { keywords, url } of SLIDE_IMAGES) {
+    let score = 0;
+    for (const kw of keywords) {
+      if (text.includes(kw)) score += 1;
+    }
+    if (score > best.score) best = { score, url };
+  }
+  return best.url;
+}
 
 const CodeEditor = () => {
   const { moduleId } = useParams();
   const navigate = useNavigate();
 
   const [module, setModule] = useState(null);
-  const [htmlCode, setHtmlCode] = useState("");
-  const [cssCode, setCssCode] = useState("");
-  const [jsCode, setJsCode] = useState("");
-  const [jsxCode, setJsxCode] = useState("");
-  const [activeTab, setActiveTab] = useState("html");
+  const [activeTab, setActiveTab] = useState('html');
   const [loading, setLoading] = useState(true);
-  const [showInstructions, setShowInstructions] = useState(true);
   const [previewKey, setPreviewKey] = useState(0);
+  const [editorKey, setEditorKey] = useState(0); // Force editor remount when needed
+  const [isLoadingDraft, setIsLoadingDraft] = useState(false);
 
   // Step-by-step: use module.steps (4-5 small steps) when present, else objectives
   const steps = useMemo(() => {
@@ -61,12 +97,27 @@ const CodeEditor = () => {
         id: i,
         title: s.title,
         instruction: s.instruction || s.title,
-        concept: s.concept || "",
+        concept: s.concept || '',
         verified: false,
       }));
     }
-    if (!module?.objectives?.length) return [{ id: 0, title: "Complete the lesson", instruction: "Complete the lesson", concept: "", verified: false }];
-    return module.objectives.map((obj, i) => ({ id: i, title: obj, instruction: obj, concept: "", verified: false }));
+    if (!module?.objectives?.length)
+      return [
+        {
+          id: 0,
+          title: 'Complete the lesson',
+          instruction: 'Complete the lesson',
+          concept: '',
+          verified: false,
+        },
+      ];
+    return module.objectives.map((obj, i) => ({
+      id: i,
+      title: obj,
+      instruction: obj,
+      concept: '',
+      verified: false,
+    }));
   }, [module]);
   const [stepsVerified, setStepsVerified] = useState([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -76,6 +127,9 @@ const CodeEditor = () => {
   /** When user fails a step: show step crossed and this explanation (key = step index) */
   const [stepFailureFeedback, setStepFailureFeedback] = useState({});
 
+  /** Step guide card is opt-in (pill button) so the editor stays clear; steps stay in the left rail */
+  const [showStepGuide, setShowStepGuide] = useState(false);
+
   // MCQ between steps (1-2 questions, generated/verified by qwen3-coder)
   const [mcqGateForStep, setMcqGateForStep] = useState(null);
   const [mcqQuestions, setMcqQuestions] = useState([]);
@@ -84,15 +138,99 @@ const CodeEditor = () => {
   const [mcqLoading, setMcqLoading] = useState(false);
   const [mcqVerifyLoading, setMcqVerifyLoading] = useState(false);
   const [mcqResult, setMcqResult] = useState(null);
+  const [mcqErrorsByQuestion, setMcqErrorsByQuestion] = useState({});
   const [mcqPassedCount, setMcqPassedCount] = useState(0);
+
+  // Refs for live code (avoids re-render on every keystroke; state only on load/draft/reset)
+  const codeRefs = useRef({
+    html: '',
+    css: '',
+    js: '',
+    jsx: '',
+    server: '',
+  });
+  const CODE_REF_KEYS = { html: 'html', css: 'css', js: 'js', jsx: 'jsx', server: 'server' };
+
+  // Stable timer refs (avoid window globals that leak across hot-reloads)
+  const codeChangeTimerRef = useRef(null);
+  const previewTimerRef = useRef(null);
+  const isLoadingDraftRef = useRef(false);
+  const isMountedRef = useRef(true);
+  /** Cleared on unmount — avoids orphaned timers after leaving the editor */
+  const trackedTimeoutsRef = useRef(new Set());
+  const pointFloaterTidRef = useRef(null);
+  /** Incremented when moduleId changes (cleanup) or on unmount — drop stale async MCQ/verify results */
+  const asyncUiGenRef = useRef(0);
+  const saveInProgressRef = useRef(false);
+  const stepsVerifiedRef = useRef(stepsVerified);
+  const currentStepIndexRef = useRef(currentStepIndex);
+  const runFeedbackTidRef = useRef(null);
+  const runFeedbackClearTidRef = useRef(null);
+  /** Tracks codeChanges so handleRunCode can read current value; used to avoid awarding Run points when spamming Run without editing */
+  const codeChangesRef = useRef(0);
+  /** Code change count at time of last Run; Run awards points only when codeChanges > this (i.e. user edited since last run) */
+  const lastRunCodeChangeCountRef = useRef(0);
+  useEffect(() => {
+    isLoadingDraftRef.current = isLoadingDraft;
+  }, [isLoadingDraft]);
+  useEffect(() => {
+    stepsVerifiedRef.current = stepsVerified;
+    currentStepIndexRef.current = currentStepIndex;
+  }, [stepsVerified, currentStepIndex]);
+
+  useEffect(() => {
+    return () => {
+      asyncUiGenRef.current += 1;
+    };
+  }, [moduleId]);
+
+  const trackTimeout = useCallback((fn, delay) => {
+    const id = setTimeout(() => {
+      trackedTimeoutsRef.current.delete(id);
+      fn();
+    }, delay);
+    trackedTimeoutsRef.current.add(id);
+    return id;
+  }, []);
+
+  const clearTrackedTimeout = useCallback((id) => {
+    if (id == null) return;
+    clearTimeout(id);
+    trackedTimeoutsRef.current.delete(id);
+  }, []);
+
+  // Persist "current step" to backend so Dashboard/Modules can resume accurately.
+  useEffect(() => {
+    if (!moduleId || !module || isLoadingDraft) return;
+    const tid = setTimeout(() => {
+      userAPI.setCurrentModule(moduleId, currentStepIndex).catch(() => {});
+    }, 600);
+    return () => clearTimeout(tid);
+  }, [moduleId, module, currentStepIndex, isLoadingDraft]);
+  useEffect(
+    () => () => {
+      isMountedRef.current = false;
+      asyncUiGenRef.current += 1;
+      trackedTimeoutsRef.current.forEach(clearTimeout);
+      trackedTimeoutsRef.current.clear();
+      if (pointFloaterTidRef.current) {
+        clearTrackedTimeout(pointFloaterTidRef.current);
+        pointFloaterTidRef.current = null;
+      }
+      if (codeChangeTimerRef.current) clearTimeout(codeChangeTimerRef.current);
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+      if (runFeedbackTidRef.current) clearTimeout(runFeedbackTidRef.current);
+      clearTrackedTimeout(runFeedbackClearTidRef.current);
+      runFeedbackClearTidRef.current = null;
+      if (lastVerifiedStepClearTidRef.current) clearTimeout(lastVerifiedStepClearTidRef.current);
+    },
+    [clearTrackedTimeout]
+  );
 
   // Explain selection (highlight code → ask for explanation)
   const editorViewRef = useRef(null);
   const [explainCodeLoading, setExplainCodeLoading] = useState(false);
-  const [explainCodeResult, setExplainCodeResult] = useState(null);
-
-  // Main area tab: Editor | Live Preview
-  const [mainViewTab, setMainViewTab] = useState("editor");
+  const [explainErrorLoading, setExplainErrorLoading] = useState(false);
 
   // Gamification states
   const [points, setPoints] = useState(0);
@@ -100,129 +238,296 @@ const CodeEditor = () => {
   const completionBonus = 100;
   const [streak, setStreak] = useState(0);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [showTutorSidebar, setShowTutorSidebar] = useState(false);
-  const [tutorQuestion, setTutorQuestion] = useState("");
-  const [tutorAnswer, setTutorAnswer] = useState(null);
-  const [tutorLoading, setTutorLoading] = useState(false);
-  const [hintStyle, setHintStyle] = useState("general");
-  const [tutorConfidence, setTutorConfidence] = useState(null);
-  const [tutorHistory, setTutorHistory] = useState([]);
 
-  // Multiplayer: dual preview state (like MultiplayerGameStudio)
+  useEffect(() => {
+    codeChangesRef.current = codeChanges;
+  }, [codeChanges]);
+
+  // Achievements
+  const [achievements, setAchievements] = useState([]);
+  const [showAchievements, setShowAchievements] = useState(false);
+  const [pointFloater, setPointFloater] = useState(null);
+  /** Step just verified (for celebration animation); cleared after delay */
+  const [lastVerifiedStepIndex, setLastVerifiedStepIndex] = useState(null);
+  /** Points pill pulse when user earns points */
+  const [pointsJustEarned, setPointsJustEarned] = useState(false);
+  const lastVerifiedStepClearTidRef = useRef(null);
+
+  // Left panel sections (overview expanded by default so it's clearly visible)
+  const [showOverview, setShowOverview] = useState(true);
+  const [showOverviewPopup, setShowOverviewPopup] = useState(false);
+  const shownOverviewPopupRef = useRef({});
+  /** AI-generated lecture notes for Learning Overview popup; cached in localStorage per module */
+  const [lectureNotes, setLectureNotes] = useState(null);
+  const [lectureNotesLoading, setLectureNotesLoading] = useState(false);
+  const [lectureNotesError, setLectureNotesError] = useState(null);
+  const LECTURE_NOTES_STORAGE_KEY = 'gamilearn_lecture_notes';
+  const [showTutorSidebar, setShowTutorSidebar] = useState(false);
+  /** Current slide index in lecture popup (0-based); reset when popup opens */
+  const [lectureSlideIndex, setLectureSlideIndex] = useState(0);
+
+  // Resizable panel dimensions (px)
+  const [leftPanelWidth, setLeftPanelWidth] = useState(320);
+  const [rightPanelWidth, setRightPanelWidth] = useState(480);
+  const [consoleHeight, setConsoleHeight] = useState(180);
+  const resizeRef = useRef({
+    active: null,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    startLeft: 0,
+    startRight: 0,
+    startConsole: 0,
+  });
+  const [tutorQuestion, setTutorQuestion] = useState('');
+  const [tutorLoading, setTutorLoading] = useState(false);
+  const [hintStyle, setHintStyle] = useState('general');
+  const aiCompanionUsesRef = useRef(0);
+  const aiHintRequestsRef = useRef(0);
+  const aiExplainCodeUsesRef = useRef(0);
+  const aiExplainErrorUsesRef = useRef(0);
+  // Unified thread: explain + hint Q&A in one list
+  const [companionMessages, setCompanionMessages] = useState([]);
+
+  // Multiplayer: dual preview state
   const [player1PreviewKey, setPlayer1PreviewKey] = useState(0);
   const [player2PreviewKey, setPlayer2PreviewKey] = useState(0);
   const [serverPreviewKey, setServerPreviewKey] = useState(0);
-  const [activePreviewTab, setActivePreviewTab] = useState("split");
+  const [activePreviewTab, setActivePreviewTab] = useState('server');
+  /** Multiplayer: frozen preview HTML so iframes don't reload on every code change (only on Run/Reset) */
+  const [multiplayerSnapshot, setMultiplayerSnapshot] = useState(null);
   const [consoleLogs, setConsoleLogs] = useState([]);
   const [consoleOpen, setConsoleOpen] = useState(true);
+  /** Ref synced with error count for "errors fixed" detection after Run */
+  const errorCountRef = useRef(0);
+  /** Floating gamified messages (e.g. "Errors fixed! +10") */
+  const [floatingMessages, setFloatingMessages] = useState([]);
+  /** Brief "All clear!" state when errors go to zero after a run (replaces error panel) */
+  const [showAllClear, setShowAllClear] = useState(false);
 
-  const { refreshProfile } = useAuth();
+  const recentErrors = useMemo(
+    () =>
+      consoleLogs
+        .filter((e) => e.level === 'error')
+        .slice(-5)
+        .map((e) => e.message),
+    [consoleLogs]
+  );
+  const lastError = recentErrors.length > 0 ? recentErrors[recentErrors.length - 1] : null;
+
+  useEffect(() => {
+    errorCountRef.current = consoleLogs.filter((e) => e.level === 'error').length;
+  }, [consoleLogs]);
+
+  const addFloatingMessage = useCallback(
+    (type, text, points = null) => {
+      const id = Date.now() + Math.random();
+      setFloatingMessages((prev) => [...prev, { id, type, text, points }]);
+      trackTimeout(() => {
+        if (isMountedRef.current) setFloatingMessages((prev) => prev.filter((m) => m.id !== id));
+      }, 2600);
+    },
+    [trackTimeout]
+  );
+
+  const { user, refreshProfile } = useAuth();
 
   useEffect(() => {
     const handler = (e) => {
-      if (e.data?.type === "console") {
-        setConsoleLogs((prev) => [...prev.slice(-99), { level: e.data.level, message: e.data.message, timestamp: e.data.timestamp || Date.now() }]);
+      if (e.data?.type === 'console') {
+        const source = e.data.source || null; // 'server' | 'player1' | 'player2' | null (preview)
+        const message = source
+          ? (source === 'server' ? '[Server] ' : '[' + source + '] ') + (e.data.message || '')
+          : e.data.message;
+        setConsoleLogs((prev) => [
+          ...prev.slice(-199),
+          { source, level: e.data.level, message, timestamp: e.data.timestamp || Date.now() },
+        ]);
       }
     };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
   }, []);
 
   const clearConsole = () => setConsoleLogs([]);
+  const serverLogs = useMemo(() => consoleLogs.filter((e) => e.source === 'server'), [consoleLogs]);
+  const clientLogs = useMemo(
+    () => consoleLogs.filter((e) => e.source === 'player1' || e.source === 'player2'),
+    [consoleLogs]
+  );
+  const clearServerConsole = () =>
+    setConsoleLogs((prev) => prev.filter((e) => e.source !== 'server'));
+  const clearClientConsole = () =>
+    setConsoleLogs((prev) => prev.filter((e) => e.source !== 'player1' && e.source !== 'player2'));
 
   const moduleConfig = useMemo(() => {
-    if (!module) return MODULE_TYPES["javascript-basics"];
-    return MODULE_TYPES[module.category] || MODULE_TYPES["javascript-basics"];
+    if (!module) return MODULE_TYPES['javascript-basics'];
+    return MODULE_TYPES[module.category] || MODULE_TYPES['javascript-basics'];
   }, [module]);
 
   const isReactModule = useMemo(
-    () => module?.category !== "multiplayer" && moduleConfig.tabs.includes("jsx"),
+    () => module?.category !== 'multiplayer' && moduleConfig.tabs.includes('jsx'),
     [moduleConfig, module?.category]
   );
-  const isMultiplayerModule = useMemo(() => module?.category === "multiplayer", [module]);
+  const isMultiplayerModule = useMemo(() => module?.category === 'multiplayer', [module]);
+
+  const multiplayerSnapshotSetRef = useRef(false);
+  useEffect(() => {
+    setMultiplayerSnapshot(null);
+    multiplayerSnapshotSetRef.current = false;
+  }, [moduleId]);
+  useEffect(() => {
+    if (!module || !isMultiplayerModule || isLoadingDraft) return;
+    if (multiplayerSnapshotSetRef.current) return;
+    multiplayerSnapshotSetRef.current = true;
+    setMultiplayerSnapshot({
+      server: getPreviewContent('server'),
+      player1: getPreviewContent('player1'),
+      player2: getPreviewContent('player2'),
+    });
+  }, [module?.id, isMultiplayerModule, isLoadingDraft]); // eslint-disable-line react-hooks/exhaustive-deps -- snapshot set once per module when draft ready
+
+  useEffect(() => {
+    if (!isMultiplayerModule) setMultiplayerSnapshot(null);
+  }, [isMultiplayerModule]);
 
   const difficultyStyles = {
-    beginner: "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40",
-    intermediate: "bg-amber-500/20 text-amber-200 border border-amber-400/40",
-    advanced: "bg-rose-500/20 text-rose-200 border border-rose-400/40",
+    beginner: 'bg-teal-900 text-teal-100',
+    intermediate: 'bg-blue-800 text-blue-100',
+    advanced: 'bg-blue-900 text-blue-200',
   };
 
   const HINT_STYLES = [
-    { value: "general", label: "General Hint", description: "Get a helpful nudge" },
-    { value: "error-explanation", label: "Explain Error", description: "Understand error messages" },
-    { value: "logic-guidance", label: "Logic Help", description: "Trace through code" },
-    { value: "concept-reminder", label: "Concept Recap", description: "Review a concept" },
-    { value: "visual-gameloop", label: "Game/Animation", description: "Game loops and animations" },
+    { value: 'general', label: 'General Hint', description: 'Get a helpful nudge' },
+    {
+      value: 'error-explanation',
+      label: 'Explain Error',
+      description: 'Understand error messages',
+    },
+    { value: 'logic-guidance', label: 'Logic Help', description: 'Trace through code' },
+    { value: 'concept-reminder', label: 'Concept Recap', description: 'Review a concept' },
+    { value: 'visual-gameloop', label: 'Game/Animation', description: 'Game loops and animations' },
   ];
 
   const STORAGE_KEY = `codeEditorProgress_${moduleId}`;
 
+  const draftLoadTimeoutRef = useRef(null);
+  const fetchAbortedRef = useRef(false);
   useEffect(() => {
+    fetchAbortedRef.current = false;
     const fetchModule = async () => {
       try {
         const response = await modulesAPI.getById(moduleId);
+        if (fetchAbortedRef.current) return;
         const moduleData = response.data.module;
         setModule(moduleData);
-        setHtmlCode(moduleData.starterCode?.html || "");
-        setCssCode(moduleData.starterCode?.css || "");
-        setJsCode(moduleData.starterCode?.javascript || "");
-        setJsxCode(moduleData.starterCode?.jsx || moduleData.starterCode?.javascript || "");
-        const config = MODULE_TYPES[moduleData.category] || MODULE_TYPES["javascript-basics"];
+        const initialHtml = moduleData.starterCode?.html || '';
+        const initialCss = moduleData.starterCode?.css || '';
+        const initialJs = moduleData.starterCode?.javascript || '';
+        const initialJsx = moduleData.starterCode?.jsx || moduleData.starterCode?.javascript || '';
+        const initialServer = moduleData.starterCode?.serverJs || '';
+        codeRefs.current = {
+          html: initialHtml,
+          css: initialCss,
+          js: initialJs,
+          jsx: initialJsx,
+          server: initialServer,
+        };
+        const config = MODULE_TYPES[moduleData.category] || MODULE_TYPES['javascript-basics'];
         setActiveTab(config.defaultTab);
         setVerifyFeedback(null);
         setVerifyPassed(false);
         setStepFailureFeedback({});
         setMcqGateForStep(null);
         setMcqQuestions([]);
-        setExplainCodeResult(null);
+        setCompanionMessages([]);
         const stepCount = moduleData.steps?.length || moduleData.objectives?.length || 1;
         let usedSession = false;
+        setIsLoadingDraft(true);
         try {
           const saved = sessionStorage.getItem(STORAGE_KEY);
           if (saved) {
             const { stepsVerified: savedVerified, currentStepIndex: savedStep } = JSON.parse(saved);
-            if (Array.isArray(savedVerified) && savedVerified.length === stepCount && typeof savedStep === "number") {
+            if (
+              Array.isArray(savedVerified) &&
+              savedVerified.length === stepCount &&
+              typeof savedStep === 'number'
+            ) {
               setStepsVerified(savedVerified);
               setCurrentStepIndex(Math.min(savedStep, stepCount - 1));
               usedSession = true;
             }
           }
-          if (!usedSession) {
-            const draft = await loadEditorDraft(moduleId);
-            if (draft?.stepsVerified?.length === stepCount && typeof draft.currentStepIndex === "number") {
-              setStepsVerified(draft.stepsVerified);
-              setCurrentStepIndex(Math.min(draft.currentStepIndex, stepCount - 1));
-            } else {
-              setStepsVerified([]);
-              setCurrentStepIndex(0);
+          if (fetchAbortedRef.current) return;
+          draftLoadTimeoutRef.current = setTimeout(async () => {
+            try {
+              if (fetchAbortedRef.current) return;
+              const draft = await loadEditorDraft(moduleId);
+              if (fetchAbortedRef.current) return;
+              if (!usedSession) {
+                if (
+                  draft?.stepsVerified?.length === stepCount &&
+                  typeof draft.currentStepIndex === 'number'
+                ) {
+                  setStepsVerified(draft.stepsVerified);
+                  setCurrentStepIndex(Math.min(draft.currentStepIndex, stepCount - 1));
+                } else {
+                  setStepsVerified([]);
+                  setCurrentStepIndex(0);
+                }
+                if (draft?.code && typeof draft.code === 'object') {
+                  const c = draft.code;
+                  codeRefs.current = {
+                    html: c.html != null ? c.html : initialHtml,
+                    css: c.css != null ? c.css : initialCss,
+                    js: c.javascript != null ? c.javascript : initialJs,
+                    jsx: c.jsx != null ? c.jsx : initialJsx,
+                    server: c.serverJs != null ? c.serverJs : initialServer,
+                  };
+                  setEditorKey((prev) => prev + 1);
+                }
+              } else {
+                if (draft?.code && typeof draft.code === 'object') {
+                  const c = draft.code;
+                  codeRefs.current = {
+                    html: c.html != null ? c.html : '',
+                    css: c.css != null ? c.css : '',
+                    js: c.javascript != null ? c.javascript : '',
+                    jsx: c.jsx != null ? c.jsx : '',
+                    server: c.serverJs != null ? c.serverJs : '',
+                  };
+                  setEditorKey((prev) => prev + 1);
+                }
+              }
+            } catch (draftError) {
+              console.warn('Could not load draft:', draftError);
+            } finally {
+              if (!fetchAbortedRef.current) setIsLoadingDraft(false);
             }
-            if (draft?.code && typeof draft.code === "object") {
-              if (draft.code.html != null) setHtmlCode(draft.code.html);
-              if (draft.code.css != null) setCssCode(draft.code.css);
-              if (draft.code.javascript != null) setJsCode(draft.code.javascript);
-              if (draft.code.jsx != null) setJsxCode(draft.code.jsx);
-            }
-          } else {
-            const draft = await loadEditorDraft(moduleId);
-            if (draft?.code && typeof draft.code === "object") {
-              if (draft.code.html != null) setHtmlCode(draft.code.html);
-              if (draft.code.css != null) setCssCode(draft.code.css);
-              if (draft.code.javascript != null) setJsCode(draft.code.javascript);
-              if (draft.code.jsx != null) setJsxCode(draft.code.jsx);
-            }
-          }
+          }, 200);
         } catch {
-          setStepsVerified([]);
-          setCurrentStepIndex(0);
+          if (!fetchAbortedRef.current) {
+            setStepsVerified([]);
+            setCurrentStepIndex(0);
+            setIsLoadingDraft(false);
+          }
         }
-        setLoading(false);
+        if (!fetchAbortedRef.current) setLoading(false);
       } catch (error) {
-        console.error("Error fetching module:", error);
-        toast.error("We couldn't load this lesson. Try again from the dashboard.");
-        navigate("/dashboard");
+        if (fetchAbortedRef.current) return;
+        console.error('Error fetching module:', error);
+        toast.error("We couldn't load this lesson. Please try again from your dashboard.");
+        navigate('/dashboard', { state: { direction: 'back' } });
       }
     };
     fetchModule();
+    return () => {
+      fetchAbortedRef.current = true;
+      if (draftLoadTimeoutRef.current) {
+        clearTimeout(draftLoadTimeoutRef.current);
+        draftLoadTimeoutRef.current = null;
+      }
+    };
   }, [moduleId, navigate, STORAGE_KEY]);
 
   useEffect(() => {
@@ -233,26 +538,387 @@ const CodeEditor = () => {
     );
   }, [STORAGE_KEY, module, steps.length, stepsVerified, currentStepIndex, moduleId]);
 
-  // IndexedDB draft auto-save (every 5s) for code and steps before system save
+  // Show floating overview popup when module has just finished loading (once per module)
   useEffect(() => {
-    if (!moduleId || !module) return;
-    const interval = setInterval(() => {
-      saveEditorDraft(moduleId, {
-        stepsVerified,
-        currentStepIndex,
-        code: { html: htmlCode, css: cssCode, javascript: jsCode, jsx: jsxCode },
+    if (!module || loading || isLoadingDraft) return;
+    if (!shownOverviewPopupRef.current[moduleId]) {
+      shownOverviewPopupRef.current[moduleId] = true;
+      setShowOverviewPopup(true);
+      setLectureSlideIndex(0);
+    }
+  }, [module, moduleId, loading, isLoadingDraft]);
+
+  /** Split lecture/overview content into 2–4 slides by ## sections or by paragraphs */
+  const lectureSlides = useMemo(() => {
+    const raw = lectureNotes || module?.content || '';
+    if (!raw.trim()) return [];
+    let parts = raw.split(/(?=^##\s+.+$)/gm).filter((p) => p.trim());
+    const minSlides = 2;
+    const maxSlides = 4;
+    if (parts.length < minSlides) {
+      // No ## headings: split by double newline into ~3 chunks
+      parts = raw.split(/\n{2,}/).filter((p) => p.trim());
+    }
+    if (parts.length <= maxSlides && parts.length >= minSlides) {
+      return parts.map((p) => p.trim()).filter(Boolean);
+    }
+    if (parts.length > maxSlides) {
+      const slides = [];
+      const chunkSize = Math.ceil(parts.length / maxSlides);
+      for (let i = 0; i < maxSlides; i++) {
+        const start = i * chunkSize;
+        const end = Math.min(start + chunkSize, parts.length);
+        const merged = parts.slice(start, end).join('\n\n').trim();
+        if (merged) slides.push(merged);
+      }
+      return slides;
+    }
+    if (parts.length === 1) {
+      // Single block: split by rough char length into 2-3 slides
+      const len = parts[0].length;
+      const targetSlides = 3;
+      const chunkLen = Math.ceil(len / targetSlides);
+      const slides = [];
+      let pos = 0;
+      while (pos < len && slides.length < maxSlides) {
+        let end = Math.min(pos + chunkLen, len);
+        if (end < len) {
+          const nextNewline = parts[0].indexOf('\n\n', end);
+          end = nextNewline > end ? nextNewline + 2 : end;
+        }
+        slides.push(parts[0].slice(pos, end).trim());
+        pos = end;
+      }
+      return slides.filter(Boolean);
+    }
+    return [raw.trim()];
+  }, [lectureNotes, module?.content]);
+
+  const hasSlides = lectureSlides.length >= 2;
+
+  // Reset lecture notes when switching modules
+  useEffect(() => {
+    if (!moduleId) return;
+    setLectureNotes(null);
+    setLectureNotesError(null);
+  }, [moduleId]);
+
+  // Generate or load lecture notes when Learning Overview popup opens
+  useEffect(() => {
+    if (!showOverviewPopup || !module || !moduleId) return;
+
+    const loadFromStorage = () => {
+      try {
+        const raw = localStorage.getItem(LECTURE_NOTES_STORAGE_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        return data?.[moduleId] ?? null;
+      } catch {
+        return null;
+      }
+    };
+
+    const saveToStorage = (notes) => {
+      try {
+        const raw = localStorage.getItem(LECTURE_NOTES_STORAGE_KEY) || '{}';
+        const data = JSON.parse(raw);
+        data[moduleId] = notes;
+        localStorage.setItem(LECTURE_NOTES_STORAGE_KEY, JSON.stringify(data));
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const cached = loadFromStorage();
+    if (cached && typeof cached === 'string' && cached.trim()) {
+      setLectureNotes(cached);
+      setLectureNotesLoading(false);
+      setLectureNotesError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLectureNotesLoading(true);
+    setLectureNotesError(null);
+
+    const payload = {
+      overview: module.content || '',
+      moduleTitle: module.title || '',
+      difficulty: module.difficulty || 'beginner',
+      category: module.category || '',
+      steps: module.steps?.length
+        ? module.steps.map((s) => ({
+            title: s.title,
+            instruction: s.instruction || s.title,
+            concept: s.concept || '',
+          }))
+        : undefined,
+      objectives: !module.steps?.length && module.objectives?.length ? module.objectives : undefined,
+      userLevel: user?.level ? `Level ${user.level}` : user?.levelInfo?.rank?.name || '',
+    };
+
+    tutorAPI
+      .generateLectureNotes(payload)
+      .then((res) => {
+        const notes = res.data?.lectureNotes;
+        if (cancelled) return;
+        if (notes && typeof notes === 'string' && notes.trim()) {
+          setLectureNotes(notes.trim());
+          saveToStorage(notes.trim());
+          setLectureNotesError(null);
+        } else {
+          setLectureNotesError('Could not generate lecture notes');
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const msg = err.response?.data?.error || err.message || 'Generation failed';
+        setLectureNotesError(msg);
+        setLectureNotes(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLectureNotesLoading(false);
       });
-    }, 5000);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showOverviewPopup, module, moduleId, user?.level, user?.levelInfo?.rank?.name]);
+
+  // Resize: pointer capture keeps drag alive over preview iframes (document mousemove does not).
+  const clearResizeChrome = useCallback(() => {
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+    resizeRef.current.active = null;
+    resizeRef.current.pointerId = null;
+  }, []);
+
+  const handleResizeLostCapture = useCallback(() => {
+    clearResizeChrome();
+  }, [clearResizeChrome]);
+
+  const handleLeftResizePointerDown = useCallback(
+    (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      resizeRef.current = {
+        ...resizeRef.current,
+        active: 'left',
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startLeft: leftPanelWidth,
+      };
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+    },
+    [leftPanelWidth]
+  );
+  const handleLeftResizePointerMove = useCallback((e) => {
+    const r = resizeRef.current;
+    if (r.active !== 'left' || r.pointerId !== e.pointerId) return;
+    const delta = e.clientX - r.startX;
+    setLeftPanelWidth(Math.min(520, Math.max(200, r.startLeft + delta)));
+  }, []);
+  const handleLeftResizePointerUp = useCallback((e) => {
+    const r = resizeRef.current;
+    if (r.active !== 'left' || r.pointerId !== e.pointerId) return;
+    clearResizeChrome();
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+  }, [clearResizeChrome]);
+
+  const handleRightResizePointerDown = useCallback(
+    (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      resizeRef.current = {
+        ...resizeRef.current,
+        active: 'right',
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startRight: rightPanelWidth,
+      };
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+    },
+    [rightPanelWidth]
+  );
+  const handleRightResizePointerMove = useCallback((e) => {
+    const r = resizeRef.current;
+    if (r.active !== 'right' || r.pointerId !== e.pointerId) return;
+    const delta = e.clientX - r.startX;
+    setRightPanelWidth(Math.min(900, Math.max(260, r.startRight - delta)));
+  }, []);
+  const handleRightResizePointerUp = useCallback(
+    (e) => {
+      const r = resizeRef.current;
+      if (r.active !== 'right' || r.pointerId !== e.pointerId) return;
+      clearResizeChrome();
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        /* already released */
+      }
+    },
+    [clearResizeChrome]
+  );
+
+  const handleConsoleResizePointerDown = useCallback(
+    (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      resizeRef.current = {
+        ...resizeRef.current,
+        active: 'console',
+        pointerId: e.pointerId,
+        startY: e.clientY,
+        startConsole: consoleHeight,
+      };
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'row-resize';
+    },
+    [consoleHeight]
+  );
+  const handleConsoleResizePointerMove = useCallback((e) => {
+    const r = resizeRef.current;
+    if (r.active !== 'console' || r.pointerId !== e.pointerId) return;
+    const delta = e.clientY - r.startY;
+    setConsoleHeight(Math.min(520, Math.max(72, r.startConsole - delta)));
+  }, []);
+  const handleConsoleResizePointerUp = useCallback(
+    (e) => {
+      const r = resizeRef.current;
+      if (r.active !== 'console' || r.pointerId !== e.pointerId) return;
+      clearResizeChrome();
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        /* already released */
+      }
+    },
+    [clearResizeChrome]
+  );
+
+  // Fetch achievements on mount
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await achievementsAPI.getUserAchievements();
+        const data = res.data?.achievements || res.data;
+        if (mounted && Array.isArray(data)) setAchievements(data);
+      } catch (err) {
+        console.error('Error loading achievements:', err);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Check achievements after step verification
+  useEffect(() => {
+    if (!module || stepsVerified.length === 0) return;
+    let cancelled = false;
+    const progressData = {
+      totalEdits: codeChanges,
+      totalRuns: streak,
+      totalPoints: points,
+      streak,
+      completedModules: 0,
+      aiCompanionUses: aiCompanionUsesRef.current,
+      aiHintRequests: aiHintRequestsRef.current,
+      aiExplainCodeUses: aiExplainCodeUsesRef.current,
+      aiExplainErrorUses: aiExplainErrorUsesRef.current,
+    };
+    achievementsAPI
+      .checkAchievements(progressData)
+      .then((res) => {
+        if (cancelled) return;
+        const { newlyEarned = [] } = res.data;
+        if (newlyEarned.length > 0) {
+          invalidateUserCaches();
+          setAchievements((prev) =>
+            prev.map((a) => (newlyEarned.some((n) => n.id === a.id) ? { ...a, earned: true } : a))
+          );
+          newlyEarned.forEach((ach) =>
+            toast.success(
+              <div>
+                <strong>Achievement Unlocked!</strong>
+                <div>{ach.name}</div>
+              </div>
+            )
+          );
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [stepsVerified, module, codeChanges, streak, points]);
+
+  // IndexedDB draft auto-save (every 10s) from refs to avoid stale closure and race with typing
+  useEffect(() => {
+    if (!moduleId || !module || isLoadingDraft) return;
+    const interval = setInterval(async () => {
+      if (!isMountedRef.current) return;
+      if (codeChangeTimerRef.current || previewTimerRef.current || isLoadingDraftRef.current)
+        return;
+      if (saveInProgressRef.current) return;
+      saveInProgressRef.current = true;
+      try {
+        const r = codeRefs.current;
+        await saveEditorDraft(moduleId, {
+          stepsVerified: stepsVerifiedRef.current,
+          currentStepIndex: currentStepIndexRef.current,
+          code: { html: r.html, css: r.css, javascript: r.js, jsx: r.jsx, serverJs: r.server },
+        });
+      } finally {
+        if (isMountedRef.current) saveInProgressRef.current = false;
+      }
+    }, 10000);
     return () => clearInterval(interval);
-  }, [moduleId, module, stepsVerified, currentStepIndex, htmlCode, cssCode, jsCode, jsxCode]);
+  }, [moduleId, module, isLoadingDraft]);
 
   const allStepsVerified = useMemo(() => {
     if (!steps.length) return false;
     return steps.every((_, i) => stepsVerified[i]);
   }, [steps, stepsVerified]);
 
+  const earnedAchievements = useMemo(() => achievements.filter((a) => a.earned), [achievements]);
+  const verifiedCount = useMemo(() => stepsVerified.filter(Boolean).length, [stepsVerified]);
+
+  const showPointFloater = useCallback((amount) => {
+    if (pointFloaterTidRef.current) {
+      clearTrackedTimeout(pointFloaterTidRef.current);
+      pointFloaterTidRef.current = null;
+    }
+    setPointFloater({ id: Date.now(), amount });
+    pointFloaterTidRef.current = trackTimeout(() => {
+      pointFloaterTidRef.current = null;
+      if (isMountedRef.current) setPointFloater(null);
+    }, 1200);
+  }, [clearTrackedTimeout, trackTimeout]);
+
+  // Stable extension arrays so CodeMirror doesn't reconfigure on every render
+  const extHtml = useMemo(() => [html()], []);
+  const extCss = useMemo(() => [css()], []);
+  const extJs = useMemo(() => [javascript()], []);
+  const extJsx = useMemo(() => [javascript({ jsx: true })], []);
+  const extServer = useMemo(() => [javascript()], []);
+
   const handleVerifyCode = async () => {
     if (currentStepIndex >= steps.length) return;
+    const verifyGen = asyncUiGenRef.current;
     setVerifyLoading(true);
     setVerifyFeedback(null);
     setVerifyPassed(false);
@@ -262,12 +928,15 @@ const CodeEditor = () => {
       return next;
     });
     try {
+      const r = codeRefs.current;
       const stepMeta = module?.steps?.[currentStepIndex];
       const verifyType = stepMeta?.verifyType || 'code';
       const payload = {
         stepIndex: currentStepIndex,
         stepDescription: steps[currentStepIndex].title,
-        code: { html: htmlCode, css: cssCode, javascript: jsCode, jsx: jsxCode },
+        stepInstruction: steps[currentStepIndex].instruction || '',
+        stepConcept: steps[currentStepIndex].concept || '',
+        code: { html: r.html, css: r.css, javascript: r.js, jsx: r.jsx, serverJs: r.server },
         moduleTitle: module?.title,
         objectives: module?.objectives,
         verifyType,
@@ -277,9 +946,11 @@ const CodeEditor = () => {
         payload.consoleOutput = consoleLogs.map((e) => ({ level: e.level, message: e.message }));
       }
       const resp = await tutorAPI.verifyStep(payload);
+      if (verifyGen !== asyncUiGenRef.current) return;
       const data = resp.data;
       const correct = !!data.correct;
-      const feedback = data.feedback || (correct ? "Looks good!" : "Not quite yet. Check the hint and try again.");
+      const feedback =
+        data.feedback || (correct ? 'Looks good!' : 'Not quite yet. Check the hint and try again.');
       setVerifyFeedback(feedback);
       setVerifyPassed(correct);
       if (correct) {
@@ -289,7 +960,16 @@ const CodeEditor = () => {
           return next;
         });
         setPoints((p) => p + 15);
-        toast.success("Step complete!");
+        setLastVerifiedStepIndex(currentStepIndex);
+        if (lastVerifiedStepClearTidRef.current) clearTimeout(lastVerifiedStepClearTidRef.current);
+        lastVerifiedStepClearTidRef.current = setTimeout(() => {
+          lastVerifiedStepClearTidRef.current = null;
+          if (isMountedRef.current) setLastVerifiedStepIndex(null);
+        }, 2000);
+        setPointsJustEarned(true);
+        trackTimeout(() => isMountedRef.current && setPointsJustEarned(false), 600);
+        showPointFloater(15);
+        toast.success('Step complete!');
         // Open MCQ gate: 1-2 questions before next step (only if step has concept / we want MCQ)
         const step = steps[currentStepIndex];
         if (step?.concept && currentStepIndex < steps.length - 1) {
@@ -298,52 +978,74 @@ const CodeEditor = () => {
           setMcqCurrentIndex(0);
           setMcqSelectedIndex(null);
           setMcqResult(null);
+          setMcqErrorsByQuestion({});
           setMcqPassedCount(0);
           fetchMCQsForStep(step);
         }
       } else {
         setStepFailureFeedback((prev) => ({ ...prev, [currentStepIndex]: feedback }));
-        toast.warning("Not quite yet. See the explanation below.");
-        // Auto-open companion with instruction explanation + code-help prompt (no generic "why wrong" message)
+        toast.warning('Not quite yet. See the explanation below.');
         setShowTutorSidebar(true);
         const step = steps[currentStepIndex];
         const instructionBlock = [
-          step?.title ? `**This step**\n\n${step.title}` : "",
-          step?.instruction ? `**What you need to do**\n\n${step.instruction}` : "",
-          step?.concept ? `**Concept**\n\n${step.concept}` : "",
+          step?.title ? `**This step**\n\n${step.title}` : '',
+          step?.instruction ? `**What you need to do**\n\n${step.instruction}` : '',
+          step?.concept ? `**Concept**\n\n${step.concept}` : '',
         ]
           .filter(Boolean)
-          .join("\n\n");
+          .join('\n\n');
         const codeHelp =
-          "**Need help with your code?**\n\nAsk below for a hint (e.g. \"How do I do this step?\") or highlight code in the editor and use **Explain selection**.";
-        setTutorAnswer(instructionBlock ? `${instructionBlock}\n\n---\n\n${codeHelp}` : codeHelp);
-        setTutorConfidence(0.5);
+          '**Need help with your code?**\n\nAsk below for a hint or use **Explain selected code** in this panel.';
+        const content = instructionBlock ? `${instructionBlock}\n\n---\n\n${codeHelp}` : codeHelp;
+        setCompanionMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            type: 'hint',
+            userLabel: 'Step help',
+            content,
+            timestamp: new Date().toLocaleTimeString(),
+            confidence: 0.5,
+          },
+        ]);
       }
     } catch (err) {
-      console.error("Verify error", err);
-      const msg = "Verification failed. Check the hint and try again.";
+      if (verifyGen !== asyncUiGenRef.current) return;
+      console.error('Verify error', err);
+      const msg = 'Verification failed. Check the hint and try again.';
       setVerifyFeedback(msg);
       setVerifyPassed(false);
       setStepFailureFeedback((prev) => ({ ...prev, [currentStepIndex]: msg }));
-      toast.error("Check the hint and try again.");
+      toast.error('Not quite yet-check the hint and try again.');
       setShowTutorSidebar(true);
       const step = steps[currentStepIndex];
       const instructionBlock = [
-        step?.title ? `**This step**\n\n${step.title}` : "",
-        step?.instruction ? `**What you need to do**\n\n${step.instruction}` : "",
-        step?.concept ? `**Concept**\n\n${step.concept}` : "",
+        step?.title ? `**This step**\n\n${step.title}` : '',
+        step?.instruction ? `**What you need to do**\n\n${step.instruction}` : '',
+        step?.concept ? `**Concept**\n\n${step.concept}` : '',
       ]
         .filter(Boolean)
-        .join("\n\n");
+        .join('\n\n');
       const codeHelp =
-        "**Need help with your code?**\n\nAsk below for a hint or use **Explain selection** on your code.";
-      setTutorAnswer(instructionBlock ? `${instructionBlock}\n\n---\n\n${codeHelp}` : codeHelp);
+        '**Need help with your code?**\n\nAsk below for a hint or use **Explain selected code** in this panel.';
+      const content = instructionBlock ? `${instructionBlock}\n\n---\n\n${codeHelp}` : codeHelp;
+      setCompanionMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: 'hint',
+          userLabel: 'Step help',
+          content,
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ]);
     } finally {
-      setVerifyLoading(false);
+      if (verifyGen === asyncUiGenRef.current) setVerifyLoading(false);
     }
   };
 
   const fetchMCQsForStep = async (step) => {
+    const mcqGen = asyncUiGenRef.current;
     setMcqLoading(true);
     setMcqResult(null);
     try {
@@ -353,24 +1055,28 @@ const CodeEditor = () => {
         moduleTitle: module?.title,
         count: 2,
       });
+      if (mcqGen !== asyncUiGenRef.current) return;
       const questions = resp.data?.questions || [];
       setMcqQuestions(questions);
       setMcqCurrentIndex(0);
       setMcqSelectedIndex(null);
+      setMcqErrorsByQuestion({});
       if (questions.length === 0) {
         setMcqGateForStep(null);
       }
     } catch {
+      if (mcqGen !== asyncUiGenRef.current) return;
       setMcqQuestions([]);
       setMcqGateForStep(null);
-      toast.error("Could not load quiz. You can continue to the next step.");
+      toast.error("We couldn't load the quiz. You can skip to the next step or try again.");
     } finally {
-      setMcqLoading(false);
+      if (mcqGen === asyncUiGenRef.current) setMcqLoading(false);
     }
   };
 
   const handleMCQSubmit = async () => {
     if (mcqQuestions.length === 0 || mcqSelectedIndex == null) return;
+    const mcqSubmitGen = asyncUiGenRef.current;
     const q = mcqQuestions[mcqCurrentIndex];
     setMcqVerifyLoading(true);
     setMcqResult(null);
@@ -381,9 +1087,15 @@ const CodeEditor = () => {
         correctIndex: q.correctIndex,
         selectedIndex: mcqSelectedIndex,
       });
+      if (mcqSubmitGen !== asyncUiGenRef.current) return;
       const { correct, explanation } = resp.data;
       setMcqResult({ correct, explanation });
       if (correct) {
+        setMcqErrorsByQuestion((prev) => {
+          const next = { ...prev };
+          delete next[mcqCurrentIndex];
+          return next;
+        });
         setMcqPassedCount((c) => c + 1);
         if (mcqCurrentIndex < mcqQuestions.length - 1) {
           setMcqCurrentIndex((i) => i + 1);
@@ -391,15 +1103,25 @@ const CodeEditor = () => {
           setMcqResult(null);
         } else {
           setPoints((p) => p + 10);
-          toast.success("Quiz passed! You can continue to the next step.");
+          setPointsJustEarned(true);
+          trackTimeout(() => isMountedRef.current && setPointsJustEarned(false), 600);
+          showPointFloater(10);
+          toast.success('Quiz passed! You can continue to the next step.');
         }
       } else {
-        toast.warning("Wrong answer. Read the explanation below.");
+        setMcqErrorsByQuestion((prev) => ({
+          ...prev,
+          [mcqCurrentIndex]: explanation || 'Wrong answer. Try again.',
+        }));
+        toast.warning('Wrong answer. Read the explanation below.');
       }
     } catch {
-      setMcqResult({ correct: false, explanation: "Verification failed. Try again." });
+      if (mcqSubmitGen !== asyncUiGenRef.current) return;
+      const explanation = 'Verification failed. Try again.';
+      setMcqResult({ correct: false, explanation });
+      setMcqErrorsByQuestion((prev) => ({ ...prev, [mcqCurrentIndex]: explanation }));
     } finally {
-      setMcqVerifyLoading(false);
+      if (mcqSubmitGen === asyncUiGenRef.current) setMcqVerifyLoading(false);
     }
   };
 
@@ -407,6 +1129,7 @@ const CodeEditor = () => {
     setMcqGateForStep(null);
     setMcqQuestions([]);
     setMcqResult(null);
+    setMcqErrorsByQuestion({});
     setMcqPassedCount(0);
     if (currentStepIndex < steps.length - 1) {
       setCurrentStepIndex((i) => i + 1);
@@ -418,25 +1141,43 @@ const CodeEditor = () => {
   const handleExplainSelection = async () => {
     const view = editorViewRef.current;
     if (!view) {
-      toast.info("Select some code in the editor first, then click Explain.");
+      toast.info('Select some code in the editor first, then click Explain.');
       return;
     }
+    const { from, to } = view.state.selection.main;
+    const selected = view.state.sliceDoc(from, to).trim();
+    if (!selected) {
+      toast.info('Select some code in the editor first, then click Explain.');
+      return;
+    }
+    setShowTutorSidebar(true);
+    setExplainCodeLoading(true);
     try {
-      const { from, to } = view.state.selection.main;
-      const selected = view.state.sliceDoc(from, to).trim();
-      if (!selected) {
-        toast.info("Select some code in the editor first, then click Explain.");
-        return;
-      }
-      setExplainCodeLoading(true);
-      setExplainCodeResult(null);
-      setShowTutorSidebar(true);
-      const lang = activeTab === "jsx" ? "javascript" : activeTab === "js" ? "javascript" : activeTab;
+      const lang =
+        activeTab === 'jsx'
+          ? 'javascript'
+          : activeTab === 'js'
+            ? 'javascript'
+            : activeTab === 'server'
+              ? 'javascript'
+              : activeTab;
       const resp = await tutorAPI.explainCode(selected, lang);
-      setExplainCodeResult(resp.data?.explanation || "No explanation available.");
+      const explanation = resp.data?.explanation || 'No explanation available.';
+      setCompanionMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: 'explain',
+          userLabel: 'Explanation of selection',
+          content: explanation,
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ]);
+      aiCompanionUsesRef.current += 1;
+      aiExplainCodeUsesRef.current += 1;
     } catch (err) {
-      console.error("Explain code error", err);
-      toast.error("Could not get explanation. Try again.");
+      console.error('Explain code error', err);
+      toast.error("We couldn't get an explanation right now. Please try again.");
     } finally {
       setExplainCodeLoading(false);
     }
@@ -462,34 +1203,21 @@ const CodeEditor = () => {
 
   const getPreviewContent = useCallback(
     (playerRole = null) => {
-      // Multiplayer "server" view: placeholder (server runs in Node.js, not in browser)
-      if (isMultiplayerModule && playerRole === "server") {
-        return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body { margin: 0; padding: 24px; font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100%; display: flex; align-items: center; justify-content: center; }
-    .panel { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; max-width: 360px; text-align: center; }
-    h2 { color: #94a3b8; font-size: 18px; margin: 0 0 12px; }
-    p { color: #64748b; font-size: 14px; line-height: 1.5; margin: 0; }
-    code { background: #334155; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
-  </style>
-</head>
-<body>
-  <div class="panel">
-    <h2>Server (Node.js)</h2>
-    <p>Run your server separately with <code>node server.js</code>. This pane shows the server role; the two client panes show what each player sees.</p>
-  </div>
-</body>
-</html>`;
+      const r = codeRefs.current;
+      const channelName = `gamilearn-mp-${moduleId}`;
+
+      if (isMultiplayerModule && playerRole === 'server') {
+        return buildServerPreviewHtml(channelName, r.server);
       }
+
+      if (isMultiplayerModule && (playerRole === 'player1' || playerRole === 'player2')) {
+        return buildClientPreviewHtml(channelName, playerRole, r.html, r.css, r.js);
+      }
+
       if (isReactModule) {
         const jsx = playerRole
-          ? jsxCode.replace(/playerRole\s*=\s*['"]?player\d?['"]?/i, `playerRole="${playerRole}"`)
-          : jsxCode;
+          ? r.jsx.replace(/playerRole\s*=\s*['"]?player\d?['"]?/i, `playerRole="${playerRole}"`)
+          : r.jsx;
         return `
 <!DOCTYPE html>
 <html>
@@ -499,28 +1227,38 @@ const CodeEditor = () => {
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <style>${cssCode}</style>
+  <style>${r.css}</style>
   <style>html, body, #root { margin: 0; padding: 0; min-height: 100%; } body { font-family: system-ui, sans-serif; }</style>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
     const originalConsole = { ...console };
-    ['log','info','warn','error'].forEach(level => {
+    ['log', 'info', 'warn', 'error'].forEach(level => {
       console[level] = (...args) => {
         originalConsole[level](...args);
-        window.parent.postMessage({ type: 'console', level, message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), timestamp: Date.now() }, '*');
+        const message = args
+          .map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
+          .join(' ');
+        window.parent.postMessage(
+          { type: 'console', level, message, timestamp: Date.now() },
+          '*'
+        );
       };
     });
     try {
       ${jsx}
       if (typeof App !== 'undefined') {
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App ${playerRole ? `playerRole="${playerRole}"` : ""} />);
+        root.render(<App ${playerRole ? `playerRole="${playerRole}"` : ''} />);
       }
     } catch (e) {
       console.error('Runtime Error:', e.message);
-      document.getElementById('root').innerHTML = '<div style="color:#ff6b6b;padding:20px;font-family:monospace;background:#1a1a2e;border-radius:8px;margin:20px;"><h3>Error</h3><pre style="color:#ffa07a;white-space:pre-wrap;">' + e.message + '</pre></div>';
+      document.getElementById('root').innerHTML =
+        '<div style="color:#527CB0;padding:20px;font-family:monospace;background:#0e1c36;border-radius:8px;margin:20px;">' +
+        '<h3>Error</h3><pre style="color:#9AB6D8;white-space:pre-wrap;">' +
+        e.message +
+        '</pre></div>';
     }
   </script>
 </body>
@@ -532,43 +1270,57 @@ const CodeEditor = () => {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>${cssCode}</style>
+  <style>${r.css}</style>
 </head>
 <body>
-  ${htmlCode}
+  ${r.html}
   <script>
-    (function() {
-      var originalConsole = { log: console.log, info: console.info, warn: console.warn, error: console.error };
+    (function () {
+      var originalConsole = {
+        log: console.log,
+        info: console.info,
+        warn: console.warn,
+        error: console.error,
+      };
       function sendToParent(level, message) {
         try {
           if (window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'console', level: level, message: message, timestamp: Date.now() }, '*');
+            window.parent.postMessage(
+              { type: 'console', level: level, message: message, timestamp: Date.now() },
+              '*'
+            );
           }
         } catch (err) {}
       }
-      ['log','info','warn','error'].forEach(function(level) {
-        var fn = function() {
+      ['log', 'info', 'warn', 'error'].forEach(function (level) {
+        var fn = function () {
           originalConsole[level].apply(console, arguments);
-          var message = Array.prototype.map.call(arguments, function(a) {
-            return typeof a === 'object' ? JSON.stringify(a) : String(a);
-          }).join(' ');
+          var message = Array.prototype.map
+            .call(arguments, function (a) {
+              return typeof a === 'object' ? JSON.stringify(a) : String(a);
+            })
+            .join(' ');
           sendToParent(level, message);
         };
-        try { console[level] = fn; } catch (e) {}
+        try {
+          console[level] = fn;
+        } catch (e) {}
       });
       window.__capturedConsole = console;
     })();
     function runUserCode() {
       var con = window.__capturedConsole || console;
       try {
-        (function(console) {
-          ${jsCode}
+        (function (console) {
+          ${r.js}
         })(con);
       } catch (e) {
         con.error('Runtime error: ' + (e && e.message ? e.message : String(e)));
         var errDiv = document.createElement('div');
-        errDiv.style.cssText = 'color:#fc4a1a;padding:20px;font-family:monospace;background:#132f4c;border-radius:8px;margin:20px;';
-        errDiv.innerHTML = '<h3>Error:</h3><pre>' + (e && e.message ? e.message : String(e)) + '</pre>';
+        errDiv.style.cssText =
+          'color:#527CB0;padding:20px;font-family:monospace;background:#16284c;border-radius:8px;margin:20px;';
+        errDiv.innerHTML =
+          '<h3>Error:</h3><pre>' + (e && e.message ? e.message : String(e)) + '</pre>';
         if (document.body) document.body.appendChild(errDiv);
       }
     }
@@ -581,13 +1333,19 @@ const CodeEditor = () => {
 </body>
 </html>`;
     },
-    [isReactModule, isMultiplayerModule, htmlCode, cssCode, jsCode, jsxCode],
+    [isReactModule, isMultiplayerModule, moduleId]
   );
 
   const handleCompleteModule = async () => {
     if (!allStepsVerified) return;
     try {
-      const sessionStats = { totalEdits: codeChanges, streak, totalRuns: 0, sessionTime: 0, saveCount: 0 };
+      const sessionStats = {
+        totalEdits: codeChanges,
+        streak,
+        totalRuns: 0,
+        sessionTime: 0,
+        saveCount: 0,
+      };
       const resp = await userAPI.completeModule(moduleId, sessionStats);
       if (refreshProfile) await refreshProfile();
       const totalPointsEarned = points + completionBonus;
@@ -595,35 +1353,98 @@ const CodeEditor = () => {
       let message = `Lesson complete! You earned ${points} points + ${completionBonus} bonus = ${totalPointsEarned} total.`;
       if (newlyEarned.length > 0) message += ` ${newlyEarned.length} new achievement(s)!`;
       toast.success(message, { autoClose: 5000 });
-      navigate("/dashboard");
+      navigate('/dashboard', { state: { direction: 'back' } });
     } catch (error) {
-      console.error("Error completing module:", error);
+      console.error('Error completing module:', error);
     }
   };
 
-  const handleCodeChange = (value, setter) => {
-    setter(value);
-    setCodeChanges((prev) => prev + 1);
-    setPoints((prev) => prev + 2);
-    if (window.previewTimeout) clearTimeout(window.previewTimeout);
-    window.previewTimeout = setTimeout(() => setPreviewKey((k) => k + 1), 1500);
-  };
+  const handleCodeChange = useCallback((value, tabKey) => {
+    if (isLoadingDraftRef.current) return;
+    codeRefs.current[tabKey] = value;
+    // Auto-clear console when user edits and there were errors, so errors disappear once they fix the code
+    setConsoleLogs((prev) => {
+      const hadErrors = prev.some((e) => e.level === 'error');
+      return hadErrors ? [] : prev;
+    });
+    setShowAllClear(false);
+    if (codeChangeTimerRef.current) clearTimeout(codeChangeTimerRef.current);
+    codeChangeTimerRef.current = setTimeout(() => {
+      codeChangeTimerRef.current = null;
+      setCodeChanges((prev) => prev + 1);
+    }, 500);
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = setTimeout(() => {
+      previewTimerRef.current = null;
+      setPreviewKey((k) => k + 1);
+    }, 1500);
+  }, []);
+
+  const onChangeHtml = useCallback((v) => handleCodeChange(v, 'html'), [handleCodeChange]);
+  const onChangeCss = useCallback((v) => handleCodeChange(v, 'css'), [handleCodeChange]);
+  const onChangeJs = useCallback((v) => handleCodeChange(v, 'js'), [handleCodeChange]);
+  const onChangeJsx = useCallback((v) => handleCodeChange(v, 'jsx'), [handleCodeChange]);
+  const onChangeServer = useCallback((v) => handleCodeChange(v, 'server'), [handleCodeChange]);
+  const onEditorCreate = useCallback((view) => {
+    editorViewRef.current = view;
+  }, []);
 
   const handleRunCode = () => {
+    const hadErrorsBeforeRun = errorCountRef.current > 0;
+    const currentCodeChanges = codeChangesRef.current;
+    const editedSinceLastRun = currentCodeChanges > lastRunCodeChangeCountRef.current;
+    lastRunCodeChangeCountRef.current = currentCodeChanges;
+
+    setConsoleLogs([]);
+    setShowAllClear(false);
     setPreviewKey((k) => k + 1);
-    setPlayer1PreviewKey((k) => k + 1);
-    setPlayer2PreviewKey((k) => k + 1);
-    setServerPreviewKey((k) => k + 1);
-    setPoints((p) => p + 5);
-    setStreak((s) => s + 1);
+    if (isMultiplayerModule) {
+      setMultiplayerSnapshot({
+        server: getPreviewContent('server'),
+        player1: getPreviewContent('player1'),
+        player2: getPreviewContent('player2'),
+      });
+      setPlayer1PreviewKey((k) => k + 1);
+      setPlayer2PreviewKey((k) => k + 1);
+      setServerPreviewKey((k) => k + 1);
+    }
+    if (editedSinceLastRun) {
+      setPoints((p) => p + 5);
+      setStreak((s) => s + 1);
+      setPointsJustEarned(true);
+      trackTimeout(() => isMountedRef.current && setPointsJustEarned(false), 600);
+    }
+    const runFeedbackTid = setTimeout(() => {
+      if (!isMountedRef.current) return;
+      if (editedSinceLastRun && hadErrorsBeforeRun && errorCountRef.current === 0) {
+        setPoints((p) => p + 10);
+        setPointsJustEarned(true);
+        trackTimeout(() => isMountedRef.current && setPointsJustEarned(false), 600);
+        showPointFloater(10);
+        addFloatingMessage('success', 'Errors fixed!', 10);
+        setShowAllClear(true);
+        clearTrackedTimeout(runFeedbackClearTidRef.current);
+        runFeedbackClearTidRef.current = trackTimeout(() => {
+          if (isMountedRef.current) setShowAllClear(false);
+        }, 2500);
+      }
+    }, 1500);
+    runFeedbackTidRef.current = runFeedbackTid;
   };
 
   const handleReset = () => setShowResetConfirm(true);
   const confirmReset = () => {
-    setHtmlCode(module.starterCode?.html || "");
-    setCssCode(module.starterCode?.css || "");
-    setJsCode(module.starterCode?.javascript || "");
-    setJsxCode(module.starterCode?.jsx || module.starterCode?.javascript || "");
+    const h = module.starterCode?.html || '';
+    const c = module.starterCode?.css || '';
+    const j = module.starterCode?.javascript || '';
+    const jx = module.starterCode?.jsx || module.starterCode?.javascript || '';
+    const s = module.starterCode?.serverJs || '';
+    codeRefs.current = { html: h, css: c, js: j, jsx: jx, server: s };
+    if (lastVerifiedStepClearTidRef.current) clearTimeout(lastVerifiedStepClearTidRef.current);
+    lastVerifiedStepClearTidRef.current = null;
+    lastRunCodeChangeCountRef.current = 0;
+    setLastVerifiedStepIndex(null);
+    setPointsJustEarned(false);
     setPoints(0);
     setCodeChanges(0);
     setStreak(0);
@@ -636,40 +1457,118 @@ const CodeEditor = () => {
     setMcqQuestions([]);
     setMcqResult(null);
     setPreviewKey((k) => k + 1);
+    setEditorKey((k) => k + 1); // Force editor remount
+    if (module?.category === 'multiplayer') {
+      setMultiplayerSnapshot({
+        server: getPreviewContent('server'),
+        player1: getPreviewContent('player1'),
+        player2: getPreviewContent('player2'),
+      });
+      setServerPreviewKey((k) => k + 1);
+      setPlayer1PreviewKey((k) => k + 1);
+      setPlayer2PreviewKey((k) => k + 1);
+    }
     setShowResetConfirm(false);
     sessionStorage.removeItem(STORAGE_KEY);
-    toast.info("Code reset to starter template.");
+    toast.info('Code reset to starter template.');
+  };
+
+  const handleExplainErrorClick = async (errorMessage) => {
+    if (!errorMessage || explainErrorLoading) return;
+    setShowTutorSidebar(true);
+    setExplainErrorLoading(true);
+    try {
+      const r = codeRefs.current;
+      const lang =
+        activeTab === 'jsx' || activeTab === 'js' || activeTab === 'server'
+          ? 'javascript'
+          : activeTab;
+      const codeSnippet =
+        r[activeTab === 'server' ? 'server' : activeTab === 'js' ? 'js' : activeTab] || '';
+      const resp = await tutorAPI.explainError(errorMessage, codeSnippet, lang);
+      const explanation = resp.data?.explanation || 'Could not get explanation.';
+      setCompanionMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: 'explain',
+          userLabel: 'Error explanation',
+          content: explanation,
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ]);
+      aiCompanionUsesRef.current += 1;
+      aiExplainErrorUsesRef.current += 1;
+    } catch (err) {
+      console.error('Explain error', err);
+      toast.error("We couldn't explain that error right now. Please try again.");
+    } finally {
+      setExplainErrorLoading(false);
+    }
+  };
+
+  const handleExplainLastError = () => {
+    if (lastError) handleExplainErrorClick(lastError);
   };
 
   const handleTutorSubmit = async (e) => {
     e.preventDefault();
     if (!tutorQuestion.trim()) return;
+    const question = tutorQuestion.trim();
     setTutorLoading(true);
-    setTutorAnswer(null);
-    setTutorConfidence(null);
+    setTutorQuestion('');
     try {
-      const resp = await tutorAPI.ask(tutorQuestion, {
-        type: "hint-mode",
+      const r = codeRefs.current;
+      const errorFromQuestion = question.match(/error:?\s*(.+)/i)?.[1]?.trim() || null;
+      const resp = await tutorAPI.ask(question, {
+        type: 'hint-mode',
         hintStyle,
         moduleTitle: module?.title,
         objectives: module?.objectives,
         currentStepIndex: currentStepIndex,
         currentStepDescription: steps[currentStepIndex]?.title ?? null,
-        code: { html: htmlCode, css: cssCode, javascript: jsCode, jsx: jsxCode },
-        currentFile: `${activeTab}.${activeTab === "js" ? "js" : activeTab}`,
-        errorMessage: tutorQuestion.match(/error:?\s*(.+)/i)?.[1] || null,
+        code: { html: r.html, css: r.css, javascript: r.js, jsx: r.jsx, serverJs: r.server },
+        currentFile: `${activeTab}.${activeTab === 'js' ? 'js' : activeTab}`,
+        recentErrors,
+        errorMessage: errorFromQuestion || (recentErrors.length > 0 ? recentErrors[0] : null),
       });
-      let answer = resp.data.answer || "We couldn't get a hint right now.";
+      let answer =
+        resp.data.answer ||
+        "We couldn't generate a hint right now. Try rephrasing your question or try again.";
       // Never show raw API internals (thinking, model, eval_count, etc.)
-      if (typeof answer === "string" && (answer.includes('"thinking"') || answer.includes('"eval_count"') || answer.includes('"model":'))) {
-        answer = "Something went wrong. Please try asking again.";
+      if (
+        typeof answer === 'string' &&
+        (answer.includes('"thinking"') ||
+          answer.includes('"eval_count"') ||
+          answer.includes('"model":'))
+      ) {
+        answer = 'Something went wrong on our side. Please try your question again in a moment.';
       }
-      setTutorAnswer(answer);
-      setTutorConfidence(resp.data.confidence);
-      setTutorHistory((prev) => [...prev.slice(-4), { question: tutorQuestion, answer, style: hintStyle, timestamp: new Date().toLocaleTimeString() }]);
+      setCompanionMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: 'hint',
+          userLabel: question,
+          content: answer,
+          timestamp: new Date().toLocaleTimeString(),
+          confidence: resp.data.confidence,
+        },
+      ]);
+      aiCompanionUsesRef.current += 1;
+      aiHintRequestsRef.current += 1;
     } catch (err) {
-      console.error("Tutor error", err);
-      setTutorAnswer("Something went wrong. Please try again.");
+      console.error('Tutor error', err);
+      setCompanionMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: 'hint',
+          userLabel: question,
+          content: "We couldn't get a response right now. Please try asking again.",
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ]);
     } finally {
       setTutorLoading(false);
     }
@@ -677,773 +1576,1640 @@ const CodeEditor = () => {
 
   const openLivePreviewInNewTab = () => {
     const html = getPreviewContent();
-    const blob = new Blob([html], { type: "text/html" });
+    const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    window.open(url, "_blank", "noopener");
+    window.open(url, '_blank', 'noopener');
   };
 
-  if (loading) {
+  if (loading || isLoadingDraft) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center gap-4">
-        <div className="h-12 w-12 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
-        <p className="text-sm text-slate-400">Loading module...</p>
+      <div
+        className="min-h-screen bg-neutral-900 text-blue-100 flex flex-col items-center justify-center px-4 py-12"
+        role="status"
+        aria-live="polite"
+      >
+        <LoadingScreen
+          message={loading ? 'Preparing your lesson…' : 'Restoring your progress…'}
+          subMessage={
+            loading ? 'Fetching content and steps' : 'Loading your last saved code'
+          }
+          className="!min-h-0"
+        />
       </div>
     );
   }
 
   const currentStep = steps[currentStepIndex];
+  const defaultAchievementIcon =
+    'https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/award.svg';
+  const renderAchievementIcon = (icon, alt, cls) => {
+    const isUrl = typeof icon === 'string' && icon.startsWith('http');
+    if (isUrl)
+      return (
+        <img
+          src={icon}
+          alt={alt}
+          className={cls}
+          onError={(e) => {
+            if (!e.target.dataset.fb) {
+              e.target.dataset.fb = '1';
+              e.target.src = defaultAchievementIcon;
+            }
+          }}
+        />
+      );
+    return <FaTrophy className={cls} />;
+  };
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col">
-      {/* Header - Studio style like CustomGameStudio / MultiplayerGameStudio */}
-      <header className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-slate-900/80 shrink-0">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-sm hover:bg-white/10 transition"
-          >
-            <FaBookOpen />
-            Dashboard
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 border border-white/20 rounded flex items-center justify-center">
-              {isMultiplayerModule ? <FaUsers className="text-purple-400" /> : <FaCode className="text-cyan-400" />}
-            </div>
-            <div>
-              <h1 className="text-sm font-bold text-white">{module.title}</h1>
-              <p className="text-xs text-slate-500">
-                {isMultiplayerModule ? "Multiplayer Module" : "Module Tutorial"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs">
-            <span className="text-amber-400"><FaStar /> {points}</span>
-            <span className="text-cyan-400"><FaCode /> {codeChanges}</span>
-            <span className="text-rose-200"><FaBolt /> {streak}</span>
-            <span className="text-amber-200"><FaTrophy /> +{completionBonus}</span>
-          </div>
-          <button
-            onClick={handleRunCode}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 text-sm font-medium hover:bg-green-500/30 transition"
-          >
-            <FaPlay /> Run
-          </button>
-          <button
-            onClick={handleExplainSelection}
-            disabled={explainCodeLoading}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500/20 text-violet-400 text-sm font-medium hover:bg-violet-500/30 transition disabled:opacity-50"
-            title="Highlight code in the editor and click to get an explanation"
-          >
-            {explainCodeLoading ? <span className="animate-pulse">…</span> : <FaMagic />}
-            Explain selection
-          </button>
-          <button onClick={handleReset} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/30 transition">
-            <FaUndo /> Reset
-          </button>
-          <button
-            onClick={() => setShowTutorSidebar(!showTutorSidebar)}
-            className={`p-2 rounded-lg transition ${showTutorSidebar ? "bg-violet-500/30 text-violet-300" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
-            title="Companion"
-          >
-            <FaBolt />
-          </button>
-          <button
-            onClick={handleCompleteModule}
-            disabled={!allStepsVerified}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-400/90 text-slate-950 text-sm font-semibold hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            <FaCheck /> Complete
-          </button>
-        </div>
-      </header>
-
-      <div className="flex-1 flex overflow-hidden min-h-0 relative">
-        {/* Left: Instructions (wider panel for readability) */}
-        <aside className="w-[420px] border-r border-white/10 bg-slate-900/70 flex flex-col shrink-0 min-h-0">
-          <div className="flex items-center justify-between border-b border-white/10 bg-slate-900/90 px-4 py-3">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
-              <FaBookOpen /> Instructions
-            </h2>
-            <button
-              onClick={() => setShowInstructions(!showInstructions)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded border border-white/10 bg-white/5 text-xs"
-            >
-              {showInstructions ? <FaChevronDown /> : <FaChevronRight />}
-            </button>
-          </div>
-
-          {showInstructions && (
-            <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 p-4 border-b border-white/10 flex flex-col gap-4">
-              <div className="flex flex-wrap gap-2 shrink-0">
-                <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase ${difficultyStyles[module.difficulty]}`}>
-                  {module.difficulty}
-                </span>
-                <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                  {module.category.replace("-", " ")}
-                </span>
-              </div>
-
-              {/* 1. Lesson overview first — more space for easy reading */}
-              <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4 shrink-0 min-h-[200px] flex flex-col">
-                <h3 className="text-sm font-semibold text-white mb-3">Lesson overview</h3>
-                <div className="text-sm text-slate-300 leading-relaxed overflow-y-auto scrollbar-hide flex-1 min-h-[180px] pr-1">
-                  <MarkdownContent content={module.content} />
-                </div>
-              </div>
-
-              {/* 2. Step-by-step: expand only the active step */}
-              <div className="shrink-0">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                  Step-by-step
-                </h3>
-                <ul className="space-y-2">
-                  {steps.map((step, i) => {
-                    const verified = stepsVerified[i];
-                    const isCurrent = i === currentStepIndex;
-                    const locked = i > currentStepIndex && !verified;
-                    const failedFeedback = stepFailureFeedback[i];
-                    const showExpanded = isCurrent;
-                    return (
-                      <li
-                        key={step.id}
-                        className={`rounded-lg border overflow-hidden transition-all ${
-                          isCurrent
-                            ? "border-cyan-400/40 bg-cyan-500/10"
-                            : verified
-                              ? "border-emerald-400/30 bg-emerald-500/5"
-                              : failedFeedback
-                                ? "border-red-400/40 bg-red-500/10"
-                                : "border-white/10 bg-slate-950/40"
-                        }`}
-                      >
-                        <button
-                          onClick={() => !locked && goToStep(i)}
-                          disabled={locked}
-                          className={`w-full text-left flex items-center gap-2 px-3 py-2 text-xs transition ${
-                            locked ? "cursor-not-allowed text-slate-500" : "hover:bg-white/5"
-                          } ${isCurrent ? "text-cyan-200" : verified ? "text-emerald-200" : failedFeedback ? "text-red-200" : "text-slate-300"}`}
-                        >
-                          <span className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-white/10">
-                            {verified ? <FaCheck className="text-emerald-400" /> : failedFeedback ? <FaTimes className="text-red-400" /> : i + 1}
-                          </span>
-                          <span className={`flex-1 min-w-0 font-medium truncate ${failedFeedback ? "line-through opacity-90" : ""}`}>
-                            {step.title}
-                          </span>
-                          <span className={`shrink-0 transition-transform ${showExpanded ? "rotate-90" : ""}`}>
-                            <FaChevronRight className="text-[10px]" />
-                          </span>
-                        </button>
-                        {showExpanded && (
-                          <div className="px-3 pb-3 pt-0 border-t border-white/10 mt-0">
-                            <p className="text-xs text-slate-200 leading-relaxed mt-2">
-                              {step.instruction ?? step.title}
-                            </p>
-                            {step.concept && (
-                              <p className="text-[11px] text-cyan-300/90 mt-2 italic border-l-2 border-cyan-400/50 pl-2">
-                                {step.concept}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                        {failedFeedback && (
-                          <div className="px-3 pb-2 pt-0">
-                            <div className="rounded p-1.5 text-[10px] bg-red-500/15 text-red-200 border border-red-400/30">
-                              {failedFeedback}
-                            </div>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-
-              {/* 3. Hints last */}
-              {module.hints?.length > 0 && (
-                <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3 shrink-0">
-                  <h3 className="text-xs font-semibold text-white mb-2">Hints</h3>
-                  <ul className="list-disc pl-4 space-y-1 text-xs text-slate-400">
-                    {module.hints.map((h, i) => (
-                      <li key={i}>{h}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Actions: MCQ gate + Check / Next */}
-          <div className="flex flex-col min-h-0 px-4 pt-3 pb-2 shrink-0">
-            {/* MCQ gate: 1-2 questions between steps (qwen3-coder) */}
-            {mcqGateForStep !== null && (
-              <div className="mt-2 pt-2 border-t border-amber-400/30 space-y-2 shrink-0 rounded-lg bg-amber-500/10 border border-amber-400/30 p-2">
-                <h4 className="text-xs font-semibold text-amber-200">Concept check</h4>
-                {mcqLoading ? (
-                  <p className="text-[11px] text-slate-400">Loading questions…</p>
-                ) : mcqQuestions.length > 0 ? (
-                  <>
-                    <p className="text-[11px] text-slate-300">
-                      Question {mcqCurrentIndex + 1} of {mcqQuestions.length}: {mcqQuestions[mcqCurrentIndex]?.question}
-                    </p>
-                    <div className="space-y-1">
-                      {mcqQuestions[mcqCurrentIndex]?.options?.map((opt, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setMcqSelectedIndex(idx)}
-                          className={`w-full text-left px-2 py-1.5 rounded text-[11px] border transition ${
-                            mcqSelectedIndex === idx ? "border-amber-400 bg-amber-500/20 text-amber-100" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
-                          }`}
-                        >
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                    {mcqResult && (
-                      <div className={`rounded p-1.5 text-[11px] ${mcqResult.correct ? "bg-emerald-500/20 text-emerald-200" : "bg-red-500/20 text-red-200"}`}>
-                        {mcqResult.explanation}
-                      </div>
-                    )}
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleMCQSubmit}
-                        disabled={mcqVerifyLoading || mcqSelectedIndex == null}
-                        className="flex-1 py-1.5 rounded bg-amber-500/90 text-slate-950 text-xs font-semibold hover:bg-amber-400 disabled:opacity-50"
-                      >
-                        {mcqVerifyLoading ? "Checking…" : "Check answer"}
-                      </button>
-                      {mcqPassedCount === mcqQuestions.length && mcqQuestions.length > 0 && (
-                        <button type="button" onClick={handleMCQNextStep} className="flex-1 py-1.5 rounded bg-emerald-500/90 text-slate-950 text-xs font-semibold hover:bg-emerald-400">
-                          Next step <FaChevronRight />
-                        </button>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <button type="button" onClick={handleMCQNextStep} className="w-full py-1.5 rounded bg-slate-500/50 text-slate-200 text-xs">
-                    Skip to next step
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Current step: instruction per step (title + full instruction) */}
-            {mcqGateForStep === null && (
-              <div className="mt-2 pt-2 border-t border-white/10 space-y-2 shrink-0">
-                <div className="rounded-lg bg-cyan-500/10 border border-cyan-400/30 p-2.5">
-                  <p className="text-[10px] uppercase tracking-wider text-cyan-400/90 mb-1">
-                    Step {currentStepIndex + 1} of {steps.length}
-                  </p>
-                  {currentStep?.title && (
-                    <p className="text-xs font-semibold text-white mb-1.5">{currentStep.title}</p>
-                  )}
-                  <p className="text-xs text-slate-200 leading-relaxed">
-                    {currentStep?.instruction ?? currentStep?.title ?? "Complete this step."}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleVerifyCode}
-                  disabled={verifyLoading}
-                  className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-cyan-500/90 text-slate-950 text-xs font-semibold hover:bg-cyan-400 disabled:opacity-60"
-                >
-                  {verifyLoading ? "Checking…" : "Check my code"}
-                </button>
-                {(verifyPassed || stepsVerified[currentStepIndex]) && currentStepIndex < steps.length - 1 && (
-                  <button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-emerald-500/90 text-slate-950 text-xs font-semibold hover:bg-emerald-400"
-                  >
-                    Next step <FaChevronRight />
-                  </button>
-                )}
-                {verifyFeedback && (
-                  <div
-                    className={`rounded-lg p-1.5 text-[11px] leading-tight ${
-                      verifyPassed ? "bg-emerald-500/20 text-emerald-200" : "bg-amber-500/20 text-amber-200"
-                    }`}
-                  >
-                    {verifyFeedback}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </aside>
-
-        {/* Center + Right: Editor and Preview (Studio layout) */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-0">
-          {/* Tabs: Editor | Live Preview */}
-          <div className="flex border-b border-white/10 bg-slate-900/50 shrink-0">
-            <button
-              onClick={() => setMainViewTab("editor")}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-medium transition ${
-                mainViewTab === "editor" ? "border-b-2 border-cyan-400 text-cyan-200" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <FaCode /> Editor
-            </button>
-            <button
-              onClick={() => setMainViewTab("preview")}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-medium transition ${
-                mainViewTab === "preview" ? "border-b-2 border-cyan-400 text-cyan-200" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <FaPlay /> Live Preview
-            </button>
-            {mainViewTab === "preview" && (
-              <button
-                onClick={openLivePreviewInNewTab}
-                className="ml-auto flex items-center gap-1 px-3 py-1.5 text-xs text-slate-400 hover:text-white"
+    <div className="h-screen overflow-hidden bg-neutral-900 text-blue-100 flex flex-col">
+      {/* Lecture Slide Popup */}
+      <AnimatePresence>
+        {showOverviewPopup && module && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 bg-neutral-900/70 backdrop-blur-sm z-[100]"
+              onClick={() => setShowOverviewPopup(false)}
+              aria-hidden
+            />
+            <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-[94vw] max-w-[1080px] h-[88vh] rounded-3xl flex flex-col bg-neutral-900 shadow-2xl shadow-black pointer-events-auto overflow-hidden"
               >
-                <FaExternalLinkAlt /> Open in new tab
-              </button>
-            )}
-          </div>
-
-          {mainViewTab === "editor" && (
-            <div className="flex-1 flex min-h-0">
-              {/* Code editor area - same as Studio */}
-              <div className="flex-1 flex flex-col border-r border-white/10 bg-slate-950 min-w-0">
-                <div className="flex items-center border-b border-white/10 bg-slate-900/80">
-                  {moduleConfig.tabs.map((tab) => (
-                    <button
-                      key={tab}
-                      className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider flex items-center gap-2 ${
-                        activeTab === tab ? "border-b-2 border-cyan-400 text-cyan-200" : "text-slate-400 hover:text-white"
-                      }`}
-                      onClick={() => setActiveTab(tab)}
-                    >
-                      {tab === "jsx" && <FaReact className="text-cyan-400" />}
-                      {tab.toUpperCase()}
-                    </button>
-                  ))}
-                  {isReactModule && (
-                    <span className="ml-auto mr-4 flex items-center gap-1 text-xs text-cyan-400">
-                      <FaReact /> React
-                    </span>
-                  )}
-                  {isMultiplayerModule && (
-                    <span className="ml-auto mr-4 flex items-center gap-1 text-xs text-purple-400">
-                      <FaUsers /> Multiplayer
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  {activeTab === "html" && (
-                    <CodeMirror
-                      value={htmlCode}
-                      height="100%"
-                      theme={vscodeDark}
-                      extensions={[html()]}
-                      onCreateEditor={(view) => { editorViewRef.current = view; }}
-                      onChange={(v, vu) => {
-                        if (vu?.view) editorViewRef.current = vu.view;
-                        handleCodeChange(v, setHtmlCode);
-                      }}
-                      options={{ lineNumbers: true, lineWrapping: true }}
-                    />
-                  )}
-                  {activeTab === "css" && (
-                    <CodeMirror
-                      value={cssCode}
-                      height="100%"
-                      theme={vscodeDark}
-                      extensions={[css()]}
-                      onCreateEditor={(view) => { editorViewRef.current = view; }}
-                      onChange={(v, vu) => {
-                        if (vu?.view) editorViewRef.current = vu.view;
-                        handleCodeChange(v, setCssCode);
-                      }}
-                      options={{ lineNumbers: true, lineWrapping: true }}
-                    />
-                  )}
-                  {activeTab === "js" && (
-                    <CodeMirror
-                      value={jsCode}
-                      height="100%"
-                      theme={vscodeDark}
-                      extensions={[javascript()]}
-                      onCreateEditor={(view) => { editorViewRef.current = view; }}
-                      onChange={(v, vu) => {
-                        if (vu?.view) editorViewRef.current = vu.view;
-                        handleCodeChange(v, setJsCode);
-                      }}
-                      options={{ lineNumbers: true, lineWrapping: true }}
-                    />
-                  )}
-                  {activeTab === "jsx" && (
-                    <CodeMirror
-                      value={jsxCode}
-                      height="100%"
-                      theme={vscodeDark}
-                      extensions={[javascript({ jsx: true })]}
-                      onCreateEditor={(view) => { editorViewRef.current = view; }}
-                      onChange={(v, vu) => {
-                        if (vu?.view) editorViewRef.current = vu.view;
-                        handleCodeChange(v, setJsxCode);
-                      }}
-                      options={{ lineNumbers: true, lineWrapping: true }}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Right: Preview panel - single or dual (multiplayer) like MultiplayerGameStudio */}
-              <div className="min-w-[420px] w-[min(520px,45%)] flex flex-col border-l border-white/10 bg-slate-900/70 shrink-0 min-h-0">
-                {isMultiplayerModule ? (
-                  <>
-                    <div className="flex border-b border-white/10 bg-slate-900/50">
-                      <button
-                        onClick={() => setActivePreviewTab("server")}
-                        className={`flex-1 flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium ${
-                          activePreviewTab === "server" ? "bg-amber-500/20 text-amber-400 border-b-2 border-amber-400" : "text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        Server
-                      </button>
-                      <button
-                        onClick={() => setActivePreviewTab("player1")}
-                        className={`flex-1 flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium ${
-                          activePreviewTab === "player1" ? "bg-red-500/20 text-red-400 border-b-2 border-red-400" : "text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        <FaUser /> Client 1
-                      </button>
-                      <button
-                        onClick={() => setActivePreviewTab("player2")}
-                        className={`flex-1 flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium ${
-                          activePreviewTab === "player2" ? "bg-cyan-500/20 text-cyan-400 border-b-2 border-cyan-400" : "text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        <FaUser /> Client 2
-                      </button>
-                      <button
-                        onClick={() => setActivePreviewTab("split")}
-                        className={`flex-1 flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium ${
-                          activePreviewTab === "split" ? "bg-purple-500/20 text-purple-400 border-b-2 border-purple-400" : "text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        <FaColumns /> All 3
-                      </button>
+                <div className="shrink-0 px-5 sm:px-6 py-4 bg-neutral-900">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-200">
+                        Learning Overview
+                      </p>
+                      <h2 className="mt-1 text-lg sm:text-xl font-bold text-blue-50 truncate">
+                        {module.title}
+                      </h2>
+                      <p className="mt-1 text-xs text-blue-300">
+                        {hasSlides
+                          ? `Slide ${lectureSlideIndex + 1} of ${lectureSlides.length}`
+                          : 'Quick intro before you start coding'}
+                      </p>
                     </div>
-                    <div className="flex-1 bg-gray-900 overflow-hidden">
-                      {activePreviewTab === "split" ? (
-                        <div className="grid grid-cols-3 h-full">
-                          <div className="border-r border-white/10 flex flex-col">
-                            <div className="px-2 py-1 bg-amber-500/10 text-amber-500 text-xs font-bold text-center">Server</div>
-                            <iframe
-                              key={`server-${serverPreviewKey}`}
-                              srcDoc={getPreviewContent("server")}
-                              className="flex-1 border-0 w-full h-full min-h-0"
-                              sandbox="allow-scripts allow-same-origin"
-                              title="Server"
-                            />
-                          </div>
-                          <div className="border-r border-white/10 flex flex-col">
-                            <div className="px-2 py-1 bg-red-500/10 text-red-500 text-xs font-bold text-center">Client 1</div>
-                            <iframe
-                              key={`p1-${player1PreviewKey}`}
-                              srcDoc={getPreviewContent("player1")}
-                              className="flex-1 border-0 w-full h-full min-h-0"
-                              sandbox="allow-scripts allow-same-origin"
-                              title="Client 1"
-                            />
-                          </div>
-                          <div className="flex flex-col">
-                            <div className="px-2 py-1 bg-cyan-500/10 text-cyan-500 text-xs font-bold text-center">Client 2</div>
-                            <iframe
-                              key={`p2-${player2PreviewKey}`}
-                              srcDoc={getPreviewContent("player2")}
-                              className="flex-1 border-0 w-full h-full min-h-0"
-                              sandbox="allow-scripts allow-same-origin"
-                              title="Client 2"
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <iframe
-                          key={
-                            activePreviewTab === "server"
-                              ? `server-${serverPreviewKey}`
-                              : activePreviewTab === "player1"
-                                ? `p1-${player1PreviewKey}`
-                                : `p2-${player2PreviewKey}`
-                          }
-                          srcDoc={getPreviewContent(activePreviewTab)}
-                          className="w-full h-full border-0"
-                          sandbox="allow-scripts allow-same-origin"
-                          title={activePreviewTab === "server" ? "Server" : `${activePreviewTab} Preview`}
+                    <button
+                      onClick={() => setShowOverviewPopup(false)}
+                      className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-blue-300 hover:text-blue-50 hover:bg-blue-800 transition-colors"
+                      aria-label="Close"
+                    >
+                      <FaTimes className="text-sm" />
+                    </button>
+                  </div>
+                </div>
+
+                {lectureNotesLoading ? (
+                  <div className="flex-1 flex flex-col items-center justify-center py-12 px-6 bg-neutral-900">
+                    <div className="h-12 w-12 rounded-full border-2 border-blue-200/40 border-t-blue-200 animate-spin" />
+                    <p className="text-base font-semibold text-blue-50 mt-6">Generating lecture slides...</p>
+                    <p className="text-xs text-blue-300 mt-1">This usually takes a few seconds</p>
+                  </div>
+                ) : lectureNotesError ? (
+                  <div className="flex-1 flex flex-col p-5 sm:p-6 bg-neutral-900">
+                    <div className="flex items-start gap-2 p-4 rounded-2xl bg-neutral-900 mb-4">
+                      <FaExclamationTriangle className="text-blue-200 mt-0.5 shrink-0" />
+                      <p className="text-sm text-blue-50">{lectureNotesError}</p>
+                    </div>
+                    <p className="text-xs text-blue-300 mb-3">Showing original overview instead:</p>
+                    <div className="text-blue-100 leading-relaxed overflow-y-auto flex-1 [&_.markdown-content]:[&_h2]:text-lg">
+                      <MarkdownContent content={module.content} />
+                    </div>
+                    <button
+                      onClick={() => setShowOverviewPopup(false)}
+                      className="mt-6 w-full py-3 rounded-2xl bg-teal-800 text-teal-50 font-semibold shadow-md shadow-black/30 hover:bg-teal-700 transition-all"
+                    >
+                      Continue to editor
+                    </button>
+                  </div>
+                ) : hasSlides ? (
+                  <>
+                    <div className="relative h-[30%] min-h-[140px] shrink-0">
+                      <img
+                        src={getSlideImage(
+                          lectureSlides[lectureSlideIndex],
+                          module.title,
+                          module.category
+                        )}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-neutral-900" />
+                      <div className="absolute bottom-0 left-0 right-0 px-5 sm:px-6 py-4">
+                        <h3 className="text-lg sm:text-xl font-bold text-blue-50 drop-shadow-lg">{module.title}</h3>
+                        <p className="text-xs text-blue-50 mt-0.5">
+                          Focus on one step, then move to the next.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-6 py-5 scrollbar-hide flex flex-col bg-neutral-900">
+                      <div className="text-blue-50 [&_.markdown-content_h2]:text-lg [&_.markdown-content_h2]:mb-2 [&_.markdown-content_h3]:text-base [&_.markdown-content_p]:text-[15px] [&_.markdown-content_ul]:space-y-1 [&_.markdown-content_ol]:space-y-1">
+                        <MarkdownContent
+                          content={lectureSlides[lectureSlideIndex] || lectureSlides[0]}
+                          className="[&_ul]:list-disc [&_ol]:list-decimal"
                         />
+                      </div>
+                      {module.hints?.length > 0 && (
+                        <div className="mt-4 pt-4">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200 mb-1.5">Hints</p>
+                          <ul className="list-disc list-inside text-xs text-blue-200 space-y-0.5">
+                            {module.hints.map((h, i) => (
+                              <li key={i}>{h}</li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
                     </div>
-                    <div className="border-t border-white/10 bg-slate-950 flex flex-col shrink-0" style={{ maxHeight: consoleOpen ? 180 : 36 }}>
-                      <button
-                        onClick={() => setConsoleOpen(!consoleOpen)}
-                        className="flex items-center justify-between w-full px-4 py-2 text-left text-xs font-semibold text-slate-300 hover:bg-white/5 border-b border-white/10"
-                      >
-                        <span className="flex items-center gap-2">
-                          Console
-                          {consoleLogs.length > 0 && (
-                            <span className="rounded-full bg-slate-600 px-2 py-0.5 text-[10px]">{consoleLogs.length}</span>
-                          )}
-                        </span>
-                        {consoleOpen ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
-                      </button>
-                      {consoleOpen && (
-                        <>
-                          <div className="flex justify-end px-2 py-1 border-b border-white/10">
-                            <button onClick={clearConsole} className="text-[10px] text-slate-500 hover:text-slate-300 px-2 py-0.5 rounded">Clear</button>
-                          </div>
-                          <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 p-2 font-mono text-[11px] space-y-1 bg-slate-950">
-                            {consoleLogs.length === 0 ? (
-                              <p className="text-slate-500 italic">No console output yet.</p>
-                            ) : (
-                              consoleLogs.map((entry, i) => (
-                                <div
-                                  key={`${entry.timestamp}-${i}`}
-                                  className={`flex gap-2 py-0.5 px-2 rounded ${
-                                    entry.level === "error" ? "text-red-400 bg-red-500/10" : entry.level === "warn" ? "text-amber-400 bg-amber-500/10" : entry.level === "info" ? "text-cyan-400 bg-cyan-500/10" : "text-slate-300 bg-white/5"
-                                  }`}
-                                >
-                                  <span className="shrink-0 opacity-70">[{entry.level}]</span>
-                                  <span className="break-all flex-1">{entry.message}</span>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center justify-between border-b border-white/10 bg-slate-900/90 px-4 py-3">
-                      <h2 className="text-sm font-semibold text-white">Preview</h2>
-                      <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-200">
-                        Auto-refresh
-                      </span>
-                    </div>
-                    <iframe
-                      key={previewKey}
-                      className="flex-1 border-0 bg-gray-900 w-full min-h-0"
-                      title="preview"
-                      srcDoc={getPreviewContent()}
-                      sandbox="allow-scripts allow-same-origin"
-                    />
-                    <div className="border-t border-white/10 bg-slate-950 flex flex-col shrink-0" style={{ maxHeight: consoleOpen ? 180 : 36 }}>
-                      <button
-                        onClick={() => setConsoleOpen(!consoleOpen)}
-                        className="flex items-center justify-between w-full px-4 py-2 text-left text-xs font-semibold text-slate-300 hover:bg-white/5 border-b border-white/10"
-                      >
-                        <span className="flex items-center gap-2">
-                          Console
-                          {consoleLogs.length > 0 && (
-                            <span className="rounded-full bg-slate-600 px-2 py-0.5 text-[10px]">{consoleLogs.length}</span>
-                          )}
-                        </span>
-                        {consoleOpen ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
-                      </button>
-                      {consoleOpen && (
-                        <>
-                          <div className="flex justify-end px-2 py-1 border-b border-white/10">
-                            <button
-                              onClick={clearConsole}
-                              className="text-[10px] text-slate-500 hover:text-slate-300 px-2 py-0.5 rounded"
-                            >
-                              Clear
-                            </button>
-                          </div>
-                          <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 p-2 font-mono text-[11px] space-y-1 bg-slate-950">
-                            {consoleLogs.length === 0 ? (
-                              <p className="text-slate-500 italic">No console output yet. Use console.log() in your code.</p>
-                            ) : (
-                              consoleLogs.map((entry, i) => (
-                                <div
-                                  key={`${entry.timestamp}-${i}`}
-                                  className={`flex gap-2 py-0.5 px-2 rounded ${
-                                    entry.level === "error"
-                                      ? "text-red-400 bg-red-500/10"
-                                      : entry.level === "warn"
-                                        ? "text-amber-400 bg-amber-500/10"
-                                        : entry.level === "info"
-                                          ? "text-cyan-400 bg-cyan-500/10"
-                                          : "text-slate-300 bg-white/5"
-                                  }`}
-                                >
-                                  <span className="shrink-0 opacity-70">[{entry.level}]</span>
-                                  <span className="break-all flex-1">{entry.message}</span>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
 
-          {mainViewTab === "preview" && (
-            <div className="flex-1 flex flex-col bg-slate-900 min-h-0">
-              {isMultiplayerModule ? (
-                <div className="flex border-b border-white/10">
-                  <button
-                    onClick={() => setActivePreviewTab("server")}
-                    className={`flex-1 py-2 text-xs font-medium ${activePreviewTab === "server" ? "bg-amber-500/20 text-amber-400" : "text-slate-400"}`}
-                  >
-                    Server
-                  </button>
-                  <button
-                    onClick={() => setActivePreviewTab("player1")}
-                    className={`flex-1 py-2 text-xs font-medium ${activePreviewTab === "player1" ? "bg-red-500/20 text-red-400" : "text-slate-400"}`}
-                  >
-                    Client 1
-                  </button>
-                  <button
-                    onClick={() => setActivePreviewTab("player2")}
-                    className={`flex-1 py-2 text-xs font-medium ${activePreviewTab === "player2" ? "bg-cyan-500/20 text-cyan-400" : "text-slate-400"}`}
-                  >
-                    Client 2
-                  </button>
-                  <button
-                    onClick={() => setActivePreviewTab("split")}
-                    className={`flex-1 py-2 text-xs font-medium ${activePreviewTab === "split" ? "bg-purple-500/20 text-purple-400" : "text-slate-400"}`}
-                  >
-                    All 3
-                  </button>
-                </div>
-              ) : null}
-              <div className="flex-1 min-h-0">
-                {isMultiplayerModule && activePreviewTab === "split" ? (
-                  <div className="grid grid-cols-3 h-full">
-                    <iframe key={`lp-server-${serverPreviewKey}`} srcDoc={getPreviewContent("server")} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" title="Server" />
-                    <iframe key={`lp-p1-${player1PreviewKey}`} srcDoc={getPreviewContent("player1")} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" title="Client 1" />
-                    <iframe key={`lp-p2-${player2PreviewKey}`} srcDoc={getPreviewContent("player2")} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" title="Client 2" />
-                  </div>
-                ) : (
-                  <iframe
-                    key={`lp-${previewKey}`}
-                    className="w-full h-full border-0 bg-gray-900"
-                    title="Live Preview"
-                    srcDoc={getPreviewContent(isMultiplayerModule ? activePreviewTab : null)}
-                    sandbox="allow-scripts allow-same-origin"
-                  />
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Companion – overlay on top, does not cramp layout */}
-        {showTutorSidebar && (
-          <aside className="fixed top-14 right-0 bottom-0 w-80 max-w-[90vw] z-50 flex flex-col border-l border-white/20 bg-slate-900/95 backdrop-blur-sm shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 shrink-0">
-              <h2 className="text-sm font-semibold text-white">Companion</h2>
-              <button onClick={() => setShowTutorSidebar(false)} className="p-2 rounded text-slate-400 hover:text-white hover:bg-white/10">
-                <FaTimes />
-              </button>
-            </div>
-            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide p-4 text-sm text-slate-300 space-y-4">
-              {/* Code explanation (highlight → Explain selection) */}
-              {(explainCodeResult || explainCodeLoading) && (
-                <div className="rounded-xl border border-violet-400/30 bg-violet-500/10 p-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-violet-200 mb-2">
-                    <FaMagic /> Code explanation
-                  </div>
-                  {explainCodeLoading ? (
-                    <div className="flex items-center gap-2 text-violet-200">
-                      <div className="h-4 w-4 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
-                      <span className="text-xs">Explaining selected code…</span>
-                    </div>
-                  ) : (
-                    <div className="text-xs text-slate-200 leading-relaxed">
-                      <MarkdownContent content={explainCodeResult} />
-                    </div>
-                  )}
-                </div>
-              )}
-              <div>
-                <p className="text-xs uppercase tracking-wider text-slate-400 mb-2">Help mode</p>
-                <div className="flex flex-wrap gap-2">
-                  {HINT_STYLES.map((s) => (
-                    <button
-                      key={s.value}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                        hintStyle === s.value ? "border-violet-400/50 bg-violet-500/10 text-violet-200" : "border-white/10 bg-slate-950/60 text-slate-300"
-                      }`}
-                      onClick={() => setHintStyle(s.value)}
-                      title={s.description}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <form onSubmit={handleTutorSubmit} className="flex flex-col gap-2">
-                <label className="text-xs uppercase tracking-wider text-slate-400">Your question</label>
-                <textarea
-                  className="min-h-[100px] rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-100 outline-none"
-                  value={tutorQuestion}
-                  onChange={(e) => setTutorQuestion(e.target.value)}
-                  placeholder="Describe your problem or ask for a hint..."
-                />
-                <button
-                  type="submit"
-                  disabled={tutorLoading || !tutorQuestion.trim()}
-                  className="rounded-full bg-violet-500/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-violet-400 disabled:opacity-60"
-                >
-                  {tutorLoading ? "Thinking…" : "Ask companion"}
-                </button>
-              </form>
-              {tutorLoading && (
-                <div className="rounded-xl border border-violet-400/30 bg-violet-500/10 p-3 flex items-center gap-3 text-violet-200">
-                  <div className="h-5 w-5 shrink-0 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
-                  <span className="text-xs font-medium">Getting a hint…</span>
-                </div>
-              )}
-              {tutorAnswer && !tutorLoading && (
-                <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-xs text-emerald-100">
-                  <div className="flex items-center justify-between text-xs font-semibold text-emerald-200 mb-2">
-                    Companion
-                    {tutorConfidence != null && (
-                      <span className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 text-[10px]">
-                        {tutorConfidence >= 0.6 ? "Targeted" : tutorConfidence >= 0.4 ? "General" : "Needs context"}
-                      </span>
-                    )}
-                  </div>
-                  <MarkdownContent content={tutorAnswer} />
-                  {tutorHistory.length > 0 && (
-                    <details className="mt-2 rounded border border-white/10 bg-slate-950/60 p-2 text-[10px]">
-                      <summary className="cursor-pointer">Previous replies ({tutorHistory.length})</summary>
-                      <div className="mt-2 space-y-1">
-                        {tutorHistory.slice().reverse().map((item, idx) => (
-                          <div key={idx} className="rounded px-2 py-1 bg-white/5">
-                            <span className="text-slate-500">{item.timestamp}</span>
-                            <p className="text-slate-300 truncate">{item.question}</p>
-                          </div>
+                    <div className="shrink-0 flex items-center justify-between px-5 sm:px-6 py-3 bg-neutral-900">
+                      <button
+                        onClick={() => setLectureSlideIndex((i) => Math.max(0, i - 1))}
+                        disabled={lectureSlideIndex === 0}
+                        className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-medium text-blue-200 hover:text-blue-50 hover:bg-blue-700 disabled:text-blue-300 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
+                      >
+                        <FaChevronLeft className="text-xs" /> Previous
+                      </button>
+                      <div className="flex items-center gap-2">
+                        {lectureSlides.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setLectureSlideIndex(i)}
+                            className={`h-1.5 rounded-full transition-all ${
+                              i === lectureSlideIndex
+                                ? 'w-6 bg-blue-200'
+                                : 'w-1.5 bg-blue-700 hover:bg-blue-300'
+                            }`}
+                            aria-label={`Go to slide ${i + 1}`}
+                          />
                         ))}
                       </div>
-                    </details>
+                      <button
+                        onClick={() =>
+                          setLectureSlideIndex((i) => Math.min(lectureSlides.length - 1, i + 1))
+                        }
+                        disabled={lectureSlideIndex >= lectureSlides.length - 1}
+                        className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-medium text-blue-200 hover:text-blue-50 hover:bg-blue-700 disabled:text-blue-300 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
+                      >
+                        Next <FaChevronRight className="text-xs" />
+                      </button>
+                    </div>
+
+                    <div className="shrink-0 px-5 sm:px-6 pb-5 bg-neutral-900">
+                      <button
+                        onClick={() => setShowOverviewPopup(false)}
+                        className="w-full py-2.5 rounded-2xl bg-teal-800 text-teal-50 text-sm font-semibold shadow-md shadow-black/30 hover:bg-teal-700 transition-all"
+                      >
+                        Start coding
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="relative h-[28%] min-h-[120px] shrink-0">
+                      <img
+                        src={getSlideImage(lectureNotes || module.content, module.title, module.category)}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-neutral-900" />
+                      <div className="absolute bottom-0 left-0 right-0 px-5 sm:px-6 py-4">
+                        <h3 className="text-lg sm:text-xl font-bold text-blue-50 drop-shadow-lg">{module.title}</h3>
+                        <p className="text-xs text-blue-50 mt-0.5">Learning overview</p>
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 scrollbar-hide bg-neutral-900">
+                      <div className="text-blue-50 [&_.markdown-content_h2]:text-lg [&_.markdown-content_p]:text-[15px]">
+                        {lectureNotes ? (
+                          <MarkdownContent content={lectureNotes} />
+                        ) : (
+                          <MarkdownContent content={module.content} />
+                        )}
+                      </div>
+                      {module.hints?.length > 0 && (
+                        <div className="mt-4 pt-4">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200 mb-1.5">Hints</p>
+                          <ul className="list-disc list-inside text-xs text-blue-200 space-y-0.5">
+                            {module.hints.map((h, i) => (
+                              <li key={i}>{h}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                    <div className="shrink-0 px-5 sm:px-6 pb-5 bg-neutral-900">
+                      <button
+                        onClick={() => setShowOverviewPopup(false)}
+                        className="w-full py-2.5 rounded-2xl bg-teal-800 text-teal-50 text-sm font-semibold shadow-md shadow-black/30 hover:bg-teal-700 transition-all"
+                      >
+                        Start coding
+                      </button>
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ─── HEADER: calm title row + progress strip (stats live here, not on title row) ─── */}
+      <motion.header
+        className="shrink-0 relative z-10 bg-neutral-900 border-b border-neutral-800/80"
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+      >
+        {/* Row 1 — lesson identity + toolbar only */}
+        <div className="px-4 sm:px-6 py-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-10">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard', { state: { direction: 'back' } })}
+              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-blue-800 text-blue-200 hover:text-blue-50 hover:bg-blue-700 transition-colors"
+              title="Back to Dashboard"
+            >
+              <FaArrowLeft className="text-xs" />
+            </button>
+            <div className="min-w-0 flex-1 flex items-start gap-3">
+              <span className="hidden sm:flex shrink-0 w-9 h-9 rounded-lg bg-neutral-900 items-center justify-center text-teal-400">
+                {isMultiplayerModule ? <FaUsers className="text-sm" /> : <FaCode className="text-sm" />}
+              </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <h1 className="text-lg sm:text-xl font-semibold text-blue-100 tracking-tight leading-tight truncate max-w-[min(100%,28rem)]">
+                    {module.title}
+                  </h1>
+                  <span
+                    className={`shrink-0 text-[10px] font-bold uppercase tracking-wide ${difficultyStyles[module.difficulty]} px-2 py-0.5 rounded-md`}
+                  >
+                    {module.difficulty}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs text-blue-400/90 hidden sm:block">Code editor</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 justify-end lg:shrink-0">
+            <div className="flex items-center gap-1.5 rounded-2xl bg-neutral-900/90 p-1">
+              <button
+                type="button"
+                onClick={handleRunCode}
+                className="inline-flex items-center justify-center gap-2 min-h-9 px-4 rounded-xl bg-blue-800/90 text-blue-100 text-xs font-semibold hover:bg-blue-700 transition-colors"
+              >
+                <FaPlay className="text-[9px]" /> Run
+              </button>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-blue-900 text-blue-200 hover:bg-blue-800 transition-colors"
+                title="Reset code"
+              >
+                <FaUndo className="text-xs" />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowTutorSidebar(!showTutorSidebar)}
+              className={`min-h-9 inline-flex items-center justify-center gap-2 px-4 rounded-xl text-xs font-semibold transition-colors ${
+                showTutorSidebar
+                  ? 'bg-blue-600 text-blue-50'
+                  : 'bg-blue-900 text-blue-200 hover:text-blue-50 hover:bg-blue-800'
+              }`}
+            >
+              <FaMagic className="text-[9px]" /> AI
+            </button>
+            <button
+              type="button"
+              onClick={handleCompleteModule}
+              disabled={!allStepsVerified}
+              className="min-h-9 inline-flex items-center justify-center gap-2 px-5 rounded-xl bg-teal-700 text-teal-50 text-xs font-bold hover:bg-teal-600 transition-colors disabled:bg-neutral-800 disabled:text-blue-500 disabled:cursor-not-allowed"
+            >
+              <FaCheck className="text-[9px]" /> Complete
+            </button>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {pointFloater && (
+            <motion.span
+              key={pointFloater.id}
+              initial={{ opacity: 1, y: 0, scale: 1.1 }}
+              animate={{ opacity: 0, y: -48, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.2, ease: 'easeOut' }}
+              className="absolute right-6 sm:right-10 top-4 flex items-center gap-1 text-amber-400/90 font-bold text-sm pointer-events-none"
+            >
+              <FaStar className="text-[10px]" /> +{pointFloater.amount}
+            </motion.span>
+          )}
+        </AnimatePresence>
+
+        {/* Row 2 — progress + session stats (mobile: stats scroll below segments) */}
+        <div className="px-4 sm:px-6 py-3 border-t border-neutral-800/80 bg-neutral-900/40">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5 min-w-0">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <span className="shrink-0 text-[10px] font-semibold text-blue-500 uppercase tracking-[0.2em]">
+                Progress
+              </span>
+              <span className="shrink-0 text-sm font-semibold text-blue-100 tabular-nums">
+                {verifiedCount}/{steps.length}
+              </span>
+              <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
+                <div className="flex items-center gap-1.5 justify-start min-w-max sm:justify-center py-0.5">
+                  {steps.map((_, i) => {
+                    const justVerified = i === lastVerifiedStepIndex;
+                    return (
+                      <motion.div
+                        key={i}
+                        className={`h-2.5 rounded-full transition-all duration-300 shrink-0 ${
+                          steps.length <= 6 ? 'w-9' : 'w-5'
+                        } ${
+                          stepsVerified[i]
+                            ? 'bg-emerald-700'
+                            : i === currentStepIndex
+                              ? 'bg-teal-600'
+                              : 'bg-neutral-800'
+                        } ${justVerified ? 'shadow-[0_0_10px_rgba(16,185,129,0.25)]' : ''}`}
+                        animate={justVerified ? { scale: [1, 1.2, 1] } : {}}
+                        transition={{ duration: 0.4 }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 sm:gap-4 shrink-0 overflow-x-auto scrollbar-hide pb-0.5 sm:pb-0 sm:pl-4 sm:border-l border-neutral-800">
+              <motion.span
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-200 whitespace-nowrap"
+                animate={pointsJustEarned ? { scale: [1, 1.06, 1] } : {}}
+                transition={{ duration: 0.35 }}
+              >
+                <FaStar className="text-amber-500/80 text-[11px]" /> {points}
+              </motion.span>
+              <span className="text-neutral-700 hidden sm:inline" aria-hidden>
+                |
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-300 whitespace-nowrap">
+                <FaFire className="text-orange-400 text-[11px]" /> {streak}
+              </span>
+              <span className="text-neutral-700 hidden sm:inline" aria-hidden>
+                |
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-300 whitespace-nowrap">
+                <FaCode className="text-teal-500/90 text-[11px]" /> {codeChanges}
+              </span>
+            </div>
+          </div>
+        </div>
+      </motion.header>
+
+      {/* Floating gamified messages (errors fixed, etc.) */}
+      <div className="fixed left-1/2 -translate-x-1/2 top-28 sm:top-32 z-[100] flex flex-col items-center gap-2 pointer-events-none">
+        <AnimatePresence>
+          {floatingMessages.map((m) => (
+            <motion.div
+              key={m.id}
+              initial={{ opacity: 0, y: 0, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -24, scale: 0.95 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg ${
+                m.type === 'success'
+                  ? 'bg-teal-900/95 text-teal-100 shadow-md shadow-black/40'
+                  : m.type === 'error'
+                    ? 'bg-red-900/90 text-red-100 shadow-md shadow-black/40'
+                    : 'bg-blue-900/90 text-blue-100 shadow-md shadow-black/40'
+              }`}
+            >
+              {m.type === 'success' && <FaCheckCircle className="text-base shrink-0" />}
+              {m.type === 'error' && <FaExclamationTriangle className="text-base shrink-0" />}
+              <span>{m.text}</span>
+              {m.points != null && (
+                <span className="shrink-0 flex items-center gap-1 bg-neutral-900 px-2 py-0.5 rounded-full text-xs">
+                  <FaStar className="text-[10px]" /> +{m.points}
+                </span>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* ─── MAIN CONTENT ─── */}
+      <motion.div
+        className="flex-1 flex overflow-hidden min-h-0 relative"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.25 }}
+      >
+        {/* ─── LEFT PANEL (resizable) ─── */}
+        <motion.aside
+          className="flex flex-col shrink-0 min-h-0 bg-neutral-900 border-r border-neutral-800/60"
+          style={{ width: leftPanelWidth }}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ type: 'spring', damping: 24, stiffness: 300 }}
+        >
+          {/* Lesson overview (collapsible) – clear, readable block */}
+          <motion.div
+            className="shrink-0 bg-neutral-900"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.05 }}
+          >
+            <button
+              onClick={() => setShowOverview(!showOverview)}
+              className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-semibold text-blue-100 hover:bg-neutral-900/80 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <FaBookOpen className="text-blue-200" /> Lesson Overview
+              </span>
+              {showOverview ? (
+                <FaChevronUp className="text-xs" />
+              ) : (
+                <FaChevronDown className="text-xs" />
+              )}
+            </button>
+            <AnimatePresence>
+              {showOverview && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-5 pb-5 max-h-[400px] overflow-y-auto scrollbar-hide">
+                    <button
+                      onClick={() => {
+                        setLectureSlideIndex(0);
+                        setShowOverviewPopup(true);
+                      }}
+                      className="w-full mb-3 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-teal-800/90 text-teal-100 text-xs font-semibold hover:bg-teal-700 transition-colors"
+                    >
+                      <FaBookOpen className="text-xs" /> Open Lecture
+                    </button>
+                    <div className="text-sm text-blue-100 leading-relaxed tracking-tight">
+                      <MarkdownContent content={module.content} />
+                    </div>
+                    {module.hints?.length > 0 && (
+                      <div className="mt-4 pt-3">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-blue-300 mb-2">
+                          Hints
+                        </p>
+                        <ul className="list-disc pl-4 space-y-1.5 text-sm text-blue-200">
+                          {module.hints.map((h, i) => (
+                            <li key={i}>{h}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+
+          {/* Step-by-step tracker */}
+          <motion.div
+            className="flex-1 overflow-y-auto scrollbar-hide min-h-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.08 }}
+          >
+            <div className="px-5 py-4">
+              <motion.h3
+                className="text-[10px] font-bold uppercase tracking-[0.15em] text-blue-500 mb-4"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                Steps
+              </motion.h3>
+              <div className="space-y-2">
+                {steps.map((step, i) => {
+                  const verified = stepsVerified[i];
+                  const isCurrent = i === currentStepIndex;
+                  const justVerified = i === lastVerifiedStepIndex;
+                  const locked = i > currentStepIndex && !verified;
+                  const failedFeedback = stepFailureFeedback[i];
+                  return (
+                    <motion.div
+                      key={step.id}
+                      className={`flex gap-2.5 items-start rounded-md transition-colors duration-300 ${justVerified ? 'bg-emerald-800/90' : ''}`}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.12 + i * 0.04 }}
+                    >
+                      {/* Vertical line + circle */}
+                      <div className="flex flex-col items-center shrink-0 pt-0.5">
+                        <motion.div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
+                            verified
+                              ? 'bg-emerald-800/90 text-emerald-50 shadow-sm shadow-black/30'
+                              : isCurrent
+                                ? 'bg-teal-700 text-teal-50 shadow-sm shadow-black/30'
+                                : failedFeedback
+                                  ? 'bg-blue-700 text-blue-100'
+                                  : 'bg-neutral-900 text-blue-400'
+                          } ${justVerified ? 'shadow-[0_0_10px_rgba(74,222,128,0.5)]' : ''}`}
+                          animate={justVerified ? { scale: [1, 1.35, 1] } : {}}
+                          transition={{ duration: 0.35 }}
+                        >
+                          {verified ? (
+                            <FaCheck className="text-[8px]" />
+                          ) : failedFeedback ? (
+                            <FaTimes className="text-[8px]" />
+                          ) : (
+                            i + 1
+                          )}
+                        </motion.div>
+                        {i < steps.length - 1 && (
+                          <div
+                            className={`w-0.5 h-4 mt-1 rounded-full ${verified ? 'bg-emerald-800/90' : 'bg-neutral-800'}`}
+                          />
+                        )}
+                      </div>
+                      {/* Step content */}
+                      <button
+                        onClick={() => !locked && goToStep(i)}
+                        disabled={locked}
+                        className={`flex-1 text-left pb-2 min-w-0 transition-colors ${
+                          locked ? 'cursor-not-allowed text-blue-400' : 'hover:text-blue-50'
+                        }`}
+                      >
+                        <p
+                          className={`text-xs font-medium leading-tight truncate ${
+                            isCurrent
+                              ? 'text-teal-400/90'
+                              : verified
+                                ? 'text-emerald-400/90'
+                                : failedFeedback
+                                  ? 'text-blue-200'
+                                  : 'text-blue-200'
+                          } ${failedFeedback && !isCurrent ? 'line-through' : ''}`}
+                        >
+                          {step.title}
+                        </p>
+                        {failedFeedback && (
+                          <p className="text-[10px] text-blue-200 mt-0.5 line-clamp-2">
+                            {failedFeedback}
+                          </p>
+                        )}
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Achievements panel (collapsible) */}
+            <motion.div
+              className="mx-4 mb-3"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <button
+                onClick={() => setShowAchievements(!showAchievements)}
+                className="w-full flex items-center justify-between py-2 text-xs font-semibold text-blue-300 hover:text-blue-100 transition"
+              >
+                <span className="flex items-center gap-2">
+                  <FaTrophy className="text-neon-gold" />
+                  Achievements
+                  <span className="text-[10px] font-bold text-neon-gold">
+                    {earnedAchievements.length}/{achievements.length}
+                  </span>
+                </span>
+                {showAchievements ? (
+                  <FaChevronUp className="text-[10px]" />
+                ) : (
+                  <FaChevronDown className="text-[10px]" />
+                )}
+              </button>
+              <AnimatePresence>
+                {showAchievements && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-2 gap-2 pb-3 max-h-[240px] overflow-y-auto scrollbar-hide">
+                      {achievements.map((ach, idx) => (
+                        <motion.div
+                          key={ach.id}
+                          initial={{ opacity: 0, scale: 0.92 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.05 + idx * 0.04 }}
+                          className={`rounded-xl p-2 flex flex-col items-center text-center gap-1 transition-colors ${
+                            ach.earned
+                              ? 'bg-blue-900'
+                              : 'bg-blue-900'
+                          }`}
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center ${ach.earned ? 'bg-neon-gold' : 'bg-neutral-900'}`}
+                          >
+                            {ach.earned ? (
+                              renderAchievementIcon(ach.icon, ach.name, 'w-4 h-4 text-neon-gold')
+                            ) : (
+                              <FaLock className="text-[10px] text-blue-400" />
+                            )}
+                          </div>
+                          <p
+                            className={`text-[10px] font-semibold leading-tight line-clamp-2 ${ach.earned ? 'text-blue-100' : 'text-blue-400'}`}
+                          >
+                            {ach.name}
+                          </p>
+                          {ach.earned && ach.points && (
+                            <span className="text-[9px] text-neon-gold">+{ach.points} pts</span>
+                          )}
+                        </motion.div>
+                      ))}
+                      {achievements.length === 0 && (
+                        <p className="col-span-2 text-[11px] text-blue-400 italic py-2">
+                          Complete steps to earn achievements
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </motion.div>
+
+          {/* Left bottom: MCQ (when active) OR Step card + Check my code */}
+          <div className="bg-neutral-900 border-t border-neutral-900 px-5 py-4 shrink-0 space-y-3 min-h-0">
+            <AnimatePresence mode="wait">
+              {mcqGateForStep !== null ? (
+                <motion.div
+                  key="mcq-bottom"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+                  className="rounded-xl bg-neutral-900 p-3 space-y-2 shadow-inner shadow-black"
+                >
+                  <h4 className="text-xs font-bold text-blue-100 flex items-center gap-1.5">
+                    <FaBolt className="text-blue-400" /> Concept Check
+                  </h4>
+                  {mcqLoading ? (
+                    <div
+                      className="flex items-center gap-2 text-[11px] text-blue-300"
+                      role="status"
+                      aria-label="Preparing quiz"
+                    >
+                      <div
+                        className="h-3 w-3 rounded-full border-2 border-blue-300 border-t-transparent animate-spin"
+                        aria-hidden
+                      />
+                      Preparing your quiz…
+                    </div>
+                  ) : mcqQuestions.length > 0 ? (
+                    <>
+                      <p className="text-[11px] text-blue-100 leading-relaxed">
+                        <span className="text-blue-200 font-semibold">
+                          Q{mcqCurrentIndex + 1}/{mcqQuestions.length}:
+                        </span>{' '}
+                        {mcqQuestions[mcqCurrentIndex]?.question}
+                      </p>
+                      {mcqErrorsByQuestion[mcqCurrentIndex] && (
+                        <div className="rounded-lg bg-blue-700 text-blue-100 p-2 text-[11px]">
+                          {mcqErrorsByQuestion[mcqCurrentIndex]}
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        {mcqQuestions[mcqCurrentIndex]?.options?.map((opt, idx) => (
+                          <motion.button
+                            key={idx}
+                            type="button"
+                            onClick={() => setMcqSelectedIndex(idx)}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] transition ${
+                              mcqSelectedIndex === idx
+                                ? 'bg-blue-500 text-blue-50 shadow-sm shadow-black'
+                                : 'bg-neutral-900 text-blue-200 hover:bg-neutral-800'
+                            }`}
+                          >
+                            {opt}
+                          </motion.button>
+                        ))}
+                      </div>
+                      <AnimatePresence mode="wait">
+                        {mcqResult && mcqResult.correct && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className={`overflow-hidden rounded-lg p-2 text-[11px] ${mcqResult.correct ? 'bg-blue-500 text-white' : 'bg-blue-700 text-white'}`}
+                          >
+                            {mcqResult.explanation}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleMCQSubmit}
+                          disabled={mcqVerifyLoading || mcqSelectedIndex == null}
+                          className="flex-1 py-1.5 rounded-xl bg-teal-800 text-teal-50 text-xs font-bold shadow-md shadow-black/30 hover:bg-teal-700 disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
+                        >
+                          {mcqVerifyLoading ? 'Checking your answer…' : 'Check answer'}
+                        </button>
+                        {mcqPassedCount === mcqQuestions.length && mcqQuestions.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleMCQNextStep}
+                            className="flex-1 py-1.5 rounded-lg bg-emerald-800/90 text-emerald-50 text-xs font-bold hover:bg-emerald-700/90 transition flex items-center justify-center gap-1"
+                          >
+                            Next <FaChevronRight className="text-[8px]" />
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleMCQNextStep}
+                      className="w-full py-1.5 rounded-lg bg-neutral-800 text-blue-200 text-xs hover:bg-neutral-700 transition"
+                    >
+                      Skip to next step
+                    </button>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="step-card-bottom"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+                  className="space-y-2"
+                >
+                  <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-blue-400/90 mb-1.5 font-bold">
+                      Step {currentStepIndex + 1} of {steps.length}
+                    </p>
+                    {currentStep?.title && (
+                      <p className="text-sm font-medium text-blue-100 mb-2 leading-snug">{currentStep.title}</p>
+                    )}
+                    <p className="text-[13px] text-blue-300 leading-relaxed line-clamp-4">
+                      {currentStep?.instruction ?? currentStep?.title ?? 'Complete this step.'}
+                    </p>
+                    {currentStep?.concept && (
+                      <p className="text-[10px] text-teal-400/90 mt-1.5 italic pl-2 line-clamp-2 bg-neutral-900 rounded-md py-0.5">
+                        {currentStep.concept}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleVerifyCode}
+                    disabled={verifyLoading}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-teal-800 text-teal-50 text-xs font-bold shadow-md shadow-black/30 hover:bg-teal-700 disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
+                  >
+                    {verifyLoading ? (
+                      <>
+                        <div
+                          className="h-3 w-3 rounded-full border-2 border-teal-300/50 border-t-teal-200 animate-spin"
+                          aria-hidden
+                        />
+                        Checking your code…
+                      </>
+                    ) : (
+                      <>
+                        <FaCheck className="text-[9px]" /> Check my code
+                      </>
+                    )}
+                  </button>
+                  {(verifyPassed || stepsVerified[currentStepIndex]) &&
+                    currentStepIndex < steps.length - 1 && (
+                      <button
+                        type="button"
+                        onClick={handleNextStep}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-blue-800 text-blue-200 text-xs font-bold hover:bg-blue-700 transition-colors"
+                      >
+                        Next step <FaChevronRight className="text-[8px]" />
+                      </button>
+                    )}
+                  <AnimatePresence>
+                    {verifyFeedback && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className={`rounded-lg p-2 text-[11px] leading-relaxed ${
+                          verifyPassed
+                            ? 'bg-emerald-800/90 text-emerald-50'
+                            : 'bg-blue-600 text-white'
+                        }`}
+                      >
+                        {verifyFeedback}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.aside>
+
+        {/* Left panel resize handle — wide hit target + pointer capture for smooth shrink/expand over editor */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuemin={200}
+          aria-valuemax={520}
+          aria-valuenow={leftPanelWidth}
+          onPointerDown={handleLeftResizePointerDown}
+          onPointerMove={handleLeftResizePointerMove}
+          onPointerUp={handleLeftResizePointerUp}
+          onPointerCancel={handleLeftResizePointerUp}
+          onLostPointerCapture={handleResizeLostCapture}
+          className="relative z-20 flex w-3 shrink-0 cursor-col-resize touch-none select-none justify-center hover:[&>div]:bg-teal-600 active:[&>div]:bg-teal-600"
+          title="Drag to resize lesson panel"
+        >
+          <div className="pointer-events-none w-px h-full bg-neutral-700 transition-colors" />
+        </div>
+
+        {/* ─── CENTER: CODE EDITOR ─── */}
+        <motion.div
+          className="flex-1 flex flex-col min-w-0 min-h-0 bg-neutral-900"
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ type: 'spring', damping: 24, stiffness: 300, delay: 0.06 }}
+        >
+          {/* File tabs */}
+          <motion.div
+            className="flex items-center bg-neutral-900 border-b border-neutral-800/60 shrink-0 px-1 pt-1 gap-0.5"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            {moduleConfig.tabs.map((tab, idx) => (
+              <motion.button
+                key={tab}
+                initial={{ opacity: 0, y: -2 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12 + idx * 0.03 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={`px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition rounded-t-lg ${
+                  activeTab === tab
+                    ? 'text-white bg-teal-700'
+                    : 'text-blue-400/85 hover:text-blue-100 hover:bg-neutral-900/80'
+                }`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab === 'jsx' && <FaReact className="text-blue-400 text-xs" />}
+                {tab === 'server' && <FaServer className="text-blue-400 text-xs" />}
+                {tab === 'server' ? 'SERVER.JS' : tab.toUpperCase()}
+              </motion.button>
+            ))}
+            {isReactModule && (
+              <span className="ml-auto mr-3 flex items-center gap-1 text-[10px] text-blue-400">
+                <FaReact /> React
+              </span>
+            )}
+            {isMultiplayerModule && (
+              <span className="ml-auto mr-3 flex items-center gap-1 text-[10px] text-blue-500">
+                <FaUsers /> Multiplayer
+              </span>
+            )}
+          </motion.div>
+          {/* Editor + floating step guide */}
+          <motion.div
+            className="flex-1 overflow-hidden bg-neutral-900/35 relative"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.15 }}
+          >
+            {/* Floating step guide */}
+            <AnimatePresence>
+              {showStepGuide && currentStep && (
+                <motion.div
+                  key={`guide-${currentStepIndex}`}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 12 }}
+                  transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+                  className="absolute bottom-4 right-4 left-4 sm:left-auto z-30 w-auto max-w-full sm:max-w-md rounded-2xl border border-neutral-800 bg-neutral-900 shadow-2xl shadow-black overflow-hidden"
+                >
+                  <div className="flex items-start gap-3 p-4">
+                    <div className="shrink-0 w-9 h-9 rounded-xl bg-teal-700 flex items-center justify-center">
+                      <FaLightbulb className="text-teal-100 text-sm" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className="rounded-full bg-neutral-900 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-teal-400/90">
+                          Step {currentStepIndex + 1}/{steps.length}
+                        </span>
+                        <span className="text-sm font-medium text-blue-50 leading-snug">
+                          {currentStep.title}
+                        </span>
+                      </div>
+                      <p className="text-[13px] text-blue-300 leading-relaxed mb-2">
+                        {currentStep.instruction || currentStep.title}
+                      </p>
+                      {currentStep.concept && (
+                        <p className="text-xs text-teal-400/90 bg-neutral-900 rounded-lg px-3 py-2 leading-relaxed">
+                          {currentStep.concept}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setShowStepGuide(false)}
+                      className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-blue-500 hover:text-blue-100 hover:bg-neutral-900 transition"
+                      aria-label="Close step guide"
+                    >
+                      <FaTimes className="text-xs" />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {/* Re-show guide button (when dismissed) */}
+            {!showStepGuide && currentStep && !allStepsVerified && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: 'spring', damping: 20 }}
+                onClick={() => setShowStepGuide(true)}
+                className="absolute bottom-4 right-4 z-30 flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-xs font-semibold text-teal-400/90 hover:bg-neutral-900 transition shadow-lg shadow-black"
+                title="Show step guide"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <FaLightbulb className="text-[9px]" /> Step {currentStepIndex + 1}
+              </motion.button>
+            )}
+            {activeTab === 'html' && (
+              <CodeMirror
+                key={`html-${editorKey}`}
+                value={codeRefs.current.html}
+                height="100%"
+                theme={vscodeDark}
+                extensions={extHtml}
+                onCreateEditor={onEditorCreate}
+                onChange={onChangeHtml}
+                basicSetup={{ lineNumbers: true, completionKeymap: true }}
+              />
+            )}
+            {activeTab === 'css' && (
+              <CodeMirror
+                key={`css-${editorKey}`}
+                value={codeRefs.current.css}
+                height="100%"
+                theme={vscodeDark}
+                extensions={extCss}
+                onCreateEditor={onEditorCreate}
+                onChange={onChangeCss}
+                basicSetup={{ lineNumbers: true, completionKeymap: true }}
+              />
+            )}
+            {activeTab === 'js' && (
+              <CodeMirror
+                key={`js-${editorKey}`}
+                value={codeRefs.current.js}
+                height="100%"
+                theme={vscodeDark}
+                extensions={extJs}
+                onCreateEditor={onEditorCreate}
+                onChange={onChangeJs}
+                basicSetup={{ lineNumbers: true, completionKeymap: true }}
+              />
+            )}
+            {activeTab === 'jsx' && (
+              <CodeMirror
+                key={`jsx-${editorKey}`}
+                value={codeRefs.current.jsx}
+                height="100%"
+                theme={vscodeDark}
+                extensions={extJsx}
+                onCreateEditor={onEditorCreate}
+                onChange={onChangeJsx}
+                basicSetup={{ lineNumbers: true, completionKeymap: true }}
+              />
+            )}
+            {activeTab === 'server' && (
+              <CodeMirror
+                key={`server-${editorKey}`}
+                value={codeRefs.current.server}
+                height="100%"
+                theme={vscodeDark}
+                extensions={extServer}
+                onCreateEditor={onEditorCreate}
+                onChange={onChangeServer}
+                basicSetup={{ lineNumbers: true, completionKeymap: true }}
+              />
+            )}
+          </motion.div>
+
+          {/* Code errors panel - shows runtime/console errors below the editor; "All clear!" when fixed */}
+          <AnimatePresence mode="wait">
+            {showAllClear ? (
+              <motion.div
+                key="all-clear"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ type: 'spring', damping: 20 }}
+                className="shrink-0 bg-neutral-900 px-3 py-3 flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.2)]"
+              >
+                <span className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
+                  <FaCheckCircle className="text-blue-400 text-sm" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-blue-100">All clear!</p>
+                  <p className="text-[10px] text-blue-200">
+                    No errors in this run. Keep going!
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold text-black bg-blue-400 px-2 py-0.5 rounded-full">
+                  +10
+                </span>
+              </motion.div>
+            ) : recentErrors.length > 0 ? (
+              <div className="shrink-0 bg-neutral-900 shadow-[0_-4px_20px_rgba(0,0,0,0.15)]">
+                <div className="flex items-center justify-between px-3 py-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200 flex items-center gap-1.5">
+                    <FaExclamationTriangle className="text-blue-300" /> Errors ({recentErrors.length}
+                    )
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearConsole}
+                    className="text-[9px] font-semibold text-blue-200 hover:text-blue-100 transition"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <ul className="max-h-24 overflow-y-auto scrollbar-hide px-3 py-2 space-y-1.5">
+                  {recentErrors.map((msg, i) => (
+                    <li
+                      key={`editor-err-${i}`}
+                      className="flex items-start gap-2 text-[11px] rounded-lg bg-blue-700 px-2 py-1.5"
+                    >
+                      <span className="shrink-0 w-5 h-5 rounded bg-blue-600 text-blue-50 flex items-center justify-center text-[10px] font-bold">
+                        !
+                      </span>
+                      <span className="text-blue-100 break-words flex-1 min-w-0 font-medium">
+                        {msg}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleExplainErrorClick(msg)}
+                        disabled={explainErrorLoading}
+                        className="shrink-0 rounded-md px-2 py-0.5 text-[9px] font-bold bg-blue-600 text-blue-50 hover:bg-blue-500 disabled:bg-blue-700 disabled:text-blue-300 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Explain
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Right panel resize handle — pointer capture so dragging across preview iframe still works */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuemin={260}
+          aria-valuemax={900}
+          aria-valuenow={rightPanelWidth}
+          onPointerDown={handleRightResizePointerDown}
+          onPointerMove={handleRightResizePointerMove}
+          onPointerUp={handleRightResizePointerUp}
+          onPointerCancel={handleRightResizePointerUp}
+          onLostPointerCapture={handleResizeLostCapture}
+          className="relative z-20 flex w-3 shrink-0 cursor-col-resize touch-none select-none justify-center hover:[&>div]:bg-teal-600 active:[&>div]:bg-teal-600"
+          title="Drag to resize preview panel"
+        >
+          <div className="pointer-events-none w-px h-full bg-neutral-700 transition-colors" />
+        </div>
+
+        {/* ─── RIGHT: PREVIEW + CONSOLE (resizable) ─── */}
+        <motion.div
+          className="flex flex-col bg-neutral-900 border-l border-neutral-800/60 shrink-0 min-h-0"
+          style={{ width: rightPanelWidth }}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ type: 'spring', damping: 24, stiffness: 300, delay: 0.1 }}
+        >
+          {isMultiplayerModule ? (
+            <>
+              {/* Multiplayer preview tabs */}
+              <motion.div
+                className="flex bg-neutral-900 border-b border-neutral-800 shrink-0"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12 }}
+              >
+                {[
+                  {
+                    key: 'server',
+                    label: 'Server',
+                    activeClass: 'text-white bg-teal-700',
+                  },
+                  {
+                    key: 'player1',
+                    label: 'Client 1',
+                    activeClass: 'text-black bg-blue-300',
+                    icon: FaUser,
+                  },
+                  {
+                    key: 'player2',
+                    label: 'Client 2',
+                    activeClass: 'text-black bg-blue-200',
+                    icon: FaUser,
+                  },
+                ].map(({ key, label, activeClass, icon: Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => setActivePreviewTab(key)}
+                    className={`flex-1 flex items-center justify-center gap-1 px-2 py-2.5 text-[10px] font-semibold transition rounded-t-md ${
+                      activePreviewTab === key ? activeClass : 'text-blue-500 hover:text-blue-200 hover:bg-neutral-800'
+                    }`}
+                  >
+                    {Icon && <Icon className="text-[8px]" />} {label}
+                  </button>
+                ))}
+              </motion.div>
+              <div className="flex-1 flex flex-col bg-neutral-900 overflow-hidden min-h-0 relative">
+                {/* Keep all iframes mounted; use snapshot so code changes don't reload (new socket). Only Run/Reset update snapshot. */}
+                <iframe
+                  key={`server-${serverPreviewKey}`}
+                  srcDoc={multiplayerSnapshot?.server ?? getPreviewContent('server')}
+                  className={
+                    activePreviewTab === 'server'
+                      ? 'w-full flex-1 min-h-0 border-0'
+                      : 'absolute w-px h-px opacity-0 pointer-events-none overflow-hidden'
+                  }
+                  sandbox="allow-scripts allow-same-origin"
+                  title="Server"
+                />
+                <div
+                  className={
+                    activePreviewTab === 'player1'
+                      ? 'flex flex-col flex-1 min-h-0'
+                      : 'absolute w-px h-px opacity-0 pointer-events-none overflow-hidden'
+                  }
+                >
+                  <div className="px-2 py-1 bg-blue-700 text-blue-100 text-[10px] font-bold text-center shrink-0">
+                    Client 1
+                  </div>
+                  <iframe
+                    key={`p1-${player1PreviewKey}`}
+                    srcDoc={multiplayerSnapshot?.player1 ?? getPreviewContent('player1')}
+                    className="flex-1 w-full min-h-0 border-0"
+                    sandbox="allow-scripts allow-same-origin"
+                    title="Client 1"
+                  />
+                </div>
+                <div
+                  className={
+                    activePreviewTab === 'player2'
+                      ? 'flex flex-col flex-1 min-h-0'
+                      : 'absolute w-px h-px opacity-0 pointer-events-none overflow-hidden'
+                  }
+                >
+                  <div className="px-2 py-1 bg-blue-600 text-blue-100 text-[10px] font-bold text-center shrink-0">
+                    Client 2
+                  </div>
+                  <iframe
+                    key={`p2-${player2PreviewKey}`}
+                    srcDoc={multiplayerSnapshot?.player2 ?? getPreviewContent('player2')}
+                    className="flex-1 w-full min-h-0 border-0"
+                    sandbox="allow-scripts allow-same-origin"
+                    title="Client 2"
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Standard preview */}
+              <motion.div
+                className="flex items-center justify-between bg-neutral-900 border-b border-neutral-800 px-4 py-2.5 shrink-0"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12 }}
+              >
+                <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <FaPlay className="text-[8px] text-emerald-400/90" /> Preview
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-emerald-400/90 font-medium">Auto-refresh</span>
+                  <button
+                    onClick={openLivePreviewInNewTab}
+                    className="text-blue-400 hover:text-blue-100 text-[10px] transition"
+                    title="Open in new tab"
+                  >
+                    <FaExternalLinkAlt />
+                  </button>
+                </div>
+              </motion.div>
+              <iframe
+                key={previewKey}
+                className="flex-1 border-0 bg-neutral-900 w-full min-h-0"
+                title="preview"
+                srcDoc={getPreviewContent()}
+                sandbox="allow-scripts allow-same-origin"
+              />
+            </>
+          )}
+          {/* Console resize handle (when open) */}
+          {consoleOpen && (
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              aria-valuemin={72}
+              aria-valuemax={520}
+              aria-valuenow={consoleHeight}
+              onPointerDown={handleConsoleResizePointerDown}
+              onPointerMove={handleConsoleResizePointerMove}
+              onPointerUp={handleConsoleResizePointerUp}
+              onPointerCancel={handleConsoleResizePointerUp}
+              onLostPointerCapture={handleResizeLostCapture}
+              className="relative z-20 h-3 shrink-0 cursor-row-resize touch-none select-none flex items-center justify-center hover:[&>div]:bg-teal-600 active:[&>div]:bg-teal-600"
+              title="Drag to resize console"
+            >
+              <div className="pointer-events-none w-14 h-0.5 rounded-full bg-neutral-700 transition-colors" />
+            </div>
+          )}
+          {/* Console (resizable height when open); separate Server / Clients for multiplayer */}
+          <div
+            className="bg-neutral-900 flex flex-col shrink-0 shadow-[0_-4px_24px_rgba(0,0,0,0.25)]"
+            style={{ height: consoleOpen ? consoleHeight : 32 }}
+          >
+            <button
+              onClick={() => setConsoleOpen(!consoleOpen)}
+              className="flex items-center justify-between w-full px-3 py-1.5 text-[11px] font-bold text-blue-300 hover:bg-neutral-800 transition shrink-0"
+            >
+              <span className="flex items-center gap-2">
+                Console
+                {consoleLogs.length > 0 && (
+                  <span className="rounded-full bg-neutral-800 px-1.5 py-0 text-[9px] font-semibold text-blue-200">
+                    {consoleLogs.length}
+                  </span>
+                )}
+              </span>
+              <div className="flex items-center gap-2">
+                {consoleOpen && !isMultiplayerModule && (
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearConsole();
+                    }}
+                    className="text-[10px] text-blue-400 hover:text-blue-200 cursor-pointer"
+                  >
+                    Clear
+                  </span>
+                )}
+                {consoleOpen ? (
+                  <FaChevronDown className="text-[8px]" />
+                ) : (
+                  <FaChevronRight className="text-[8px]" />
+                )}
+              </div>
+            </button>
+            {consoleOpen &&
+              (isMultiplayerModule ? (
+                <div className="flex-1 flex min-h-0 overflow-hidden">
+                  <div className="flex-1 flex flex-col min-w-0 shadow-[inset_-1px_0_0_rgba(255,255,255,0.04)]">
+                    <div className="flex items-center justify-between px-2 py-1 bg-blue-700 shrink-0">
+                      <span className="text-[10px] font-bold text-blue-400">Server</span>
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearServerConsole();
+                        }}
+                        className="text-[10px] text-blue-400 hover:text-blue-200 cursor-pointer"
+                      >
+                        Clear
+                      </span>
+                    </div>
+                    <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 px-2 py-1 font-mono text-[11px] space-y-0.5">
+                      {serverLogs.length === 0 ? (
+                        <p className="text-blue-500 italic text-[10px] px-1">
+                          No server output yet.
+                        </p>
+                      ) : (
+                        serverLogs.map((entry, i) => (
+                          <div
+                            key={`s-${entry.timestamp}-${i}`}
+                            className={`flex gap-1.5 py-0.5 px-1.5 rounded ${
+                              entry.level === 'error'
+                                ? 'text-blue-100 bg-blue-700'
+                                : entry.level === 'warn'
+                                  ? 'text-blue-100 bg-blue-600'
+                                  : entry.level === 'info'
+                                    ? 'text-black bg-blue-400'
+                                    : 'text-blue-300 bg-white/[0.03]'
+                            }`}
+                          >
+                            <span className="shrink-0 opacity-50 text-[10px]">[{entry.level}]</span>
+                            <span className="break-all flex-1">{entry.message}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex items-center justify-between px-2 py-1 bg-blue-800 shrink-0">
+                      <span className="text-[10px] font-bold text-blue-200">Clients</span>
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearClientConsole();
+                        }}
+                        className="text-[10px] text-blue-400 hover:text-blue-200 cursor-pointer"
+                      >
+                        Clear
+                      </span>
+                    </div>
+                    <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 px-2 py-1 font-mono text-[11px] space-y-0.5">
+                      {clientLogs.length === 0 ? (
+                        <p className="text-blue-500 italic text-[10px] px-1">
+                          No client output yet.
+                        </p>
+                      ) : (
+                        clientLogs.map((entry, i) => (
+                          <div
+                            key={`c-${entry.timestamp}-${i}`}
+                            className={`flex gap-1.5 py-0.5 px-1.5 rounded ${
+                              entry.level === 'error'
+                                ? 'text-blue-100 bg-blue-700'
+                                : entry.level === 'warn'
+                                  ? 'text-blue-100 bg-blue-600'
+                                  : entry.level === 'info'
+                                    ? 'text-black bg-blue-400'
+                                    : 'text-blue-300 bg-white/[0.03]'
+                            }`}
+                          >
+                            <span className="shrink-0 opacity-50 text-[10px]">[{entry.level}]</span>
+                            <span className="break-all flex-1">{entry.message}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0 px-2 pb-2 font-mono text-[11px] space-y-0.5">
+                  {consoleLogs.length === 0 ? (
+                    <p className="text-blue-500 italic text-[10px] px-1">No console output yet.</p>
+                  ) : (
+                    consoleLogs.map((entry, i) => (
+                      <div
+                        key={`${entry.timestamp}-${i}`}
+                        className={`flex gap-1.5 py-0.5 px-1.5 rounded ${
+                          entry.level === 'error'
+                            ? 'text-blue-100 bg-blue-700'
+                            : entry.level === 'warn'
+                              ? 'text-blue-100 bg-blue-600'
+                              : entry.level === 'info'
+                                ? 'text-black bg-blue-400'
+                                : 'text-blue-300 bg-white/[0.03]'
+                        }`}
+                      >
+                        <span className="shrink-0 opacity-50 text-[10px]">[{entry.level}]</span>
+                        <span className="break-all flex-1">{entry.message}</span>
+                      </div>
+                    ))
                   )}
                 </div>
-              )}
-            </div>
-          </aside>
-        )}
-      </div>
+              ))}
+          </div>
+        </motion.div>
+
+        {/* ─── AI COMPANION SLIDE-OUT ─── */}
+        <AnimatePresence>
+          {showTutorSidebar && (
+            <motion.aside
+              initial={{ x: 320 }}
+              animate={{ x: 0 }}
+              exit={{ x: 320 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed top-28 sm:top-32 right-0 bottom-0 w-80 max-w-[90vw] z-50 flex flex-col bg-neutral-900 shadow-[-8px_0_32px_rgba(0,0,0,0.45)]"
+            >
+              <div className="flex items-center justify-between px-4 py-2.5 shrink-0 bg-neutral-900">
+                <h2 className="text-xs font-bold text-blue-50 flex items-center gap-2">
+                  <FaMagic className="text-blue-400" /> AI Companion
+                </h2>
+                <button
+                  onClick={() => setShowTutorSidebar(false)}
+                  className="w-6 h-6 rounded-md flex items-center justify-center text-blue-300 hover:text-blue-50 hover:bg-neutral-800 transition"
+                >
+                  <FaTimes className="text-[10px]" />
+                </button>
+              </div>
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                {/* Recent errors - gamified highlight */}
+                {recentErrors.length > 0 && (
+                  <div className="mx-3 mt-2 p-2.5 rounded-xl bg-blue-800 shrink-0 shadow-lg shadow-black">
+                    <p className="text-[9px] uppercase tracking-wider text-blue-200 font-bold mb-1.5 flex items-center gap-1.5">
+                      <FaExclamationTriangle className="text-blue-300" /> Errors
+                    </p>
+                    <ul className="space-y-1.5">
+                      {recentErrors.slice(-3).map((msg, i) => (
+                        <li
+                          key={`err-${i}`}
+                          className="flex items-start gap-1.5 rounded-lg bg-blue-700 px-2 py-1.5"
+                        >
+                          <span className="text-[10px] text-blue-100 break-words flex-1 min-w-0 line-clamp-2 font-medium">
+                            {msg}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleExplainErrorClick(msg)}
+                            disabled={explainErrorLoading}
+                            className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold bg-blue-600 text-blue-50 hover:bg-blue-500 disabled:bg-blue-700 disabled:text-blue-300 disabled:cursor-not-allowed transition-colors"
+                          >
+                            Explain
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {/* Message thread - highlighted code vs error explanations */}
+                <div className="flex-1 overflow-y-auto scrollbar-hide p-3 space-y-2">
+                  {companionMessages.length === 0 &&
+                    !explainCodeLoading &&
+                    !tutorLoading &&
+                    !explainErrorLoading && (
+                      <p className="text-[11px] text-blue-400 italic leading-relaxed">
+                        Ask a question, select code and click &quot;Explain&quot;, or paste an error
+                        message.
+                      </p>
+                    )}
+                  {companionMessages.map((msg) => {
+                    const isErrorExplanation =
+                      msg.type === 'explain' && msg.userLabel === 'Error explanation';
+                    const isCodeExplanation = msg.type === 'explain' && !isErrorExplanation;
+                    return (
+                      <motion.div
+                        key={msg.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`rounded-xl overflow-hidden ${
+                          isErrorExplanation
+                            ? 'bg-neutral-900 shadow-lg shadow-black'
+                            : isCodeExplanation
+                              ? 'bg-neutral-900 shadow-lg shadow-black'
+                              : 'bg-neutral-900 shadow-md shadow-black'
+                        }`}
+                      >
+                        <div
+                          className={`px-3 py-1.5 flex items-center justify-between gap-2 ${
+                            isErrorExplanation
+                              ? 'text-blue-100 bg-blue-900'
+                              : isCodeExplanation
+                                ? 'text-blue-200 bg-blue-800'
+                                : 'text-blue-400 bg-white/[0.03]'
+                          } text-[10px] font-semibold`}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            {isErrorExplanation && (
+                              <FaExclamationTriangle className="text-blue-300 shrink-0" />
+                            )}
+                            {isCodeExplanation && <FaMagic className="text-blue-400 shrink-0" />}
+                            {isErrorExplanation
+                              ? 'Error explanation'
+                              : isCodeExplanation
+                                ? 'Code explanation'
+                                : 'You'}
+                            {msg.type === 'hint' && msg.userLabel !== 'Step help' && (
+                              <span
+                                className="text-blue-500 truncate max-w-[80px]"
+                                title={msg.userLabel}
+                              >
+                                : {msg.userLabel}
+                              </span>
+                            )}
+                          </span>
+                          <span className="shrink-0 opacity-70">{msg.timestamp}</span>
+                        </div>
+                        <div className="p-3 text-xs leading-relaxed text-blue-100">
+                          <MarkdownContent content={msg.content} />
+                        </div>
+                        {msg.confidence != null && msg.type === 'hint' && (
+                          <div className="px-3 pb-2">
+                            <span className="rounded-full bg-neutral-900 px-2 py-0.5 text-[9px] text-blue-400">
+                              {msg.confidence >= 0.6
+                                ? 'Targeted'
+                                : msg.confidence >= 0.4
+                                  ? 'General'
+                                  : 'Needs context'}
+                            </span>
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                  {(explainCodeLoading || tutorLoading || explainErrorLoading) && (
+                    <div
+                      className="rounded-xl bg-blue-800 p-3 flex items-center gap-2 text-blue-200 shadow-inner shadow-black"
+                      role="status"
+                    >
+                      <div
+                        className="h-3.5 w-3.5 rounded-full border-2 border-blue-400 border-t-transparent animate-spin"
+                        aria-hidden
+                      />
+                      <span className="text-[11px]">
+                        {explainCodeLoading
+                          ? 'Explaining your code…'
+                          : tutorLoading
+                            ? 'Thinking of a hint…'
+                            : 'Explaining this error…'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {/* Quick actions + form */}
+                <div className="p-3 space-y-2 shrink-0 bg-neutral-900 shadow-[0_-6px_24px_rgba(0,0,0,0.3)]">
+                  <div className="flex gap-1.5">
+                    {lastError && (
+                      <button
+                        type="button"
+                        onClick={handleExplainLastError}
+                        disabled={explainErrorLoading}
+                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-xl bg-blue-800 text-blue-200 text-[10px] font-semibold hover:bg-blue-700 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Explain error
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleExplainSelection}
+                      disabled={explainCodeLoading}
+                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-xl bg-blue-700 text-blue-50 text-[10px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <FaMagic className="text-[8px]" /> Explain code
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {HINT_STYLES.map((s) => (
+                      <button
+                        key={s.value}
+                        type="button"
+                        className={`rounded-full px-2 py-0.5 text-[9px] font-semibold transition ${
+                          hintStyle === s.value
+                            ? 'bg-blue-500 text-black'
+                            : 'bg-neutral-900 text-blue-300 hover:bg-neutral-800'
+                        }`}
+                        onClick={() => setHintStyle(s.value)}
+                        title={s.description}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                  <form onSubmit={handleTutorSubmit} className="flex gap-1.5">
+                    <textarea
+                      className="flex-1 min-h-[36px] max-h-[80px] rounded-lg bg-neutral-900 p-2 text-[11px] text-blue-50 outline-none focus:ring-2 focus:ring-blue-400 resize-none shadow-inner shadow-black"
+                      value={tutorQuestion}
+                      onChange={(e) => setTutorQuestion(e.target.value)}
+                      placeholder="Ask a question about this step…"
+                      rows={1}
+                    />
+                    <button
+                      type="submit"
+                      disabled={tutorLoading || !tutorQuestion.trim()}
+                      className="shrink-0 w-9 h-9 rounded-xl bg-teal-800 text-teal-50 flex items-center justify-center shadow-md shadow-black/30 hover:bg-teal-700 disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed transition-all"
+                    >
+                      <FaChevronRight className="text-xs" />
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
       <ConfirmModal
         open={showResetConfirm}
-        title="Reset code?"
-        message="Reset to starter template? Step progress and session points will be cleared."
+        title="Reset your code?"
+        message="This will restore the starter template. Your step progress and points for this session will be cleared. You can continue from the dashboard later."
         onConfirm={confirmReset}
         onCancel={() => setShowResetConfirm(false)}
       />

@@ -2,7 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Hide scrollbars but keep scroll behavior */
+/* Vibrant ocean / cyan palette — high-energy but readable on dark UI */
+:root {
+  --color-blue-50-rgb: 236 252 255;
+  --color-blue-100-rgb: 204 240 255;
+  --color-blue-200-rgb: 150 225 252;
+  --color-blue-300-rgb: 94 205 250;
+  --color-blue-400-rgb: 56 220 240;
+  --color-blue-500-rgb: 14 184 214;
+  --color-blue-600-rgb: 8 145 178;
+  --color-blue-700-rgb: 12 116 150;
+  --color-blue-800-rgb: 26 58 100;
+  --color-blue-900-rgb: 14 38 72;
+  --color-blue-950-rgb: 8 20 48;
+
+  /* Semantic accents (success / caution / error) for clearer feedback */
+  --color-success-rgb: 52 211 153;
+  --color-warm-rgb: 251 191 36;
+  --color-danger-rgb: 251 113 133;
+  --color-orange-accent-rgb: 251 146 60;
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -21,9 +41,190 @@
     @apply scroll-smooth;
   }
   body {
-    @apply m-0 min-h-screen overflow-x-hidden font-sans antialiased text-gray-200 bg-gray-950;
+    @apply m-0 min-h-screen overflow-x-hidden font-sans antialiased bg-neutral-900 text-blue-100;
   }
   #root {
-    @apply min-h-screen;
+    @apply min-h-screen bg-neutral-900;
   }
+}
+
+/* Prevent autofill from turning inputs white – keep dark theme */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: rgb(var(--color-blue-50-rgb));
+  -webkit-box-shadow: 0 0 0 1000px rgb(23 23 23) inset;
+  box-shadow: 0 0 0 1000px rgb(23 23 23) inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Toastify — shell matches unified blue theme */
+.gamilearn-toast-container {
+  --toastify-toast-width: min(92vw, 400px);
+  --toastify-toast-bd-radius: 1rem;
+  --toastify-toast-padding: 0;
+  --toastify-toast-min-height: 3.25rem;
+  --toastify-toast-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  --toastify-font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --toastify-z-index: 10050;
+  --toastify-color-dark: rgb(var(--color-blue-800-rgb));
+  --toastify-text-color-dark: rgb(var(--color-blue-50-rgb));
+  width: min(92vw, 400px);
+}
+
+.gamilearn-toast-container .Toastify__toast {
+  overflow: hidden;
+  border: none;
+  background: linear-gradient(
+    145deg,
+    rgb(var(--color-blue-900-rgb)) 0%,
+    rgb(var(--color-blue-800-rgb)) 55%,
+    rgb(var(--color-blue-900-rgb)) 100%
+  );
+  color: rgb(var(--color-blue-50-rgb));
+  box-shadow: var(--toastify-toast-shadow);
+  backdrop-filter: blur(10px);
+  padding: 0.65rem 0.85rem 0.55rem 0.75rem;
+}
+
+.gamilearn-toast-container .Toastify__toast-theme--dark {
+  background: linear-gradient(
+    145deg,
+    rgb(var(--color-blue-900-rgb)) 0%,
+    rgb(var(--color-blue-800-rgb)) 55%,
+    rgb(var(--color-blue-900-rgb)) 100%
+  );
+  color: rgb(var(--color-blue-50-rgb));
+}
+
+.gamilearn-toast {
+  border-radius: var(--toastify-toast-bd-radius, 1rem) !important;
+}
+
+.gamilearn-toast.Toastify__toast--success {
+  box-shadow: var(--toastify-toast-shadow), 0 0 28px rgba(var(--color-success-rgb), 0.2);
+}
+
+.gamilearn-toast.Toastify__toast--error {
+  box-shadow: var(--toastify-toast-shadow), 0 0 28px rgba(var(--color-danger-rgb), 0.18);
+}
+
+.gamilearn-toast.Toastify__toast--warning {
+  box-shadow: var(--toastify-toast-shadow), 0 0 28px rgba(var(--color-warm-rgb), 0.16);
+}
+
+.gamilearn-toast.Toastify__toast--info {
+  box-shadow: var(--toastify-toast-shadow), 0 0 24px rgba(var(--color-blue-400-rgb), 0.16);
+}
+
+.gamilearn-toast-body {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  padding: 0.15rem 2rem 0.15rem 0;
+  margin: 0;
+  font-weight: 500;
+  color: rgb(var(--color-blue-50-rgb));
+}
+
+.gamilearn-toast-container .Toastify__toast-icon {
+  margin-inline-end: 0.65rem;
+  width: 1.35rem;
+}
+
+.gamilearn-toast-container .Toastify__toast--success .Toastify__toast-icon svg {
+  fill: rgb(var(--color-success-rgb));
+}
+
+.gamilearn-toast-container .Toastify__toast--error .Toastify__toast-icon svg {
+  fill: rgb(var(--color-danger-rgb));
+}
+
+.gamilearn-toast-container .Toastify__toast--warning .Toastify__toast-icon svg {
+  fill: rgb(var(--color-warm-rgb));
+}
+
+.gamilearn-toast-container .Toastify__toast--info .Toastify__toast-icon svg {
+  fill: rgb(var(--color-blue-400-rgb));
+}
+
+.gamilearn-toast-container .Toastify__progress-bar--wrp {
+  height: 4px;
+}
+
+.gamilearn-toast-container .Toastify__progress-bar--bg {
+  background: rgba(255, 255, 255, 0.07) !important;
+  opacity: 1 !important;
+}
+
+.gamilearn-toast-progress {
+  opacity: 0.95 !important;
+}
+
+.gamilearn-toast-container .Toastify__progress-bar--success,
+.gamilearn-toast-progress.Toastify__progress-bar--success {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--color-success-rgb)),
+    rgb(var(--color-blue-400-rgb))
+  ) !important;
+}
+
+.gamilearn-toast-container .Toastify__progress-bar--error,
+.gamilearn-toast-progress.Toastify__progress-bar--error {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--color-danger-rgb)),
+    rgb(var(--color-blue-500-rgb))
+  ) !important;
+}
+
+.gamilearn-toast-container .Toastify__progress-bar--warning,
+.gamilearn-toast-progress.Toastify__progress-bar--warning {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--color-warm-rgb)),
+    rgb(var(--color-blue-200-rgb))
+  ) !important;
+}
+
+.gamilearn-toast-container .Toastify__progress-bar--info,
+.gamilearn-toast-progress.Toastify__progress-bar--info {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--color-blue-400-rgb)),
+    rgb(var(--color-blue-400-rgb))
+  ) !important;
+}
+
+.gamilearn-toast-container .Toastify__progress-bar-theme--dark {
+  background: rgba(var(--color-blue-400-rgb), 0.35);
+}
+
+.gamilearn-toast-container .Toastify__close-button {
+  color: rgb(var(--color-blue-300-rgb));
+  opacity: 1;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+.gamilearn-toast-container .Toastify__close-button:hover {
+  color: rgb(var(--color-blue-50-rgb));
+}
+
+@media only screen and (max-width: 480px) {
+  .gamilearn-toast-container .Toastify__toast {
+    --toastify-toast-width: calc(100vw - 1.25rem);
+    border-radius: 1rem !important;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Disable text selection/copy outside editor route */
+body.prevent-text-copy,
+body.prevent-text-copy * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }

@@ -1,4 +1,6 @@
 # Production-ready Dockerfile for backend (Node 20)
+# SECURITY: Override JWT_SECRET, MONGODB_URI, and any API keys at runtime (e.g. -e or secrets).
+# Do not rely on default env values in production.
 FROM node:20-alpine
 
 # Create app directory

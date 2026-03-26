@@ -1,24 +1,29 @@
 const User = require('../models/User');
-const { generateToken } = require('../utils/jwt');
-const { isAdminEmail } = require('../utils/admin');
+const Module = require('../models/Module');
+const { generateToken, signPasswordResetToken, verifyPasswordResetToken } = require('../utils/jwt');
+const { isAdmin } = require('../utils/admin');
+const { grantSignupAchievement } = require('../services/achievementService');
+
+// AI presets by learning path: applied at signup (Profile no longer exposes AI settings)
+const AI_PRESET_BY_PATH = {
+  'javascript-basics': { tone: 'friendly', hintDetail: 'detailed', assistanceFrequency: 'high' },
+  advanced: { tone: 'friendly', hintDetail: 'moderate', assistanceFrequency: 'normal' },
+};
 
 /**
  * POST /api/auth/signup - Register new user
  */
 async function signup(req, res) {
   try {
-    console.log('Signup request received:', { ...req.body, password: '[HIDDEN]' });
     const { name, email, password, knowsJavaScript } = req.body;
 
     if (!name || !email || !password || knowsJavaScript === undefined) {
-      console.log('Validation failed:', {
-        name: Boolean(name),
-        email: Boolean(email),
-        password: Boolean(password),
-        knowsJavaScript,
-      });
       return res.status(400).json({ message: 'Please provide all required fields' });
     }
+    if (typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+    console.log('[Auth] signup', { email });
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -26,23 +31,31 @@ async function signup(req, res) {
     }
 
     const learningPath = knowsJavaScript ? 'advanced' : 'javascript-basics';
+    const aiPreset = AI_PRESET_BY_PATH[learningPath] || AI_PRESET_BY_PATH['javascript-basics'];
     const user = new User({
       name,
       email,
       password,
       knowsJavaScript,
       learningPath,
+      aiPreferences: aiPreset,
     });
 
-    if (learningPath === 'javascript-basics') {
-      user.gameStudioEnabled = false;
-    }
-
-    if (learningPath === 'advanced') {
-      user.gameStudioEnabled = true;
-    }
-
     await user.save();
+
+    // Advanced path: auto-complete all javascript-basics modules so quest map shows game-development + multiplayer
+    if (learningPath === 'advanced') {
+      const jsBasicsModules = await Module.find({ category: 'javascript-basics' }).select('_id');
+      const now = new Date();
+      user.completedModules = jsBasicsModules.map((m) => ({
+        moduleId: m._id,
+        completedAt: now,
+      }));
+      await user.save();
+    }
+
+    await grantSignupAchievement(user._id);
+    console.log('[Auth] signup success', { userId: user._id?.toString(), email });
     const token = generateToken(user._id);
 
     const savedUser = await User.findById(user._id)
@@ -51,7 +64,7 @@ async function signup(req, res) {
       .populate('currentModule', 'title');
 
     const userPayload = savedUser.toObject();
-    userPayload.isAdmin = isAdminEmail(savedUser.email);
+    userPayload.isAdmin = isAdmin(savedUser);
 
     return res.status(201).json({
       message: 'User created successfully',
@@ -59,7 +72,7 @@ async function signup(req, res) {
       user: userPayload,
     });
   } catch (error) {
-    console.error('Signup error:', error);
+    console.error('[Auth] signup error', error.message);
     return res.status(500).json({ message: 'Server error during signup' });
   }
 }
@@ -74,6 +87,7 @@ async function login(req, res) {
     if (!email || !password) {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
+    console.log('[Auth] login', { email });
 
     const user = await User.findOne({ email });
     if (!user) {
@@ -86,13 +100,14 @@ async function login(req, res) {
     }
 
     const token = generateToken(user._id);
+    console.log('[Auth] login success', { userId: user._id?.toString(), email });
     const fullUser = await User.findById(user._id)
       .select('-password')
       .populate('completedModules.moduleId', 'title category')
       .populate('currentModule', 'title');
 
     const userPayload = fullUser.toObject();
-    userPayload.isAdmin = isAdminEmail(fullUser.email);
+    userPayload.isAdmin = isAdmin(fullUser);
 
     return res.json({
       message: 'Login successful',
@@ -100,12 +115,75 @@ async function login(req, res) {
       user: userPayload,
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('[Auth] login error', error.message);
     return res.status(500).json({ message: 'Server error during login' });
+  }
+}
+
+/**
+ * POST /api/auth/forgot-password - Request password reset. Body: { email }
+ * Returns a JWT reset token (1h) in the response; frontend stores it (no DB persistence).
+ */
+async function forgotPassword(req, res) {
+  try {
+    const email = (req.body.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ message: 'Valid email required' });
+    }
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.json({ message: 'If that email is registered, a reset link has been sent.' });
+    }
+    const resetToken = signPasswordResetToken(email);
+    return res.json({
+      message: 'If that email is registered, you can reset your password.',
+      resetToken,
+    });
+  } catch (error) {
+    console.error('[Auth] forgotPassword error', error.message);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+/**
+ * POST /api/auth/reset-password - Set new password with JWT reset token. Body: { token, newPassword }
+ * Token is verified (signature + expiry); no DB lookup.
+ */
+async function resetPassword(req, res) {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || typeof newPassword !== 'string') {
+      return res.status(400).json({ message: 'Token and new password required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+    let payload;
+    try {
+      payload = verifyPasswordResetToken(token);
+    } catch {
+      return res
+        .status(400)
+        .json({ message: 'Invalid or expired reset link. Please request a new one.' });
+    }
+    const user = await User.findOne({ email: payload.email });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid reset link' });
+    }
+    user.password = newPassword;
+    await user.save();
+    return res.json({
+      message: 'Password reset successfully. You can sign in with your new password.',
+    });
+  } catch (error) {
+    console.error('[Auth] resetPassword error', error.message);
+    return res.status(500).json({ message: 'Server error' });
   }
 }
 
 module.exports = {
   signup,
   login,
+  forgotPassword,
+  resetPassword,
 };
