@@ -1,6 +1,4 @@
 const User = require('../models/User');
-const Module = require('../models/Module');
-const Achievement = require('../models/Achievement');
 
 const POPULATE_OPTS = [
   { path: 'completedModules.moduleId', select: 'title category' },
@@ -148,75 +146,9 @@ async function deleteUser(req, res) {
   }
 }
 
-/**
- * GET /api/admin/stats - Aggregated platform statistics (admin only)
- */
-async function getStats(req, res) {
-  try {
-    const [users, modules, achievements] = await Promise.all([
-      User.find().select('totalPoints level learningPath role earnedAchievements createdAt'),
-      Module.find().select('category difficulty moduleType contentGenerated estimatedMinutes order'),
-      Achievement.find().select('rarity category points isActive'),
-    ]);
-
-    const totalUsers = users.length;
-    const adminCount = users.filter((u) => u.role === 'admin').length;
-    const totalXP = users.reduce((s, u) => s + (u.totalPoints || 0), 0);
-    const avgLevel =
-      totalUsers > 0
-        ? +(users.reduce((s, u) => s + (u.level || 1), 0) / totalUsers).toFixed(1)
-        : 0;
-
-    const topUsers = [...users]
-      .sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0))
-      .slice(0, 5)
-      .map((u) => ({
-        name: u.name || '(no name)',
-        totalPoints: u.totalPoints || 0,
-        level: u.level || 1,
-        achievements: (u.earnedAchievements || []).length,
-      }));
-
-    const pathBreakdown = {};
-    users.forEach((u) => {
-      const p = u.learningPath || 'none';
-      pathBreakdown[p] = (pathBreakdown[p] || 0) + 1;
-    });
-
-    const categoryBreakdown = {};
-    modules.forEach((m) => {
-      const c = m.category || 'unknown';
-      categoryBreakdown[c] = (categoryBreakdown[c] || 0) + 1;
-    });
-
-    const difficultyBreakdown = {};
-    modules.forEach((m) => {
-      const d = m.difficulty || 'beginner';
-      difficultyBreakdown[d] = (difficultyBreakdown[d] || 0) + 1;
-    });
-
-    const aiGenerated = modules.filter((m) => m.contentGenerated).length;
-
-    const rarityBreakdown = {};
-    achievements.forEach((a) => {
-      const r = a.rarity || 'common';
-      rarityBreakdown[r] = (rarityBreakdown[r] || 0) + 1;
-    });
-
-    return res.json({
-      users: { total: totalUsers, admins: adminCount, totalXP, avgLevel, pathBreakdown, topUsers },
-      modules: { total: modules.length, aiGenerated, categoryBreakdown, difficultyBreakdown },
-      achievements: { total: achievements.length, rarityBreakdown },
-    });
-  } catch (err) {
-    return res.status(500).json({ message: 'Server error' });
-  }
-}
-
 module.exports = {
   listUsers,
   getUserById,
   updateUser,
   deleteUser,
-  getStats,
 };

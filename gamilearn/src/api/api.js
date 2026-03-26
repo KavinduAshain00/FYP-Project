@@ -77,18 +77,14 @@ export const userAPI = {
 export const modulesAPI = {
   getAll: (category) =>
     dedupeGet("/modules", category && category !== "all" ? { category } : {}),
-  getById: (id) =>
-    api.get(`/modules/${id}`, { timeout: TUTOR_TIMEOUT }), // longer timeout for AI generation on first load
+  getById: (id) => dedupeGet(`/modules/${id}`),
   create: (data) => api.post("/modules", data),
   update: (id, data) => api.put(`/modules/${id}`, data),
   delete: (id) => api.delete(`/modules/${id}`),
-  regenerateContent: (id) =>
-    api.post(`/modules/${id}/regenerate`, {}, { timeout: TUTOR_TIMEOUT }),
 };
 
 // --- Admin ---
 export const adminAPI = {
-  getStats: () => dedupeGet("/admin/stats"),
   getUsers: () => dedupeGet("/admin/users"),
   getUser: (id) => dedupeGet(`/admin/users/${id}`),
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),

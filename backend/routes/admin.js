@@ -8,9 +8,6 @@ const adminController = require("../controllers/adminController");
 router.use(auth);
 router.use(requireAdmin);
 
-// Platform statistics
-router.get("/stats", adminController.getStats);
-
 // User management
 router.get("/users", adminController.listUsers);
 router.get("/users/:id", adminController.getUserById);
