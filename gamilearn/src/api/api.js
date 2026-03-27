@@ -2,13 +2,40 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+/** Fail fast when the API is down or unreachable (avoids hanging spinners and endless pending requests). */
+const REQUEST_TIMEOUT_MS = 20_000;
+
+if (import.meta.env.DEV && !API_URL) {
+  console.warn(
+    '[GamiLearn] VITE_API_URL is not set. Auth and API calls will go to the dev server origin and likely fail.'
+  );
+}
+
 // Create axios instance
 const api = axios.create({
   baseURL: API_URL,
+  timeout: REQUEST_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+/**
+ * User-facing message for failed requests (network, timeout, or no response).
+ * Vite dev "send was called before connect" comes from the HMR client, not axios.
+ */
+export function getNetworkErrorMessage(error, fallback = 'Something went wrong. Please try again.') {
+  if (!error) return fallback;
+  if (error.code === 'ERR_CANCELED' || error.name === 'CanceledError') return fallback;
+  if (error.code === 'ECONNABORTED' || /timeout/i.test(error.message || '')) {
+    return `The server did not respond in time (${REQUEST_TIMEOUT_MS / 1000}s). Check that the API is running and VITE_API_URL is correct.`;
+  }
+  if (error.response?.data?.message) return String(error.response.data.message);
+  if (!error.response) {
+    return 'Cannot reach the server. Start the backend and confirm VITE_API_URL in your .env matches it.';
+  }
+  return fallback;
+}
 
 // Add token to requests if available
 api.interceptors.request.use((config) => {
@@ -52,7 +79,7 @@ export function invalidateAvatarsCache() {
 
 // User API
 export const userAPI = {
-  getProfile: () => api.get('/user/profile'),
+  getProfile: (config = {}) => api.get('/user/profile', config),
   getDashboard: () => api.get('/user/dashboard'),
   /** Fetches avatars once and caches in localStorage; use invalidateAvatarsCache() on logout or when level/achievements change. */
   async getAvatars() {

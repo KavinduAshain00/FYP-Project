@@ -15,6 +15,7 @@ import {
   FaGamepad,
 } from 'react-icons/fa';
 import { GameLayout } from '../components/layout/GameLayout';
+import { getNetworkErrorMessage } from '../api/api';
 
 const ease = [0.25, 0.1, 0.25, 1];
 
@@ -57,7 +58,6 @@ const Signup = () => {
       if (!formData.name.trim() || !formData.email.trim() || !formData.password) {
         setError('Please complete all required fields');
         setStep(1);
-        setLoading(false);
         return;
       }
       const user = await signup(
@@ -73,8 +73,9 @@ const Signup = () => {
       }
     } catch (err) {
       console.error('Signup error:', err);
-      setError(err.response?.data?.message || err.message || 'Signup failed. Please try again.');
+      setError(getNetworkErrorMessage(err, 'Signup failed. Please try again.'));
       setStep(1);
+    } finally {
       setLoading(false);
     }
   };

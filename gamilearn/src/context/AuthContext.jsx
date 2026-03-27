@@ -23,9 +23,10 @@ export const AuthProvider = ({ children }) => {
       queueMicrotask(() => setLoading(false));
       return;
     }
+    const ac = new AbortController();
     let cancelled = false;
     userAPI
-      .getProfile()
+      .getProfile({ signal: ac.signal })
       .then((response) => {
         if (cancelled) return;
         const newUser = response.data?.user;
@@ -34,8 +35,8 @@ export const AuthProvider = ({ children }) => {
           setUser(newUser);
         }
       })
-      .catch(() => {
-        if (cancelled) return;
+      .catch((err) => {
+        if (cancelled || err.code === 'ERR_CANCELED' || err.name === 'CanceledError') return;
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
@@ -45,6 +46,7 @@ export const AuthProvider = ({ children }) => {
       });
     return () => {
       cancelled = true;
+      ac.abort();
     };
   }, []);
 

@@ -1705,7 +1705,10 @@ const CodeEditor = () => {
                         alt=""
                         className="absolute inset-0 w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-neutral-900" />
+                      <div
+                        className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/55 to-neutral-900/10 pointer-events-none"
+                        aria-hidden
+                      />
                       <div className="absolute bottom-0 left-0 right-0 px-5 sm:px-6 py-4">
                         <h3 className="text-lg sm:text-xl font-bold text-blue-50 drop-shadow-lg">{module.title}</h3>
                         <p className="text-xs text-blue-50 mt-0.5">
@@ -1783,7 +1786,10 @@ const CodeEditor = () => {
                         alt=""
                         className="absolute inset-0 w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-neutral-900" />
+                      <div
+                        className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/55 to-neutral-900/10 pointer-events-none"
+                        aria-hidden
+                      />
                       <div className="absolute bottom-0 left-0 right-0 px-5 sm:px-6 py-4">
                         <h3 className="text-lg sm:text-xl font-bold text-blue-50 drop-shadow-lg">{module.title}</h3>
                         <p className="text-xs text-blue-50 mt-0.5">Learning overview</p>
@@ -2016,7 +2022,7 @@ const CodeEditor = () => {
       >
         {/* ─── LEFT PANEL (resizable) ─── */}
         <motion.aside
-          className="flex flex-col shrink-0 min-h-0 bg-neutral-900 border-r border-neutral-800/60"
+          className="flex flex-col shrink-0 min-h-0 max-h-full overflow-y-auto overflow-x-hidden scrollbar-hide bg-neutral-900 border-r border-neutral-800/60"
           style={{ width: leftPanelWidth }}
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -2253,7 +2259,13 @@ const CodeEditor = () => {
           </motion.div>
 
           {/* Left bottom: MCQ (when active) OR Step card + Check my code */}
-          <div className="bg-neutral-900 border-t border-neutral-900 px-5 py-4 shrink-0 space-y-3 min-h-0">
+          <div
+            className={`bg-neutral-900 border-t border-neutral-900 px-5 py-4 min-h-0 space-y-3 ${
+              mcqGateForStep !== null
+                ? 'shrink-0 min-h-0 max-h-[38vh] flex flex-col overflow-hidden'
+                : 'shrink-0'
+            }`}
+          >
             <AnimatePresence mode="wait">
               {mcqGateForStep !== null ? (
                 <motion.div
@@ -2262,14 +2274,14 @@ const CodeEditor = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ type: 'spring', damping: 22, stiffness: 300 }}
-                  className="rounded-xl bg-neutral-900 p-3 space-y-2 shadow-inner shadow-black"
+                  className="rounded-xl bg-neutral-900 p-3 flex flex-col min-h-0 flex-1 max-h-full overflow-hidden gap-2 shadow-inner shadow-black"
                 >
-                  <h4 className="text-xs font-bold text-blue-100 flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-blue-100 flex items-center gap-1.5 shrink-0">
                     <FaBolt className="text-blue-400" /> Concept Check
                   </h4>
                   {mcqLoading ? (
                     <div
-                      className="flex items-center gap-2 text-[11px] text-blue-300"
+                      className="flex items-center gap-2 text-[11px] text-blue-300 shrink-0"
                       role="status"
                       aria-label="Preparing quiz"
                     >
@@ -2281,48 +2293,50 @@ const CodeEditor = () => {
                     </div>
                   ) : mcqQuestions.length > 0 ? (
                     <>
-                      <p className="text-[11px] text-blue-100 leading-relaxed">
-                        <span className="text-blue-200 font-semibold">
-                          Q{mcqCurrentIndex + 1}/{mcqQuestions.length}:
-                        </span>{' '}
-                        {mcqQuestions[mcqCurrentIndex]?.question}
-                      </p>
-                      {mcqErrorsByQuestion[mcqCurrentIndex] && (
-                        <div className="rounded-lg bg-blue-700 text-blue-100 p-2 text-[11px]">
-                          {mcqErrorsByQuestion[mcqCurrentIndex]}
-                        </div>
-                      )}
-                      <div className="space-y-1">
-                        {mcqQuestions[mcqCurrentIndex]?.options?.map((opt, idx) => (
-                          <motion.button
-                            key={idx}
-                            type="button"
-                            onClick={() => setMcqSelectedIndex(idx)}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] transition ${
-                              mcqSelectedIndex === idx
-                                ? 'bg-blue-500 text-blue-50 shadow-sm shadow-black'
-                                : 'bg-neutral-900 text-blue-200 hover:bg-neutral-800'
-                            }`}
-                          >
-                            {opt}
-                          </motion.button>
-                        ))}
-                      </div>
-                      <AnimatePresence mode="wait">
-                        {mcqResult && mcqResult.correct && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className={`overflow-hidden rounded-lg p-2 text-[11px] ${mcqResult.correct ? 'bg-blue-500 text-white' : 'bg-blue-700 text-white'}`}
-                          >
-                            {mcqResult.explanation}
-                          </motion.div>
+                      <div className="flex-1 min-h-0 max-h-[calc(38vh-8.5rem)] overflow-y-auto overscroll-contain space-y-2 pr-1 scroll-smooth">
+                        <p className="text-[11px] text-blue-100 leading-relaxed">
+                          <span className="text-blue-200 font-semibold">
+                            Q{mcqCurrentIndex + 1}/{mcqQuestions.length}:
+                          </span>{' '}
+                          {mcqQuestions[mcqCurrentIndex]?.question}
+                        </p>
+                        {mcqErrorsByQuestion[mcqCurrentIndex] && (
+                          <div className="rounded-lg bg-blue-700 text-blue-100 p-2 text-[11px] break-words">
+                            {mcqErrorsByQuestion[mcqCurrentIndex]}
+                          </div>
                         )}
-                      </AnimatePresence>
-                      <div className="flex gap-2">
+                        <div className="space-y-1">
+                          {mcqQuestions[mcqCurrentIndex]?.options?.map((opt, idx) => (
+                            <motion.button
+                              key={idx}
+                              type="button"
+                              onClick={() => setMcqSelectedIndex(idx)}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] transition ${
+                                mcqSelectedIndex === idx
+                                  ? 'bg-blue-500 text-blue-50 shadow-sm shadow-black'
+                                  : 'bg-neutral-900 text-blue-200 hover:bg-neutral-800'
+                              }`}
+                            >
+                              {opt}
+                            </motion.button>
+                          ))}
+                        </div>
+                        <AnimatePresence mode="wait">
+                          {mcqResult && mcqResult.correct && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className={`overflow-hidden rounded-lg p-2 text-[11px] break-words ${mcqResult.correct ? 'bg-blue-500 text-white' : 'bg-blue-700 text-white'}`}
+                            >
+                              {mcqResult.explanation}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      <div className="flex gap-2 shrink-0 pt-2 border-t border-neutral-800/70 bg-neutral-900">
                         <button
                           type="button"
                           onClick={handleMCQSubmit}

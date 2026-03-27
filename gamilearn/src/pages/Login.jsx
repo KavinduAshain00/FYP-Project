@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { FaEnvelope, FaLock, FaGamepad, FaArrowRight } from 'react-icons/fa';
 import { GameLayout } from '../components/layout/GameLayout';
+import { getNetworkErrorMessage } from '../api/api';
 
 const ease = [0.25, 0.1, 0.25, 1];
 
@@ -30,7 +31,7 @@ const Login = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      setError(getNetworkErrorMessage(err, 'Login failed. Please try again.'));
     } finally {
       setLoading(false);
     }
