@@ -1,10 +1,5 @@
-import { toast } from 'react-toastify';
-import {
-  FaMagic,
-  FaChevronUp,
-  FaChevronDown,
-  FaTrash,
-} from 'react-icons/fa';
+import { toast } from "react-toastify";
+import { FaMagic, FaChevronUp, FaChevronDown, FaTrash } from "react-icons/fa";
 import {
   MODULE_FORM_TABS,
   VERIFY_TYPES,
@@ -12,7 +7,7 @@ import {
   moduleCategorySelectOptions,
   emptyModuleStep,
   DIFFICULTIES,
-} from './moduleEditorUtils';
+} from "./moduleEditorUtils";
 
 /**
  * Shared module create/edit fields (used on full-page editor).
@@ -55,8 +50,8 @@ export default function AdminModuleFormSections({
             onClick={() => setSectionTab(t.id)}
             className={`px-3 py-2 rounded-lg text-[12px] font-semibold transition-colors ${
               sectionTab === t.id
-                ? 'bg-blue-600 text-black shadow-sm'
-                : 'text-blue-300 hover:text-blue-50 hover:bg-blue-800/80'
+                ? "bg-blue-600 text-black shadow-sm"
+                : "text-blue-300 hover:text-blue-50 hover:bg-blue-800/80"
             }`}
           >
             {t.label}
@@ -65,14 +60,18 @@ export default function AdminModuleFormSections({
       </div>
 
       <div className="space-y-4">
-        {sectionTab === 'details' && (
+        {sectionTab === "details" && (
           <>
             <div>
-              <label className="block text-[11px] font-medium text-blue-300 mb-1">Title</label>
+              <label className="block text-[11px] font-medium text-blue-300 mb-1">
+                Title
+              </label>
               <input
                 type="text"
                 value={form.title}
-                onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, title: e.target.value }))
+                }
                 className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
               />
             </div>
@@ -82,26 +81,30 @@ export default function AdminModuleFormSections({
               </label>
               <textarea
                 value={form.description}
-                onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, description: e.target.value }))
+                }
                 rows={2}
                 className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11px] font-medium text-blue-300 mb-1">Category</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">
+                  Category
+                </label>
                 <select
                   value={form.category}
                   onChange={(e) => {
                     const category = e.target.value;
                     setForm((p) => {
                       const sc = { ...(p.starterCode || {}) };
-                      sc.jsx = '';
-                      if (!isMultiplayerCategory(category)) sc.serverJs = '';
+                      sc.jsx = "";
+                      if (!isMultiplayerCategory(category)) sc.serverJs = "";
                       return {
                         ...p,
                         category,
-                        moduleType: 'vanilla',
+                        moduleType: "vanilla",
                         starterCode: sc,
                       };
                     });
@@ -121,7 +124,9 @@ export default function AdminModuleFormSections({
                 </label>
                 <select
                   value={form.difficulty}
-                  onChange={(e) => setForm((p) => ({ ...p, difficulty: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, difficulty: e.target.value }))
+                  }
                   className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 >
                   {DIFFICULTIES.map((d) => (
@@ -141,25 +146,31 @@ export default function AdminModuleFormSections({
                   type="number"
                   min={0}
                   value={form.order}
-                  onChange={(e) => setForm((p) => ({ ...p, order: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, order: e.target.value }))
+                  }
                   className={`w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50 ${
                     orderDuplicatesAnother
-                      ? 'ring-2 ring-amber-500/70 ring-offset-2 ring-offset-blue-900'
-                      : ''
+                      ? "ring-2 ring-amber-500/70 ring-offset-2 ring-offset-blue-900"
+                      : ""
                   }`}
                 />
                 <p className="text-[11px] text-blue-400 mt-1">
-                  Each module needs a distinct order. If this number matches another module, it will
-                  be bumped up automatically when you save.
+                  Each module needs a distinct order. If this number matches
+                  another module, it will be bumped up automatically when you
+                  save.
                 </p>
                 {orderDuplicatesAnother && (
                   <p className="text-[11px] text-amber-300 mt-1 font-medium">
-                    This order is already used — save will assign the next free number.
+                    This order is already used — save will assign the next free
+                    number.
                   </p>
                 )}
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-blue-300 mb-1">Editor</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">
+                  Editor
+                </label>
                 <div className="px-3 py-2.5 bg-blue-950/80 text-blue-100 text-[13px] rounded-xl border border-blue-800/80">
                   Vanilla — HTML, CSS, and JavaScript in the browser
                 </div>
@@ -174,18 +185,21 @@ export default function AdminModuleFormSections({
               </label>
               <textarea
                 value={form.content}
-                onChange={(e) => setForm((p) => ({ ...p, content: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, content: e.target.value }))
+                }
                 rows={8}
                 className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50 font-mono"
               />
               <p className="text-[11px] text-blue-400 mt-1">
-                Used in the module view and as context when generating steps with AI.
+                Used in the module view and as context when generating steps
+                with AI.
               </p>
             </div>
           </>
         )}
 
-        {sectionTab === 'steps' && (
+        {sectionTab === "steps" && (
           <div className="space-y-4">
             {!form.id && (
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl bg-blue-950/50 border border-blue-700/60">
@@ -195,19 +209,22 @@ export default function AdminModuleFormSections({
                     Generate steps with AI
                   </p>
                   <p className="text-[12px] text-blue-400 mt-1">
-                    Uses title, description, category, difficulty, and lesson markdown to propose 4–6
-                    ordered steps. You can edit them before saving.
+                    Uses title, description, category, difficulty, and lesson
+                    markdown to propose 4–6 ordered steps. You can edit them
+                    before saving.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={handleGenerateModuleSteps}
                   disabled={
-                    generatingSteps || !!generatingCurriculum || !form.title?.trim()
+                    generatingSteps ||
+                    !!generatingCurriculum ||
+                    !form.title?.trim()
                   }
                   className="shrink-0 px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-blue-500 text-black hover:bg-blue-400 disabled:opacity-45 disabled:cursor-not-allowed shadow-md shadow-black/25"
                 >
-                  {generatingSteps ? 'Generating…' : 'Generate steps'}
+                  {generatingSteps ? "Generating…" : "Generate steps"}
                 </button>
               </div>
             )}
@@ -232,20 +249,21 @@ export default function AdminModuleFormSections({
 
             {(form.steps || []).length === 0 ? (
               <p className="text-[13px] text-blue-400 py-6 text-center border border-dashed border-blue-700 rounded-xl">
-                No steps yet. Generate with AI (new module) or add steps manually.
+                No steps yet. Generate with AI (new module) or add steps
+                manually.
               </p>
             ) : (
               <ul className="space-y-3 list-none p-0 m-0">
                 {(form.steps || []).map((step, i) => {
                   const ec = step.expectedConsole;
                   const ecPreset =
-                    ec && ec.type === 'multipleLines'
-                      ? 'multipleLines'
-                      : ec && ec.type === 'any'
-                        ? 'any'
-                        : step.verifyType === 'checkConsole'
-                          ? 'custom'
-                          : 'any';
+                    ec && ec.type === "multipleLines"
+                      ? "multipleLines"
+                      : ec && ec.type === "any"
+                        ? "any"
+                        : step.verifyType === "checkConsole"
+                          ? "custom"
+                          : "any";
                   return (
                     <li
                       key={`step-${i}`}
@@ -293,7 +311,9 @@ export default function AdminModuleFormSections({
                             onClick={() =>
                               setForm((p) => ({
                                 ...p,
-                                steps: (p.steps || []).filter((_, j) => j !== i),
+                                steps: (p.steps || []).filter(
+                                  (_, j) => j !== i,
+                                ),
                               }))
                             }
                             className="p-2 rounded-lg text-red-300 hover:bg-blue-800 hover:text-red-200"
@@ -322,7 +342,10 @@ export default function AdminModuleFormSections({
                         onChange={(e) =>
                           setForm((p) => {
                             const steps = [...(p.steps || [])];
-                            steps[i] = { ...steps[i], instruction: e.target.value };
+                            steps[i] = {
+                              ...steps[i],
+                              instruction: e.target.value,
+                            };
                             return { ...p, steps };
                           })
                         }
@@ -354,9 +377,10 @@ export default function AdminModuleFormSections({
                               setForm((p) => {
                                 const steps = [...(p.steps || [])];
                                 const next = { ...steps[i], verifyType };
-                                if (verifyType === 'checkConsole')
-                                  next.expectedConsole = steps[i].expectedConsole || {
-                                    type: 'any',
+                                if (verifyType === "checkConsole")
+                                  next.expectedConsole = steps[i]
+                                    .expectedConsole || {
+                                    type: "any",
                                   };
                                 else next.expectedConsole = null;
                                 steps[i] = next;
@@ -372,7 +396,7 @@ export default function AdminModuleFormSections({
                             ))}
                           </select>
                         </div>
-                        {step.verifyType === 'checkConsole' && (
+                        {step.verifyType === "checkConsole" && (
                           <div>
                             <label className="block text-[11px] font-medium text-blue-300 mb-1">
                               Console expectation
@@ -383,17 +407,19 @@ export default function AdminModuleFormSections({
                                 const v = e.target.value;
                                 setForm((p) => {
                                   const steps = [...(p.steps || [])];
-                                  let expectedConsole = { type: 'any' };
-                                  if (v === 'multipleLines')
-                                    expectedConsole = { type: 'multipleLines' };
-                                  else if (v === 'custom')
+                                  let expectedConsole = { type: "any" };
+                                  if (v === "multipleLines")
+                                    expectedConsole = { type: "multipleLines" };
+                                  else if (v === "custom")
                                     expectedConsole =
                                       steps[i].expectedConsole &&
-                                      typeof steps[i].expectedConsole === 'object' &&
-                                      steps[i].expectedConsole.type !== 'any' &&
-                                      steps[i].expectedConsole.type !== 'multipleLines'
+                                      typeof steps[i].expectedConsole ===
+                                        "object" &&
+                                      steps[i].expectedConsole.type !== "any" &&
+                                      steps[i].expectedConsole.type !==
+                                        "multipleLines"
                                         ? steps[i].expectedConsole
-                                        : { contains: [''] };
+                                        : { contains: [""] };
                                   steps[i] = { ...steps[i], expectedConsole };
                                   return { ...p, steps };
                                 });
@@ -401,44 +427,61 @@ export default function AdminModuleFormSections({
                               className="w-full px-3 py-2 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                             >
                               <option value="any">Any output</option>
-                              <option value="multipleLines">Multiple lines</option>
+                              <option value="multipleLines">
+                                Multiple lines
+                              </option>
                               <option value="custom">Custom (JSON)</option>
                             </select>
                           </div>
                         )}
                       </div>
-                      {step.verifyType === 'checkConsole' && ecPreset === 'custom' && (
-                        <div>
-                          <label className="block text-[11px] font-medium text-blue-300 mb-1">
-                            expectedConsole JSON
-                          </label>
-                          <textarea
-                            key={`ec-json-${i}-${form.id || 'new'}`}
-                            defaultValue={JSON.stringify(step.expectedConsole || {}, null, 2)}
-                            onBlur={(e) => {
-                              try {
-                                const parsed = JSON.parse(e.target.value);
-                                if (typeof parsed !== 'object' || parsed === null) {
-                                  toast.error('expectedConsole must be a JSON object');
-                                  return;
+                      {step.verifyType === "checkConsole" &&
+                        ecPreset === "custom" && (
+                          <div>
+                            <label className="block text-[11px] font-medium text-blue-300 mb-1">
+                              expectedConsole JSON
+                            </label>
+                            <textarea
+                              key={`ec-json-${i}-${form.id || "new"}`}
+                              defaultValue={JSON.stringify(
+                                step.expectedConsole || {},
+                                null,
+                                2,
+                              )}
+                              onBlur={(e) => {
+                                try {
+                                  const parsed = JSON.parse(e.target.value);
+                                  if (
+                                    typeof parsed !== "object" ||
+                                    parsed === null
+                                  ) {
+                                    toast.error(
+                                      "expectedConsole must be a JSON object",
+                                    );
+                                    return;
+                                  }
+                                  setForm((p) => {
+                                    const steps = [...(p.steps || [])];
+                                    steps[i] = {
+                                      ...steps[i],
+                                      expectedConsole: parsed,
+                                    };
+                                    return { ...p, steps };
+                                  });
+                                } catch {
+                                  toast.error(
+                                    "Invalid JSON for expectedConsole",
+                                  );
                                 }
-                                setForm((p) => {
-                                  const steps = [...(p.steps || [])];
-                                  steps[i] = { ...steps[i], expectedConsole: parsed };
-                                  return { ...p, steps };
-                                });
-                              } catch {
-                                toast.error('Invalid JSON for expectedConsole');
-                              }
-                            }}
-                            rows={3}
-                            className="w-full px-3 py-2 bg-blue-800 text-blue-50 text-[12px] rounded-xl font-mono focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
-                          />
-                          <p className="text-[10px] text-blue-500 mt-1">
-                            Tab out or click away to apply JSON changes.
-                          </p>
-                        </div>
-                      )}
+                              }}
+                              rows={3}
+                              className="w-full px-3 py-2 bg-blue-800 text-blue-50 text-[12px] rounded-xl font-mono focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
+                            />
+                            <p className="text-[10px] text-blue-500 mt-1">
+                              Tab out or click away to apply JSON changes.
+                            </p>
+                          </div>
+                        )}
                     </li>
                   );
                 })}
@@ -447,7 +490,7 @@ export default function AdminModuleFormSections({
           </div>
         )}
 
-        {sectionTab === 'objectives' && (
+        {sectionTab === "objectives" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 p-4 rounded-xl bg-blue-950/50 border border-blue-700/60">
               <span className="text-[13px] font-semibold text-blue-100 flex items-center gap-2 shrink-0">
@@ -457,45 +500,66 @@ export default function AdminModuleFormSections({
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => handleGenerateCurriculumParts(['objectives'])}
-                  disabled={!!generatingCurriculum || generatingSteps || !form.title?.trim()}
+                  onClick={() => handleGenerateCurriculumParts(["objectives"])}
+                  disabled={
+                    !!generatingCurriculum ||
+                    generatingSteps ||
+                    !form.title?.trim()
+                  }
                   className="px-3 py-2 rounded-lg text-[12px] font-semibold bg-blue-700 text-black hover:bg-blue-600 disabled:opacity-45 disabled:cursor-not-allowed"
                 >
-                  {generatingCurriculum === curriculumPartsKey(['objectives']) ? '…' : 'Objectives'}
+                  {generatingCurriculum === curriculumPartsKey(["objectives"])
+                    ? "…"
+                    : "Objectives"}
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleGenerateCurriculumParts(['hints'])}
-                  disabled={!!generatingCurriculum || generatingSteps || !form.title?.trim()}
+                  onClick={() => handleGenerateCurriculumParts(["hints"])}
+                  disabled={
+                    !!generatingCurriculum ||
+                    generatingSteps ||
+                    !form.title?.trim()
+                  }
                   className="px-3 py-2 rounded-lg text-[12px] font-semibold bg-blue-700 text-black hover:bg-blue-600 disabled:opacity-45 disabled:cursor-not-allowed"
                 >
-                  {generatingCurriculum === curriculumPartsKey(['hints']) ? '…' : 'Hints'}
+                  {generatingCurriculum === curriculumPartsKey(["hints"])
+                    ? "…"
+                    : "Hints"}
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleGenerateCurriculumParts(['objectives', 'hints'])}
-                  disabled={!!generatingCurriculum || generatingSteps || !form.title?.trim()}
+                  onClick={() =>
+                    handleGenerateCurriculumParts(["objectives", "hints"])
+                  }
+                  disabled={
+                    !!generatingCurriculum ||
+                    generatingSteps ||
+                    !form.title?.trim()
+                  }
                   className="px-3 py-2 rounded-lg text-[12px] font-semibold bg-blue-600 text-black hover:bg-blue-500 disabled:opacity-45 disabled:cursor-not-allowed"
                 >
-                  {generatingCurriculum === curriculumPartsKey(['objectives', 'hints'])
-                    ? '…'
-                    : 'Objectives + hints'}
+                  {generatingCurriculum ===
+                  curriculumPartsKey(["objectives", "hints"])
+                    ? "…"
+                    : "Objectives + hints"}
                 </button>
               </div>
               <p className="text-[11px] text-blue-400 sm:w-full basis-full">
-                Uses title, description, lesson content, and step titles (if any). Replaces the
-                matching lists when generation succeeds.
+                Uses title, description, lesson content, and step titles (if
+                any). Replaces the matching lists when generation succeeds.
               </p>
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-[11px] font-medium text-blue-300">Objectives</label>
+                <label className="text-[11px] font-medium text-blue-300">
+                  Objectives
+                </label>
                 <button
                   type="button"
                   onClick={() =>
                     setForm((p) => ({
                       ...p,
-                      objectives: [...(p.objectives || []), ''],
+                      objectives: [...(p.objectives || []), ""],
                     }))
                   }
                   className="text-[12px] font-semibold text-cyan-300 hover:text-cyan-100"
@@ -524,7 +588,9 @@ export default function AdminModuleFormSections({
                       onClick={() =>
                         setForm((p) => ({
                           ...p,
-                          objectives: (p.objectives || []).filter((_, j) => j !== i),
+                          objectives: (p.objectives || []).filter(
+                            (_, j) => j !== i,
+                          ),
                         }))
                       }
                       className="p-2 text-red-300 hover:bg-blue-800 rounded-xl"
@@ -536,18 +602,22 @@ export default function AdminModuleFormSections({
                 ))}
               </ul>
               {(form.objectives || []).length === 0 && (
-                <p className="text-[12px] text-blue-500 py-2">No objectives listed.</p>
+                <p className="text-[12px] text-blue-500 py-2">
+                  No objectives listed.
+                </p>
               )}
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-[11px] font-medium text-blue-300">Hints</label>
+                <label className="text-[11px] font-medium text-blue-300">
+                  Hints
+                </label>
                 <button
                   type="button"
                   onClick={() =>
                     setForm((p) => ({
                       ...p,
-                      hints: [...(p.hints || []), ''],
+                      hints: [...(p.hints || []), ""],
                     }))
                   }
                   className="text-[12px] font-semibold text-cyan-300 hover:text-cyan-100"
@@ -588,13 +658,15 @@ export default function AdminModuleFormSections({
                 ))}
               </ul>
               {(form.hints || []).length === 0 && (
-                <p className="text-[12px] text-blue-500 py-2">No hints listed.</p>
+                <p className="text-[12px] text-blue-500 py-2">
+                  No hints listed.
+                </p>
               )}
             </div>
           </div>
         )}
 
-        {sectionTab === 'code' && (
+        {sectionTab === "code" && (
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl bg-blue-950/50 border border-blue-700/60">
               <div className="flex-1 min-w-0">
@@ -603,51 +675,59 @@ export default function AdminModuleFormSections({
                   Generate starter code with AI
                 </p>
                 <p className="text-[12px] text-blue-400 mt-1">
-                  Scaffold only — HTML/CSS/JS skeleton so learners still complete the steps (not a
-                  finished solution). Server starter only when category is multiplayer.
+                  Scaffold only — HTML/CSS/JS skeleton so learners still
+                  complete the steps (not a finished solution). Server starter
+                  only when category is multiplayer.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => handleGenerateCurriculumParts(['starterCode'])}
-                disabled={!!generatingCurriculum || generatingSteps || !form.title?.trim()}
+                onClick={() => handleGenerateCurriculumParts(["starterCode"])}
+                disabled={
+                  !!generatingCurriculum ||
+                  generatingSteps ||
+                  !form.title?.trim()
+                }
                 className="shrink-0 px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-blue-500 text-black hover:bg-blue-400 disabled:opacity-45 disabled:cursor-not-allowed shadow-md shadow-black/25"
               >
-                {generatingCurriculum === curriculumPartsKey(['starterCode'])
-                  ? 'Generating…'
-                  : 'Generate starter code'}
+                {generatingCurriculum === curriculumPartsKey(["starterCode"])
+                  ? "Generating…"
+                  : "Generate starter code"}
               </button>
             </div>
-            {['html', 'css', 'javascript', ...(isMultiplayerCategory(form.category) ? ['serverJs'] : [])].map(
-              (key) => (
-                <div key={key}>
-                  <label className="block text-[11px] font-medium text-blue-300 mb-1 capitalize">
-                    {key === 'javascript'
-                      ? 'JavaScript'
-                      : key === 'serverJs'
-                        ? 'Server starter (Node / Socket.IO)'
-                        : key}
-                  </label>
-                  <textarea
-                    value={(form.starterCode && form.starterCode[key]) || ''}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        starterCode: {
-                          ...(p.starterCode || {}),
-                          [key]: e.target.value,
-                        },
-                      }))
-                    }
-                    rows={key === 'html' || key === 'javascript' ? 6 : 4}
-                    className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[12px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50 font-mono"
-                  />
-                </div>
-              )
-            )}
+            {[
+              "html",
+              "css",
+              "javascript",
+              ...(isMultiplayerCategory(form.category) ? ["serverJs"] : []),
+            ].map((key) => (
+              <div key={key}>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1 capitalize">
+                  {key === "javascript"
+                    ? "JavaScript"
+                    : key === "serverJs"
+                      ? "Server starter (Node / Socket.IO)"
+                      : key}
+                </label>
+                <textarea
+                  value={(form.starterCode && form.starterCode[key]) || ""}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      starterCode: {
+                        ...(p.starterCode || {}),
+                        [key]: e.target.value,
+                      },
+                    }))
+                  }
+                  rows={key === "html" || key === "javascript" ? 6 : 4}
+                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[12px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50 font-mono"
+                />
+              </div>
+            ))}
             {!isMultiplayerCategory(form.category) && (
               <p className="text-[12px] text-blue-400 border border-dashed border-blue-700 rounded-xl px-3 py-2">
-                Server starter code is only available when category is{' '}
+                Server starter code is only available when category is{" "}
                 <span className="text-blue-200 font-medium">multiplayer</span>.
               </p>
             )}

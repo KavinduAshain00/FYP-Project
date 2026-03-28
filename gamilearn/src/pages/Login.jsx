@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
-import { FaEnvelope, FaLock, FaGamepad, FaArrowRight } from 'react-icons/fa';
-import { GameLayout } from '../components/layout/GameLayout';
-import { getNetworkErrorMessage } from '../api/api';
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
+import { FaEnvelope, FaLock, FaGamepad, FaArrowRight } from "react-icons/fa";
+import { GameLayout } from "../components/layout/GameLayout";
+import { getNetworkErrorMessage } from "../api/api";
 
 const ease = [0.25, 0.1, 0.25, 1];
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const { user, login, loading: authLoading } = useAuth();
@@ -19,26 +19,26 @@ const Login = () => {
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate('/dashboard', { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [authLoading, user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/dashboard');
+      navigate("/dashboard");
     } catch (err) {
-      setError(getNetworkErrorMessage(err, 'Login failed. Please try again.'));
+      setError(getNetworkErrorMessage(err, "Login failed. Please try again."));
     } finally {
       setLoading(false);
     }
   };
 
   const fieldClass =
-    'w-full rounded-2xl bg-blue-800 pl-12 pr-4 py-3.5 text-blue-50 placeholder-blue-300 outline-none focus:outline focus:outline-2 focus:outline-blue-400/60 text-sm';
+    "w-full rounded-2xl bg-blue-800 pl-12 pr-4 py-3.5 text-blue-50 placeholder-blue-300 outline-none focus:outline focus:outline-2 focus:outline-blue-400/60 text-sm";
 
   if (authLoading) {
     return (
@@ -67,9 +67,9 @@ const Login = () => {
             className="pointer-events-none absolute inset-0 opacity-[0.12]"
             style={{
               backgroundImage:
-                'url(https://itchronicles.com/wp-content/uploads/2021/04/Optimized-Illustration-from-Adobe-Stock-for-ITC-Post-on-AI-in-Game-Development-2048x1152.jpeg)',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
+                "url(https://itchronicles.com/wp-content/uploads/2021/04/Optimized-Illustration-from-Adobe-Stock-for-ITC-Post-on-AI-in-Game-Development-2048x1152.jpeg)",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
             }}
           />
           <div className="relative z-10">
@@ -78,8 +78,12 @@ const Login = () => {
                 <FaGamepad className="text-xl" />
               </span>
               <div>
-                <p className="font-bold text-lg text-blue-50 tracking-tight">GamiLearn</p>
-                <p className="text-xs text-blue-300">AI guided Game Development Learning Platform</p>
+                <p className="font-bold text-lg text-blue-50 tracking-tight">
+                  GamiLearn
+                </p>
+                <p className="text-xs text-blue-300">
+                  AI guided Game Development Learning Platform
+                </p>
               </div>
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-blue-50 leading-tight max-w-md">
@@ -133,7 +137,9 @@ const Login = () => {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-blue-200 mb-2">Email</label>
+                <label className="block text-sm font-medium text-blue-200 mb-2">
+                  Email
+                </label>
                 <div className="relative">
                   <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                   <input
@@ -147,7 +153,9 @@ const Login = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-blue-200 mb-2">Password</label>
+                <label className="block text-sm font-medium text-blue-200 mb-2">
+                  Password
+                </label>
                 <div className="relative">
                   <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                   <input
@@ -173,14 +181,17 @@ const Login = () => {
                 disabled={loading}
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-blue-500 text-black font-semibold text-sm shadow-md shadow-black/30 hover:bg-blue-400 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
-                {loading ? 'Signing in…' : 'Sign in'}
+                {loading ? "Signing in…" : "Sign in"}
                 {!loading && <FaArrowRight className="text-xs" />}
               </button>
             </form>
 
             <p className="mt-8 text-center text-sm text-blue-300">
-              New to GamiLearn?{' '}
-              <Link to="/signup" className="font-semibold text-blue-200 hover:text-blue-100">
+              New to GamiLearn?{" "}
+              <Link
+                to="/signup"
+                className="font-semibold text-blue-200 hover:text-blue-100"
+              >
                 Create an account
               </Link>
             </p>

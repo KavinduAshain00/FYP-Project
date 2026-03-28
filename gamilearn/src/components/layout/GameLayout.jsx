@@ -1,8 +1,6 @@
-import { motion } from 'framer-motion';
-import {
-  FaTrophy,
-} from 'react-icons/fa';
-import { ParticleBackground, XPBar, GameAvatar } from '../ui/GameUI';
+import { motion } from "framer-motion";
+import { FaTrophy } from "react-icons/fa";
+import { ParticleBackground, XPBar, GameAvatar } from "../ui/GameUI";
 const contentEase = [0.25, 0.1, 0.25, 1];
 
 /**
@@ -35,7 +33,9 @@ export const GameSidebar = ({
             className="!rounded-xl"
           />
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-blue-50 text-sm truncate">{user?.name || 'User'}</p>
+            <p className="font-semibold text-blue-50 text-sm truncate">
+              {user?.name || "User"}
+            </p>
             <p className="text-[11px] text-blue-300 truncate">{user?.email}</p>
           </div>
         </div>
@@ -58,10 +58,10 @@ export const GameSidebar = ({
         </p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            ['XP', totalPoints],
-            ['Level', level],
-            ['Modules', stats.completedModules ?? 0],
-            ['Badges', stats.achievements ?? 0],
+            ["XP", totalPoints],
+            ["Level", level],
+            ["Modules", stats.completedModules ?? 0],
+            ["Badges", stats.achievements ?? 0],
           ].map(([k, v]) => (
             <div key={k} className="p-2.5 bg-blue-800 rounded-xl">
               <p className="text-[10px] text-blue-300 uppercase">{k}</p>
@@ -86,8 +86,12 @@ export const GameSidebar = ({
                   <FaTrophy className="text-[10px]" />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-medium text-blue-50 truncate">{ach.name}</p>
-                  <p className="text-[10px] text-blue-300 truncate">{ach.description}</p>
+                  <p className="text-[12px] font-medium text-blue-50 truncate">
+                    {ach.name}
+                  </p>
+                  <p className="text-[10px] text-blue-300 truncate">
+                    {ach.description}
+                  </p>
                 </div>
               </div>
             ))}
@@ -103,7 +107,7 @@ export const GameLayout = ({
   showParticles = false,
   showSidebar = false,
   sidebarProps = {},
-  className = '',
+  className = "",
 }) => {
   return (
     <div className="min-h-screen bg-neutral-900 text-blue-100">
@@ -124,7 +128,14 @@ export const GameLayout = ({
   );
 };
 
-export const PageHeader = ({ title, subtitle, icon: Icon, badge, actions, className = '' }) => {
+export const PageHeader = ({
+  title,
+  subtitle,
+  icon: Icon,
+  badge,
+  actions,
+  className = "",
+}) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
@@ -151,8 +162,12 @@ export const PageHeader = ({ title, subtitle, icon: Icon, badge, actions, classN
                   {badge}
                 </span>
               )}
-              <h1 className="text-2xl font-bold text-blue-50 tracking-tight">{title}</h1>
-              {subtitle && <p className="mt-1 text-sm text-blue-300">{subtitle}</p>}
+              <h1 className="text-2xl font-bold text-blue-50 tracking-tight">
+                {title}
+              </h1>
+              {subtitle && (
+                <p className="mt-1 text-sm text-blue-300">{subtitle}</p>
+              )}
             </div>
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}

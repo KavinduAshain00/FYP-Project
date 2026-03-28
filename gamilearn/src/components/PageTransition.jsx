@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion';
-import { useLocation, useNavigationType } from 'react-router-dom';
+import { motion } from "framer-motion";
+import { useLocation, useNavigationType } from "react-router-dom";
 
 const MotionDiv = motion.div;
 
@@ -11,7 +11,7 @@ const duration = 0.42;
  * Respects navigation direction for subtle horizontal nudge (forward vs back).
  */
 const getVariants = (direction, navigationType) => {
-  const isReplace = navigationType === 'REPLACE';
+  const isReplace = navigationType === "REPLACE";
   if (isReplace) {
     return {
       initial: { opacity: 0, scale: 0.992 },
@@ -20,7 +20,8 @@ const getVariants = (direction, navigationType) => {
     };
   }
 
-  const isBack = direction === 'back' || (direction == null && navigationType === 'POP');
+  const isBack =
+    direction === "back" || (direction == null && navigationType === "POP");
   const enterY = isBack ? -14 : 18;
   const exitY = isBack ? 12 : -14;
 
@@ -32,7 +33,7 @@ const getVariants = (direction, navigationType) => {
 };
 
 const pageTransition = {
-  type: 'tween',
+  type: "tween",
   ease,
   duration,
 };
@@ -52,8 +53,8 @@ const PageTransition = ({ children }) => {
       transition={pageTransition}
       className="w-full min-h-screen bg-neutral-900"
       style={{
-        width: '100%',
-        minHeight: '100vh',
+        width: "100%",
+        minHeight: "100vh",
       }}
     >
       {children}

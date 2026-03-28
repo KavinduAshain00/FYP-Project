@@ -1,6 +1,6 @@
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { motion } from 'framer-motion';
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { motion } from "framer-motion";
 
 /**
  * Preprocess markdown to fix common AI output issues:
@@ -9,18 +9,22 @@ import { motion } from 'framer-motion';
  * - Single-word fenced code blocks → convert to inline
  */
 function preprocessMarkdown(text) {
-  if (!text || typeof text !== 'string') return text;
+  if (!text || typeof text !== "string") return text;
   let out = text.trim();
   // Strip wrapping code fences (AI often returns ```markdown\n...\n```)
-  if (out.startsWith('```')) {
-    const end = out.indexOf('\n```', 3);
-    if (end !== -1) out = out.slice(out.indexOf('\n') + 1, end).trim();
-    else if (out.endsWith('```')) out = out.replace(/^```\w*\n?/, '').replace(/\n?```\s*$/, '').trim();
+  if (out.startsWith("```")) {
+    const end = out.indexOf("\n```", 3);
+    if (end !== -1) out = out.slice(out.indexOf("\n") + 1, end).trim();
+    else if (out.endsWith("```"))
+      out = out
+        .replace(/^```\w*\n?/, "")
+        .replace(/\n?```\s*$/, "")
+        .trim();
   }
   return out
-    .replace(/^\s*[`']\s*$/gm, '') // Remove lines that are only ` or '
-    .replace(/\n{3,}/g, '\n\n') // Collapse excessive newlines
-    .replace(/^```\w*\s*\n([^\n]{1,60})\s*\n```/gm, '`$1`') // Single short line in code block → inline
+    .replace(/^\s*[`']\s*$/gm, "") // Remove lines that are only ` or '
+    .replace(/\n{3,}/g, "\n\n") // Collapse excessive newlines
+    .replace(/^```\w*\s*\n([^\n]{1,60})\s*\n```/gm, "`$1`") // Single short line in code block → inline
     .trim();
 }
 
@@ -28,15 +32,19 @@ function preprocessMarkdown(text) {
  * Renders markdown as user-friendly formatted content (headings, code blocks, lists).
  * Clean, readable typography with consistent spacing.
  */
-const MarkdownContent = ({ content, className = '', proseClass = 'prose-invert prose-sm' }) => {
-  if (!content || typeof content !== 'string') return null;
+const MarkdownContent = ({
+  content,
+  className = "",
+  proseClass = "prose-invert prose-sm",
+}) => {
+  if (!content || typeof content !== "string") return null;
 
   const cleaned = preprocessMarkdown(content);
 
   return (
     <motion.div
       className={`markdown-content ${proseClass} ${className}`}
-      style={{ wordBreak: 'break-word' }}
+      style={{ wordBreak: "break-word" }}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
@@ -60,9 +68,13 @@ const MarkdownContent = ({ content, className = '', proseClass = 'prose-invert p
             </h3>
           ),
           code: ({ inline, children, className: langClass, ...props }) => {
-            const str = String(children ?? '').trim();
-            const isShortBlock = !inline && str.length > 0 && str.length < 80 && !str.includes('\n');
-            const lang = langClass?.replace(/^language-/, '') || '';
+            const str = String(children ?? "").trim();
+            const isShortBlock =
+              !inline &&
+              str.length > 0 &&
+              str.length < 80 &&
+              !str.includes("\n");
+            const lang = langClass?.replace(/^language-/, "") || "";
             if (inline || isShortBlock) {
               return (
                 <code
@@ -112,9 +124,7 @@ const MarkdownContent = ({ content, className = '', proseClass = 'prose-invert p
             </ol>
           ),
           li: ({ children }) => (
-            <li className="text-[15px] leading-[1.6] pl-1">
-              {children}
-            </li>
+            <li className="text-[15px] leading-[1.6] pl-1">{children}</li>
           ),
           strong: ({ children }) => (
             <strong className="font-semibold text-blue-50">{children}</strong>
@@ -149,7 +159,9 @@ const MarkdownContent = ({ content, className = '', proseClass = 'prose-invert p
             <tbody className="bg-neutral-900 text-blue-200">{children}</tbody>
           ),
           tr: ({ children }) => <tr className="border-0">{children}</tr>,
-          th: ({ children }) => <th className="px-3 py-2 text-left font-semibold">{children}</th>,
+          th: ({ children }) => (
+            <th className="px-3 py-2 text-left font-semibold">{children}</th>
+          ),
           td: ({ children }) => <td className="px-3 py-2">{children}</td>,
         }}
       >

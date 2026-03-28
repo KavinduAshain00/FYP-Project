@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   FaEdit,
   FaPlus,
@@ -20,44 +20,58 @@ import {
   FaUserPlus,
   FaUserMinus,
   FaAward,
-} from 'react-icons/fa';
-import { useAuth } from '../context/AuthContext';
-import { useShellPagesCache } from '../context/ShellPagesCacheContext';
-import { adminAPI, modulesAPI, achievementsAPI } from '../api/api';
-import { PageHeader } from '../components/layout/GameLayout';
-import ConfirmModal from '../components/ui/ConfirmModal';
-import LoadingScreen from '../components/ui/LoadingScreen';
-import { MODULE_CATEGORIES, DIFFICULTIES } from './admin/moduleEditorUtils';
+} from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
+import { useShellPagesCache } from "../context/shellPagesCacheContext";
+import { adminAPI, modulesAPI, achievementsAPI } from "../api/api";
+import { PageHeader } from "../components/layout/GameLayout";
+import ConfirmModal from "../components/ui/ConfirmModal";
+import LoadingScreen from "../components/ui/LoadingScreen";
+import { MODULE_CATEGORIES, DIFFICULTIES } from "./admin/moduleEditorUtils";
 
-const LEARNING_PATHS = ['none', 'javascript-basics', 'advanced'];
+const LEARNING_PATHS = ["none", "javascript-basics", "advanced"];
 
 const Admin = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { peek, put } = useShellPagesCache();
-  const savedAdmin = peek('admin');
+  const savedAdmin = peek("admin");
   const hydratedAdmin = !!savedAdmin?.hydrated;
 
-  const [tab, setTab] = useState(() => savedAdmin?.tab ?? 'overview');
+  const [tab, setTab] = useState(() => savedAdmin?.tab ?? "overview");
   const [users, setUsers] = useState(() => savedAdmin?.users ?? []);
   const [modules, setModules] = useState(() => savedAdmin?.modules ?? []);
-  const [achievements, setAchievements] = useState(() => savedAdmin?.achievements ?? []);
+  const [achievements, setAchievements] = useState(
+    () => savedAdmin?.achievements ?? [],
+  );
   const [loading, setLoading] = useState(() => !hydratedAdmin);
   const [userModal, setUserModal] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [userSearch, setUserSearch] = useState(() => savedAdmin?.userSearch ?? '');
-  const [moduleSearch, setModuleSearch] = useState(() => savedAdmin?.moduleSearch ?? '');
-  const [userFilterPath, setUserFilterPath] = useState(() => savedAdmin?.userFilterPath ?? '');
+  const [userSearch, setUserSearch] = useState(
+    () => savedAdmin?.userSearch ?? "",
+  );
+  const [moduleSearch, setModuleSearch] = useState(
+    () => savedAdmin?.moduleSearch ?? "",
+  );
+  const [userFilterPath, setUserFilterPath] = useState(
+    () => savedAdmin?.userFilterPath ?? "",
+  );
   const [moduleFilterCategory, setModuleFilterCategory] = useState(
-    () => savedAdmin?.moduleFilterCategory ?? ''
+    () => savedAdmin?.moduleFilterCategory ?? "",
   );
   const [moduleFilterDifficulty, setModuleFilterDifficulty] = useState(
-    () => savedAdmin?.moduleFilterDifficulty ?? ''
+    () => savedAdmin?.moduleFilterDifficulty ?? "",
   );
-  const [userSortBy, setUserSortBy] = useState(() => savedAdmin?.userSortBy ?? 'createdAt');
-  const [userSortOrder, setUserSortOrder] = useState(() => savedAdmin?.userSortOrder ?? 'desc');
+  const [userSortBy, setUserSortBy] = useState(
+    () => savedAdmin?.userSortBy ?? "createdAt",
+  );
+  const [userSortOrder, setUserSortOrder] = useState(
+    () => savedAdmin?.userSortOrder ?? "desc",
+  );
   const [userPage, setUserPage] = useState(() => savedAdmin?.userPage ?? 1);
-  const [userPageSize, setUserPageSize] = useState(() => savedAdmin?.userPageSize ?? 10);
+  const [userPageSize, setUserPageSize] = useState(
+    () => savedAdmin?.userPageSize ?? 10,
+  );
   const [userPagination, setUserPagination] = useState(
     () =>
       savedAdmin?.userPagination ?? {
@@ -65,7 +79,7 @@ const Admin = () => {
         page: 1,
         limit: 10,
         totalPages: 1,
-      }
+      },
   );
   const [stats, setStats] = useState(
     () =>
@@ -75,20 +89,26 @@ const Admin = () => {
         totalCompleted: 0,
         avgLevel: 0,
         recentSignups: [],
-      }
+      },
   );
-  const [moduleSortBy, setModuleSortBy] = useState(() => savedAdmin?.moduleSortBy ?? 'order');
-  const [moduleSortOrder, setModuleSortOrder] = useState(() => savedAdmin?.moduleSortOrder ?? 'asc');
-  const [modulePage, setModulePage] = useState(() => savedAdmin?.modulePage ?? 1);
+  const [moduleSortBy, setModuleSortBy] = useState(
+    () => savedAdmin?.moduleSortBy ?? "order",
+  );
+  const [moduleSortOrder, setModuleSortOrder] = useState(
+    () => savedAdmin?.moduleSortOrder ?? "asc",
+  );
+  const [modulePage, setModulePage] = useState(
+    () => savedAdmin?.modulePage ?? 1,
+  );
   const [achievementSearch, setAchievementSearch] = useState(
-    () => savedAdmin?.achievementSearch ?? ''
+    () => savedAdmin?.achievementSearch ?? "",
   );
   const MODULE_PAGE_SIZE = 10;
   const [adminActionUserId, setAdminActionUserId] = useState(null);
   const [confirmModal, setConfirmModal] = useState({
     open: false,
-    title: '',
-    message: '',
+    title: "",
+    message: "",
     onConfirm: null,
   });
   const initialUserModalRef = useRef(null);
@@ -119,7 +139,7 @@ const Admin = () => {
     modulePage,
     achievementSearch,
   };
-  useEffect(() => () => put('admin', adminSnapshotRef.current), [put]);
+  useEffect(() => () => put("admin", adminSnapshotRef.current), [put]);
 
   const loadUsers = async (page = userPage) => {
     try {
@@ -134,7 +154,7 @@ const Admin = () => {
       setUsers(res.data.users || []);
       if (res.data.pagination) setUserPagination(res.data.pagination);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load users');
+      toast.error(err.response?.data?.message || "Failed to load users");
     }
   };
 
@@ -142,19 +162,31 @@ const Admin = () => {
     try {
       const res = await adminAPI.getStats();
       setStats(
-        res.data || { totalUsers: 0, totalXp: 0, totalCompleted: 0, avgLevel: 0, recentSignups: [] }
+        res.data || {
+          totalUsers: 0,
+          totalXp: 0,
+          totalCompleted: 0,
+          avgLevel: 0,
+          recentSignups: [],
+        },
       );
     } catch {
-      setStats({ totalUsers: 0, totalXp: 0, totalCompleted: 0, avgLevel: 0, recentSignups: [] });
+      setStats({
+        totalUsers: 0,
+        totalXp: 0,
+        totalCompleted: 0,
+        avgLevel: 0,
+        recentSignups: [],
+      });
     }
   };
 
   const loadModules = async () => {
     try {
-      const res = await modulesAPI.getAll('all');
+      const res = await modulesAPI.getAll("all");
       setModules(res.data.modules || []);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load modules');
+      toast.error(err.response?.data?.message || "Failed to load modules");
     }
   };
 
@@ -163,7 +195,7 @@ const Admin = () => {
       const res = await achievementsAPI.getAll();
       setAchievements(res.data.achievements || []);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load achievements');
+      toast.error(err.response?.data?.message || "Failed to load achievements");
     }
   };
 
@@ -189,7 +221,14 @@ const Admin = () => {
     }
     loadUsers(userPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userPage, userSearch, userFilterPath, userSortBy, userSortOrder, userPageSize]);
+  }, [
+    userPage,
+    userSearch,
+    userFilterPath,
+    userSortBy,
+    userSortOrder,
+    userPageSize,
+  ]);
 
   const handleSaveUser = async () => {
     if (!userModal?.id) return;
@@ -201,12 +240,12 @@ const Admin = () => {
         learningPath: userModal.learningPath,
         knowsJavaScript: userModal.knowsJavaScript,
       });
-      toast.success('User updated');
+      toast.success("User updated");
       setUserModal(null);
       initialUserModalRef.current = null;
       await loadUsers();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update user');
+      toast.error(err.response?.data?.message || "Failed to update user");
     } finally {
       setSaving(false);
     }
@@ -214,12 +253,12 @@ const Admin = () => {
 
   const handleDeleteUser = (u) => {
     if (u.id === user?.id) {
-      toast.error('You cannot delete your own account');
+      toast.error("You cannot delete your own account");
       return;
     }
     setConfirmModal({
       open: true,
-      title: 'Delete user',
+      title: "Delete user",
       message: `Delete "${u.name}" (${u.email})? This cannot be undone.`,
       onConfirm: () => confirmDeleteUser(u),
     });
@@ -229,12 +268,12 @@ const Admin = () => {
     setConfirmModal((p) => ({ ...p, open: false }));
     try {
       await adminAPI.deleteUser(u.id);
-      toast.success('User deleted');
+      toast.success("User deleted");
       setUserModal(null);
       initialUserModalRef.current = null;
       await loadUsers();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete user');
+      toast.error(err.response?.data?.message || "Failed to delete user");
     }
   };
 
@@ -249,12 +288,12 @@ const Admin = () => {
             ? res.data?.user
               ? { ...x, ...res.data.user }
               : { ...x, isAdmin: true }
-            : x
-        )
+            : x,
+        ),
       );
       toast.success(`${u.name} is now an admin`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to grant admin');
+      toast.error(err.response?.data?.message || "Failed to grant admin");
     } finally {
       setAdminActionUserId(null);
     }
@@ -271,12 +310,12 @@ const Admin = () => {
             ? res.data?.user
               ? { ...x, ...res.data.user }
               : { ...x, isAdmin: false }
-            : x
-        )
+            : x,
+        ),
       );
       toast.success(`Admin revoked from ${u.name}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to revoke admin');
+      toast.error(err.response?.data?.message || "Failed to revoke admin");
     } finally {
       setAdminActionUserId(null);
     }
@@ -285,7 +324,7 @@ const Admin = () => {
   const handleDeleteModule = (m) => {
     setConfirmModal({
       open: true,
-      title: 'Delete module',
+      title: "Delete module",
       message: `Delete module "${m.title}"? This cannot be undone.`,
       onConfirm: () => confirmDeleteModule(m),
     });
@@ -295,10 +334,10 @@ const Admin = () => {
     setConfirmModal((p) => ({ ...p, open: false }));
     try {
       await modulesAPI.delete(m._id);
-      toast.success('Module deleted');
+      toast.success("Module deleted");
       await loadModules();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete module');
+      toast.error(err.response?.data?.message || "Failed to delete module");
     }
   };
 
@@ -317,8 +356,8 @@ const Admin = () => {
     if (!force && isUserModalDirty()) {
       setConfirmModal({
         open: true,
-        title: 'Discard changes?',
-        message: 'You have unsaved changes. Close without saving?',
+        title: "Discard changes?",
+        message: "You have unsaved changes. Close without saving?",
         onConfirm: () => {
           setConfirmModal((p) => ({ ...p, open: false }));
           setUserModal(null);
@@ -336,7 +375,7 @@ const Admin = () => {
       id: u.id,
       name: u.name,
       email: u.email,
-      learningPath: u.learningPath || 'none',
+      learningPath: u.learningPath || "none",
       knowsJavaScript: u.knowsJavaScript ?? false,
     };
     initialUserModalRef.current = { ...data };
@@ -354,7 +393,9 @@ const Admin = () => {
   const achievementEarnedCount = useMemo(() => {
     const map = {};
     achievements.forEach((a) => {
-      map[a.id] = users.filter((u) => u.earnedAchievements?.includes(a.id)).length;
+      map[a.id] = users.filter((u) =>
+        u.earnedAchievements?.includes(a.id),
+      ).length;
     });
     return map;
   }, [achievements, users]);
@@ -364,9 +405,9 @@ const Admin = () => {
     if (!q) return achievements;
     return achievements.filter(
       (a) =>
-        (a.name || '').toLowerCase().includes(q) ||
-        (a.description || '').toLowerCase().includes(q) ||
-        (a.category || '').toLowerCase().includes(q)
+        (a.name || "").toLowerCase().includes(q) ||
+        (a.description || "").toLowerCase().includes(q) ||
+        (a.category || "").toLowerCase().includes(q),
     );
   }, [achievements, achievementSearch]);
 
@@ -376,34 +417,36 @@ const Admin = () => {
     if (q) {
       list = list.filter(
         (m) =>
-          (m.title || '').toLowerCase().includes(q) ||
-          (m.category || '').toLowerCase().includes(q) ||
-          (m.description || '').toLowerCase().includes(q)
+          (m.title || "").toLowerCase().includes(q) ||
+          (m.category || "").toLowerCase().includes(q) ||
+          (m.description || "").toLowerCase().includes(q),
       );
     }
     if (moduleFilterCategory) {
-      list = list.filter((m) => (m.category || '') === moduleFilterCategory);
+      list = list.filter((m) => (m.category || "") === moduleFilterCategory);
     }
     if (moduleFilterDifficulty) {
-      list = list.filter((m) => (m.difficulty || '') === moduleFilterDifficulty);
+      list = list.filter(
+        (m) => (m.difficulty || "") === moduleFilterDifficulty,
+      );
     }
     const key = moduleSortBy;
-    const order = moduleSortOrder === 'asc' ? 1 : -1;
+    const order = moduleSortOrder === "asc" ? 1 : -1;
     list.sort((a, b) => {
       let va = a[key];
       let vb = b[key];
-      if (key === 'order' || key === 'title') {
-        if (key === 'order') {
+      if (key === "order" || key === "title") {
+        if (key === "order") {
           va = Number(va) || 0;
           vb = Number(vb) || 0;
           return order * (va - vb);
         }
-        va = (va || '').toLowerCase();
-        vb = (vb || '').toLowerCase();
+        va = (va || "").toLowerCase();
+        vb = (vb || "").toLowerCase();
         return order * (va < vb ? -1 : va > vb ? 1 : 0);
       }
-      va = (va || '').toLowerCase();
-      vb = (vb || '').toLowerCase();
+      va = (va || "").toLowerCase();
+      vb = (vb || "").toLowerCase();
       return order * (va < vb ? -1 : va > vb ? 1 : 0);
     });
     return list;
@@ -416,49 +459,64 @@ const Admin = () => {
     moduleSortOrder,
   ]);
 
-  const totalModulePages = Math.max(1, Math.ceil(filteredModules.length / MODULE_PAGE_SIZE));
+  const totalModulePages = Math.max(
+    1,
+    Math.ceil(filteredModules.length / MODULE_PAGE_SIZE),
+  );
   const paginatedModulesForAdmin = useMemo(() => {
     const start = (modulePage - 1) * MODULE_PAGE_SIZE;
     return filteredModules.slice(start, start + MODULE_PAGE_SIZE);
   }, [filteredModules, modulePage]);
 
   const exportUsersCSV = async () => {
-    const headers = ['Name', 'Email', 'Level', 'XP', 'Completed', 'Path', 'Role'];
+    const headers = [
+      "Name",
+      "Email",
+      "Level",
+      "XP",
+      "Completed",
+      "Path",
+      "Role",
+    ];
     const res = await adminAPI
       .getUsers({ page: 1, limit: 10000 })
       .catch(() => ({ data: { users: [] } }));
     const allUsers = res.data.users || [];
     const rows = allUsers.map((u) => [
-      u.name || '',
-      u.email || '',
+      u.name || "",
+      u.email || "",
       u.level ?? 1,
       u.totalPoints ?? 0,
       u.completedModules?.length ?? 0,
-      u.learningPath || 'none',
-      u.isAdmin ? 'Admin' : 'User',
+      u.learningPath || "none",
+      u.isAdmin ? "Admin" : "User",
     ]);
     const csv = [
-      headers.join(','),
-      ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')),
-    ].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      headers.join(","),
+      ...rows.map((r) =>
+        r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","),
+      ),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `gamilearn-users-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('CSV exported');
+    toast.success("CSV exported");
   };
 
   const toggleUserSort = (key) => {
     setUserPage(1);
-    if (userSortBy === key) setUserSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+    if (userSortBy === key)
+      setUserSortOrder((o) => (o === "asc" ? "desc" : "asc"));
     else setUserSortBy(key);
   };
 
   const toggleModuleSort = (key) => {
-    if (moduleSortBy === key) setModuleSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+    if (moduleSortBy === key)
+      setModuleSortOrder((o) => (o === "asc" ? "desc" : "asc"));
     else setModuleSortBy(key);
   };
 
@@ -473,15 +531,15 @@ const Admin = () => {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 text-blue-50">
         <p className="text-sm text-blue-300 mb-3">
-          Pick a tab to work in. Search and filters stay where you left them while you move between
-          these pages.
+          Pick a tab to work in. Search and filters stay where you left them
+          while you move between these pages.
         </p>
         <div className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-blue-900 shadow-lg shadow-black/30 mb-8 max-w-3xl">
           {[
-            { id: 'overview', label: 'Overview', icon: FaChartBar },
-            { id: 'users', label: 'Users', icon: FaUsers },
-            { id: 'modules', label: 'Modules', icon: FaLayerGroup },
-            { id: 'achievements', label: 'Achievements', icon: FaTrophy },
+            { id: "overview", label: "Overview", icon: FaChartBar },
+            { id: "users", label: "Users", icon: FaUsers },
+            { id: "modules", label: "Modules", icon: FaLayerGroup },
+            { id: "achievements", label: "Achievements", icon: FaTrophy },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -489,8 +547,8 @@ const Admin = () => {
               onClick={() => setTab(id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
                 tab === id
-                  ? 'bg-blue-500 text-black shadow-md shadow-black/25'
-                  : 'text-blue-200 hover:text-blue-50 hover:bg-blue-800'
+                  ? "bg-blue-500 text-black shadow-md shadow-black/25"
+                  : "text-blue-200 hover:text-blue-50 hover:bg-blue-800"
               }`}
             >
               <Icon className="text-sm" />
@@ -505,7 +563,7 @@ const Admin = () => {
             subMessage="Gathering platform stats, users, and content"
             inline
           />
-        ) : tab === 'overview' ? (
+        ) : tab === "overview" ? (
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
@@ -513,34 +571,48 @@ const Admin = () => {
                   <div className="p-2 rounded-xl bg-blue-700 text-blue-200">
                     <FaUsers className="text-xl" />
                   </div>
-                  <span className="text-[13px] font-medium text-blue-300">Total users</span>
+                  <span className="text-[13px] font-medium text-blue-300">
+                    Total users
+                  </span>
                 </div>
-                <p className="text-2xl font-semibold text-blue-50">{stats.totalUsers}</p>
+                <p className="text-2xl font-semibold text-blue-50">
+                  {stats.totalUsers}
+                </p>
               </div>
               <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="p-2 rounded-xl bg-blue-700 text-blue-200">
                     <FaLayerGroup className="text-xl" />
                   </div>
-                  <span className="text-[13px] font-medium text-blue-300">Total modules</span>
+                  <span className="text-[13px] font-medium text-blue-300">
+                    Total modules
+                  </span>
                 </div>
-                <p className="text-2xl font-semibold text-blue-50">{modules.length}</p>
+                <p className="text-2xl font-semibold text-blue-50">
+                  {modules.length}
+                </p>
               </div>
               <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="p-2 rounded-xl bg-blue-700 text-black">
                     <FaTrophy className="text-xl" />
                   </div>
-                  <span className="text-[13px] font-medium text-blue-300">Achievements</span>
+                  <span className="text-[13px] font-medium text-blue-300">
+                    Achievements
+                  </span>
                 </div>
-                <p className="text-2xl font-semibold text-blue-50">{achievements.length}</p>
+                <p className="text-2xl font-semibold text-blue-50">
+                  {achievements.length}
+                </p>
               </div>
               <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="p-2 rounded-xl bg-blue-700 text-blue-200">
                     <FaBolt className="text-xl" />
                   </div>
-                  <span className="text-[13px] font-medium text-blue-300">Total XP</span>
+                  <span className="text-[13px] font-medium text-blue-300">
+                    Total XP
+                  </span>
                 </div>
                 <p className="text-2xl font-semibold text-blue-50">
                   {overviewStats.totalXp.toLocaleString()}
@@ -551,9 +623,13 @@ const Admin = () => {
                   <div className="p-2 rounded-xl bg-blue-700 text-black">
                     <FaAward className="text-xl" />
                   </div>
-                  <span className="text-[13px] font-medium text-blue-300">Avg level</span>
+                  <span className="text-[13px] font-medium text-blue-300">
+                    Avg level
+                  </span>
                 </div>
-                <p className="text-2xl font-semibold text-blue-50">{overviewStats.avgLevel}</p>
+                <p className="text-2xl font-semibold text-blue-50">
+                  {overviewStats.avgLevel}
+                </p>
               </div>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -562,16 +638,21 @@ const Admin = () => {
                   <FaBolt className="text-blue-50" /> Platform activity
                 </h3>
                 <p className="text-blue-300 text-[13px]">
-                  <span className="text-blue-50 font-medium">{overviewStats.totalCompleted}</span>{' '}
+                  <span className="text-blue-50 font-medium">
+                    {overviewStats.totalCompleted}
+                  </span>{" "}
                   modules completed across all users
                 </p>
               </div>
               <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
                 <h3 className="text-sm font-semibold text-blue-50 mb-3 flex items-center gap-2">
-                  <FaCalendarAlt className="text-blue-400" /> Recent signups (last 7 days)
+                  <FaCalendarAlt className="text-blue-400" /> Recent signups
+                  (last 7 days)
                 </h3>
                 {overviewStats.recentSignups.length === 0 ? (
-                  <p className="text-blue-300 text-[13px]">No signups in the last 7 days.</p>
+                  <p className="text-blue-300 text-[13px]">
+                    No signups in the last 7 days.
+                  </p>
                 ) : (
                   <ul className="space-y-2">
                     {overviewStats.recentSignups.map((u) => (
@@ -582,7 +663,9 @@ const Admin = () => {
                         <span className="text-blue-50">{u.name}</span>
                         <span className="text-blue-300">{u.email}</span>
                         <span className="text-blue-300 text-[12px]">
-                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : ''}
+                          {u.createdAt
+                            ? new Date(u.createdAt).toLocaleDateString()
+                            : ""}
                         </span>
                       </li>
                     ))}
@@ -591,7 +674,7 @@ const Admin = () => {
               </div>
             </div>
           </div>
-        ) : tab === 'users' ? (
+        ) : tab === "users" ? (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-3">
@@ -651,12 +734,12 @@ const Admin = () => {
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
-                          onClick={() => toggleUserSort('name')}
+                          onClick={() => toggleUserSort("name")}
                           className="flex items-center gap-1 hover:text-blue-50"
                         >
-                          Name{' '}
-                          {userSortBy === 'name' ? (
-                            userSortOrder === 'asc' ? (
+                          Name{" "}
+                          {userSortBy === "name" ? (
+                            userSortOrder === "asc" ? (
                               <FaSortUp />
                             ) : (
                               <FaSortDown />
@@ -669,12 +752,12 @@ const Admin = () => {
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
-                          onClick={() => toggleUserSort('email')}
+                          onClick={() => toggleUserSort("email")}
                           className="flex items-center gap-1 hover:text-blue-50"
                         >
-                          Email{' '}
-                          {userSortBy === 'email' ? (
-                            userSortOrder === 'asc' ? (
+                          Email{" "}
+                          {userSortBy === "email" ? (
+                            userSortOrder === "asc" ? (
                               <FaSortUp />
                             ) : (
                               <FaSortDown />
@@ -687,12 +770,12 @@ const Admin = () => {
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
-                          onClick={() => toggleUserSort('level')}
+                          onClick={() => toggleUserSort("level")}
                           className="flex items-center gap-1 hover:text-blue-50"
                         >
-                          Level{' '}
-                          {userSortBy === 'level' ? (
-                            userSortOrder === 'asc' ? (
+                          Level{" "}
+                          {userSortBy === "level" ? (
+                            userSortOrder === "asc" ? (
                               <FaSortUp />
                             ) : (
                               <FaSortDown />
@@ -705,12 +788,12 @@ const Admin = () => {
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
-                          onClick={() => toggleUserSort('totalPoints')}
+                          onClick={() => toggleUserSort("totalPoints")}
                           className="flex items-center gap-1 hover:text-blue-50"
                         >
-                          XP{' '}
-                          {userSortBy === 'totalPoints' ? (
-                            userSortOrder === 'asc' ? (
+                          XP{" "}
+                          {userSortBy === "totalPoints" ? (
+                            userSortOrder === "asc" ? (
                               <FaSortUp />
                             ) : (
                               <FaSortDown />
@@ -720,16 +803,18 @@ const Admin = () => {
                           )}
                         </button>
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-blue-300">Completed</th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        Completed
+                      </th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
-                          onClick={() => toggleUserSort('learningPath')}
+                          onClick={() => toggleUserSort("learningPath")}
                           className="flex items-center gap-1 hover:text-blue-50"
                         >
-                          Path{' '}
-                          {userSortBy === 'learningPath' ? (
-                            userSortOrder === 'asc' ? (
+                          Path{" "}
+                          {userSortBy === "learningPath" ? (
+                            userSortOrder === "asc" ? (
                               <FaSortUp />
                             ) : (
                               <FaSortDown />
@@ -739,21 +824,34 @@ const Admin = () => {
                           )}
                         </button>
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-blue-300">Role</th>
-                      <th className="text-right py-3 px-4 font-medium text-blue-300">Actions</th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        Role
+                      </th>
+                      <th className="text-right py-3 px-4 font-medium text-blue-300">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map((u) => (
-                      <tr key={u.id} className="even:bg-blue-900/50 hover:bg-blue-800 transition-colors">
+                      <tr
+                        key={u.id}
+                        className="even:bg-blue-900/50 hover:bg-blue-800 transition-colors"
+                      >
                         <td className="py-3 px-4 text-blue-50">{u.name}</td>
                         <td className="py-3 px-4 text-blue-300">{u.email}</td>
-                        <td className="py-3 px-4 text-blue-300">Lv.{u.level ?? 1}</td>
-                        <td className="py-3 px-4 text-blue-50">{u.totalPoints ?? 0}</td>
+                        <td className="py-3 px-4 text-blue-300">
+                          Lv.{u.level ?? 1}
+                        </td>
+                        <td className="py-3 px-4 text-blue-50">
+                          {u.totalPoints ?? 0}
+                        </td>
                         <td className="py-3 px-4 text-blue-300">
                           {u.completedModules?.length ?? 0}
                         </td>
-                        <td className="py-3 px-4 text-blue-300">{u.learningPath || 'none'}</td>
+                        <td className="py-3 px-4 text-blue-300">
+                          {u.learningPath || "none"}
+                        </td>
                         <td className="py-3 px-4">
                           {u.isAdmin ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-blue-800 text-blue-50">
@@ -767,7 +865,9 @@ const Admin = () => {
                           {u.isAdmin ? (
                             <button
                               onClick={() => handleRevokeAdmin(u)}
-                              disabled={u.id === user?.id || adminActionUserId === u.id}
+                              disabled={
+                                u.id === user?.id || adminActionUserId === u.id
+                              }
                               className="p-2 text-blue-300 hover:text-blue-200 hover:bg-blue-700 rounded-xl transition-colors disabled:text-blue-400 disabled:hover:bg-transparent disabled:cursor-not-allowed"
                               title="Revoke admin"
                             >
@@ -809,7 +909,7 @@ const Admin = () => {
               <div className="flex items-center justify-between">
                 <p className="text-blue-300 text-[13px]">
                   Showing {(userPage - 1) * userPageSize + 1}–
-                  {Math.min(userPage * userPageSize, userPagination.total)} of{' '}
+                  {Math.min(userPage * userPageSize, userPagination.total)} of{" "}
                   {userPagination.total}
                 </p>
                 <div className="flex gap-2">
@@ -824,7 +924,9 @@ const Admin = () => {
                     Page {userPage} of {totalUserPages}
                   </span>
                   <button
-                    onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
+                    onClick={() =>
+                      setUserPage((p) => Math.min(totalUserPages, p + 1))
+                    }
                     disabled={userPage >= totalUserPages}
                     className="px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                   >
@@ -834,7 +936,7 @@ const Admin = () => {
               </div>
             )}
           </div>
-        ) : tab === 'achievements' ? (
+        ) : tab === "achievements" ? (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative flex-1 min-w-[200px] max-w-xs">
@@ -853,24 +955,41 @@ const Admin = () => {
                 <table className="w-full text-[13px]">
                   <thead>
                     <tr className="bg-blue-900">
-                      <th className="text-left py-3 px-4 font-medium text-blue-300">Name</th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        Name
+                      </th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
                         Description
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-blue-300">Points</th>
-                      <th className="text-left py-3 px-4 font-medium text-blue-300">Category</th>
-                      <th className="text-left py-3 px-4 font-medium text-blue-300">Earned by</th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        Points
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        Category
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-blue-300">
+                        Earned by
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredAchievements.map((a) => (
-                      <tr key={a.id} className="even:bg-blue-900/50 hover:bg-blue-800 transition-colors">
-                        <td className="py-3 px-4 text-blue-50 font-medium">{a.name}</td>
+                      <tr
+                        key={a.id}
+                        className="even:bg-blue-900/50 hover:bg-blue-800 transition-colors"
+                      >
+                        <td className="py-3 px-4 text-blue-50 font-medium">
+                          {a.name}
+                        </td>
                         <td className="py-3 px-4 text-blue-300 max-w-[200px] truncate">
                           {a.description}
                         </td>
-                        <td className="py-3 px-4 text-blue-50">+{a.points ?? 0}</td>
-                        <td className="py-3 px-4 text-blue-300">{a.category || '-'}</td>
+                        <td className="py-3 px-4 text-blue-50">
+                          +{a.points ?? 0}
+                        </td>
+                        <td className="py-3 px-4 text-blue-300">
+                          {a.category || "-"}
+                        </td>
                         <td className="py-3 px-4 text-blue-300">
                           {achievementEarnedCount[a.id] ?? 0} users
                         </td>
@@ -936,7 +1055,7 @@ const Admin = () => {
               </div>
               <button
                 type="button"
-                onClick={() => navigate('/admin/modules/new')}
+                onClick={() => navigate("/admin/modules/new")}
                 className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors"
               >
                 <FaPlus />
@@ -951,12 +1070,12 @@ const Admin = () => {
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
-                          onClick={() => toggleModuleSort('title')}
+                          onClick={() => toggleModuleSort("title")}
                           className="flex items-center gap-1 hover:text-blue-50"
                         >
-                          Title{' '}
-                          {moduleSortBy === 'title' ? (
-                            moduleSortOrder === 'asc' ? (
+                          Title{" "}
+                          {moduleSortBy === "title" ? (
+                            moduleSortOrder === "asc" ? (
                               <FaSortUp />
                             ) : (
                               <FaSortDown />
@@ -972,12 +1091,12 @@ const Admin = () => {
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
-                          onClick={() => toggleModuleSort('category')}
+                          onClick={() => toggleModuleSort("category")}
                           className="flex items-center gap-1 hover:text-blue-50"
                         >
-                          Category{' '}
-                          {moduleSortBy === 'category' ? (
-                            moduleSortOrder === 'asc' ? (
+                          Category{" "}
+                          {moduleSortBy === "category" ? (
+                            moduleSortOrder === "asc" ? (
                               <FaSortUp />
                             ) : (
                               <FaSortDown />
@@ -990,12 +1109,12 @@ const Admin = () => {
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
-                          onClick={() => toggleModuleSort('difficulty')}
+                          onClick={() => toggleModuleSort("difficulty")}
                           className="flex items-center gap-1 hover:text-blue-50"
                         >
-                          Difficulty{' '}
-                          {moduleSortBy === 'difficulty' ? (
-                            moduleSortOrder === 'asc' ? (
+                          Difficulty{" "}
+                          {moduleSortBy === "difficulty" ? (
+                            moduleSortOrder === "asc" ? (
                               <FaSortUp />
                             ) : (
                               <FaSortDown />
@@ -1008,12 +1127,12 @@ const Admin = () => {
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
                         <button
                           type="button"
-                          onClick={() => toggleModuleSort('order')}
+                          onClick={() => toggleModuleSort("order")}
                           className="flex items-center gap-1 hover:text-blue-50"
                         >
-                          Order{' '}
-                          {moduleSortBy === 'order' ? (
-                            moduleSortOrder === 'asc' ? (
+                          Order{" "}
+                          {moduleSortBy === "order" ? (
+                            moduleSortOrder === "asc" ? (
                               <FaSortUp />
                             ) : (
                               <FaSortDown />
@@ -1023,22 +1142,35 @@ const Admin = () => {
                           )}
                         </button>
                       </th>
-                      <th className="text-right py-3 px-4 font-medium text-blue-300">Actions</th>
+                      <th className="text-right py-3 px-4 font-medium text-blue-300">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedModulesForAdmin.map((m) => (
-                      <tr key={m._id} className="even:bg-blue-900/50 hover:bg-blue-800 transition-colors">
-                        <td className="py-3 px-4 text-blue-50 font-medium">{m.title}</td>
+                      <tr
+                        key={m._id}
+                        className="even:bg-blue-900/50 hover:bg-blue-800 transition-colors"
+                      >
+                        <td className="py-3 px-4 text-blue-50 font-medium">
+                          {m.title}
+                        </td>
                         <td
                           className="py-3 px-4 text-blue-300 max-w-[220px] truncate"
                           title={m.description}
                         >
-                          {m.description || '-'}
+                          {m.description || "-"}
                         </td>
-                        <td className="py-3 px-4 text-blue-300">{m.category}</td>
-                        <td className="py-3 px-4 text-blue-300">{m.difficulty || '-'}</td>
-                        <td className="py-3 px-4 text-blue-300">{m.order ?? 0}</td>
+                        <td className="py-3 px-4 text-blue-300">
+                          {m.category}
+                        </td>
+                        <td className="py-3 px-4 text-blue-300">
+                          {m.difficulty || "-"}
+                        </td>
+                        <td className="py-3 px-4 text-blue-300">
+                          {m.order ?? 0}
+                        </td>
                         <td className="py-3 px-4 text-right">
                           <button
                             type="button"
@@ -1065,8 +1197,11 @@ const Admin = () => {
                 <div className="mt-4 flex items-center justify-between px-4">
                   <p className="text-blue-300 text-[13px]">
                     Showing {(modulePage - 1) * MODULE_PAGE_SIZE + 1}–
-                    {Math.min(modulePage * MODULE_PAGE_SIZE, filteredModules.length)} of{' '}
-                    {filteredModules.length}
+                    {Math.min(
+                      modulePage * MODULE_PAGE_SIZE,
+                      filteredModules.length,
+                    )}{" "}
+                    of {filteredModules.length}
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -1082,7 +1217,9 @@ const Admin = () => {
                     </span>
                     <button
                       type="button"
-                      onClick={() => setModulePage((p) => Math.min(totalModulePages, p + 1))}
+                      onClick={() =>
+                        setModulePage((p) => Math.min(totalModulePages, p + 1))
+                      }
                       disabled={modulePage >= totalModulePages}
                       className="px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                     >
@@ -1112,20 +1249,28 @@ const Admin = () => {
             <h3 className="text-lg font-bold text-blue-50 mb-4">Edit user</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-[11px] font-medium text-blue-300 mb-1">Name</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">
+                  Name
+                </label>
                 <input
                   type="text"
                   value={userModal.name}
-                  onChange={(e) => setUserModal((p) => ({ ...p, name: e.target.value }))}
+                  onChange={(e) =>
+                    setUserModal((p) => ({ ...p, name: e.target.value }))
+                  }
                   className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-blue-300 mb-1">Email</label>
+                <label className="block text-[11px] font-medium text-blue-300 mb-1">
+                  Email
+                </label>
                 <input
                   type="email"
                   value={userModal.email}
-                  onChange={(e) => setUserModal((p) => ({ ...p, email: e.target.value }))}
+                  onChange={(e) =>
+                    setUserModal((p) => ({ ...p, email: e.target.value }))
+                  }
                   className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 />
               </div>
@@ -1135,7 +1280,12 @@ const Admin = () => {
                 </label>
                 <select
                   value={userModal.learningPath}
-                  onChange={(e) => setUserModal((p) => ({ ...p, learningPath: e.target.value }))}
+                  onChange={(e) =>
+                    setUserModal((p) => ({
+                      ...p,
+                      learningPath: e.target.value,
+                    }))
+                  }
                   className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 >
                   {LEARNING_PATHS.map((path) => (
@@ -1151,7 +1301,10 @@ const Admin = () => {
                   id="knowsJs"
                   checked={userModal.knowsJavaScript}
                   onChange={(e) =>
-                    setUserModal((p) => ({ ...p, knowsJavaScript: e.target.checked }))
+                    setUserModal((p) => ({
+                      ...p,
+                      knowsJavaScript: e.target.checked,
+                    }))
                   }
                   className="rounded bg-blue-800 text-blue-400 accent-blue-400"
                 />
@@ -1172,7 +1325,7 @@ const Admin = () => {
                 disabled={saving}
                 className="px-4 py-2 bg-blue-500 text-black text-[13px] font-semibold rounded-xl shadow-md shadow-black/25 hover:bg-blue-400 transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? "Saving..." : "Save"}
               </button>
             </div>
           </div>
@@ -1184,7 +1337,8 @@ const Admin = () => {
         title={confirmModal.title}
         message={confirmModal.message}
         onConfirm={() => {
-          if (typeof confirmModal.onConfirm === 'function') confirmModal.onConfirm();
+          if (typeof confirmModal.onConfirm === "function")
+            confirmModal.onConfirm();
           setConfirmModal((p) => ({ ...p, open: false }));
         }}
         onCancel={() => setConfirmModal((p) => ({ ...p, open: false }))}

@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
 
 const ease = [0.25, 0.1, 0.25, 1];
 
@@ -6,10 +6,10 @@ const ease = [0.25, 0.1, 0.25, 1];
  * Full-page or inline loading state with smooth entrance animation.
  */
 const LoadingScreen = ({
-  message = 'Loading…',
+  message = "Loading…",
   subMessage = null,
   inline = false,
-  className = '',
+  className = "",
 }) => {
   const content = (
     <motion.div
@@ -21,7 +21,7 @@ const LoadingScreen = ({
       <motion.div
         className="h-10 w-10 shrink-0 rounded-full border-2 border-blue-400 border-t-transparent"
         animate={{ rotate: 360 }}
-        transition={{ duration: 0.85, repeat: Infinity, ease: 'linear' }}
+        transition={{ duration: 0.85, repeat: Infinity, ease: "linear" }}
         aria-hidden
       />
       <motion.p

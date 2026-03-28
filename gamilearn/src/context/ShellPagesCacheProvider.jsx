@@ -1,12 +1,11 @@
-import { createContext, useCallback, useContext, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useCallback, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
+import { ShellPagesCacheContext } from "./shellPagesCacheContext";
 
-const ShellPagesCacheContext = createContext(null);
-
-const SHELL_PATHS = ['/dashboard', '/modules', '/profile', '/admin'];
+const SHELL_PATHS = ["/dashboard", "/modules", "/profile", "/admin"];
 
 function isShellPathname(pathname) {
-  const p = (pathname || '').split('?')[0].replace(/\/$/, '') || '/';
+  const p = (pathname || "").split("?")[0].replace(/\/$/, "") || "/";
   return SHELL_PATHS.some((route) => p === route || p.startsWith(`${route}/`));
 }
 
@@ -46,14 +45,8 @@ export function ShellPagesCacheProvider({ children }) {
   const value = { peek, put, isShellPathname };
 
   return (
-    <ShellPagesCacheContext.Provider value={value}>{children}</ShellPagesCacheContext.Provider>
+    <ShellPagesCacheContext.Provider value={value}>
+      {children}
+    </ShellPagesCacheContext.Provider>
   );
-}
-
-export function useShellPagesCache() {
-  const ctx = useContext(ShellPagesCacheContext);
-  if (!ctx) {
-    throw new Error('useShellPagesCache must be used inside ShellPagesCacheProvider');
-  }
-  return ctx;
 }

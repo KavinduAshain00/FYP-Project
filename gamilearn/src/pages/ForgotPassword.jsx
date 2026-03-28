@@ -1,15 +1,15 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { FaEnvelope, FaGamepad, FaArrowLeft } from 'react-icons/fa';
-import { toast } from 'react-toastify';
-import { GameLayout } from '../components/layout/GameLayout';
-import { authAPI } from '../api/api';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { FaEnvelope, FaGamepad, FaArrowLeft } from "react-icons/fa";
+import { toast } from "react-toastify";
+import { GameLayout } from "../components/layout/GameLayout";
+import { authAPI } from "../api/api";
 
 const ease = [0.25, 0.1, 0.25, 1];
 
 const ForgotPassword = () => {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [resetToken, setResetToken] = useState(null);
@@ -26,21 +26,25 @@ const ForgotPassword = () => {
         const token = res.data.resetToken;
         setResetToken(token);
         try {
-          sessionStorage.setItem('passwordResetToken', token);
+          sessionStorage.setItem("passwordResetToken", token);
         } catch {
           // ignore storage failures (private browsing, etc.)
         }
       }
-      toast.success(res.data?.message || 'Check your email for reset instructions.');
+      toast.success(
+        res.data?.message || "Check your email for reset instructions.",
+      );
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Something went wrong. Try again.');
+      toast.error(
+        err.response?.data?.message || "Something went wrong. Try again.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const fieldClass =
-    'w-full rounded-2xl bg-blue-800 pl-12 pr-4 py-3.5 text-blue-50 placeholder-blue-300 outline-none focus:outline focus:outline-2 focus:outline-blue-400/60 text-sm';
+    "w-full rounded-2xl bg-blue-800 pl-12 pr-4 py-3.5 text-blue-50 placeholder-blue-300 outline-none focus:outline focus:outline-2 focus:outline-blue-400/60 text-sm";
 
   return (
     <GameLayout showNavbar={false} showParticles={false}>
@@ -82,7 +86,9 @@ const ForgotPassword = () => {
             {!sent ? (
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-blue-200 mb-2">Email</label>
+                  <label className="block text-sm font-medium text-blue-200 mb-2">
+                    Email
+                  </label>
                   <div className="relative">
                     <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                     <input
@@ -101,7 +107,7 @@ const ForgotPassword = () => {
                   disabled={loading}
                   className="w-full py-3.5 rounded-2xl bg-blue-500 text-black font-semibold text-sm shadow-md shadow-black/30 hover:bg-blue-400 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >
-                  {loading ? 'Sending…' : 'Send reset link'}
+                  {loading ? "Sending…" : "Send reset link"}
                 </button>
               </form>
             ) : (
@@ -111,13 +117,16 @@ const ForgotPassword = () => {
                 className="space-y-4"
               >
                 <p className="text-sm text-blue-200">
-                  If an account exists for that email, you can reset your password.
+                  If an account exists for that email, you can reset your
+                  password.
                 </p>
                 {resetToken ? (
                   <button
                     type="button"
                     onClick={() =>
-                      navigate(`/reset-password?token=${encodeURIComponent(resetToken)}`)
+                      navigate(
+                        `/reset-password?token=${encodeURIComponent(resetToken)}`,
+                      )
                     }
                     className="w-full py-3.5 rounded-2xl bg-blue-700 text-black font-semibold text-sm hover:bg-blue-600"
                   >

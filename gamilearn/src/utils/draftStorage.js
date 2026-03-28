@@ -3,9 +3,9 @@
  * Used by Code Editor (module steps, code).
  */
 
-const DB_NAME = 'GamiLearnDrafts';
+const DB_NAME = "GamiLearnDrafts";
 const DB_VERSION = 1;
-const STORE_EDITOR = 'code-editor';
+const STORE_EDITOR = "code-editor";
 
 let dbPromise = null;
 
@@ -18,7 +18,7 @@ function openDB() {
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains(STORE_EDITOR)) {
-        db.createObjectStore(STORE_EDITOR, { keyPath: 'moduleId' });
+        db.createObjectStore(STORE_EDITOR, { keyPath: "moduleId" });
       }
     };
   });
@@ -34,7 +34,7 @@ export async function saveEditorDraft(moduleId, data) {
   if (!moduleId) return;
   try {
     const db = await openDB();
-    const tx = db.transaction(STORE_EDITOR, 'readwrite');
+    const tx = db.transaction(STORE_EDITOR, "readwrite");
     const store = tx.objectStore(STORE_EDITOR);
     const payload = {
       moduleId,
@@ -47,7 +47,7 @@ export async function saveEditorDraft(moduleId, data) {
       tx.onerror = () => reject(tx.error);
     });
   } catch (e) {
-    console.warn('Editor draft save failed:', e);
+    console.warn("Editor draft save failed:", e);
   }
 }
 
@@ -60,7 +60,7 @@ export async function loadEditorDraft(moduleId) {
   if (!moduleId) return null;
   try {
     const db = await openDB();
-    const tx = db.transaction(STORE_EDITOR, 'readonly');
+    const tx = db.transaction(STORE_EDITOR, "readonly");
     const store = tx.objectStore(STORE_EDITOR);
     return new Promise((resolve, reject) => {
       const req = store.get(moduleId);
@@ -68,7 +68,7 @@ export async function loadEditorDraft(moduleId) {
       req.onerror = () => reject(req.error);
     });
   } catch (e) {
-    console.warn('Editor draft load failed:', e);
+    console.warn("Editor draft load failed:", e);
     return null;
   }
 }
@@ -77,14 +77,14 @@ export async function clearEditorDraft(moduleId) {
   if (!moduleId) return;
   try {
     const db = await openDB();
-    const tx = db.transaction(STORE_EDITOR, 'readwrite');
+    const tx = db.transaction(STORE_EDITOR, "readwrite");
     tx.objectStore(STORE_EDITOR).delete(moduleId);
     return new Promise((resolve, reject) => {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
   } catch (e) {
-    console.warn('Editor draft clear failed:', e);
+    console.warn("Editor draft clear failed:", e);
   }
 }
 
@@ -95,7 +95,7 @@ export async function clearEditorDraft(moduleId) {
 export async function getLastWorkedEditorModuleId() {
   try {
     const db = await openDB();
-    const tx = db.transaction(STORE_EDITOR, 'readonly');
+    const tx = db.transaction(STORE_EDITOR, "readonly");
     const store = tx.objectStore(STORE_EDITOR);
     return new Promise((resolve, reject) => {
       const req = store.getAll();
@@ -112,7 +112,7 @@ export async function getLastWorkedEditorModuleId() {
       req.onerror = () => reject(req.error);
     });
   } catch (e) {
-    console.warn('Last worked module lookup failed:', e);
+    console.warn("Last worked module lookup failed:", e);
     return null;
   }
 }

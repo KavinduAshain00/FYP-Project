@@ -1,8 +1,14 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from "framer-motion";
 
 const ease = [0.25, 0.1, 0.25, 1];
 
-const ConfirmModal = ({ open, title = 'Confirm', message = '', onConfirm, onCancel }) => {
+const ConfirmModal = ({
+  open,
+  title = "Confirm",
+  message = "",
+  onConfirm,
+  onCancel,
+}) => {
   return (
     <AnimatePresence>
       {open && (
@@ -34,10 +40,15 @@ const ConfirmModal = ({ open, title = 'Confirm', message = '', onConfirm, onCanc
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.28, ease }}
           >
-            <h3 id="confirm-modal-title" className="mb-2 text-lg font-bold text-blue-50">
+            <h3
+              id="confirm-modal-title"
+              className="mb-2 text-lg font-bold text-blue-50"
+            >
               {title}
             </h3>
-            <p className="mb-6 text-sm text-blue-200 leading-relaxed">{message}</p>
+            <p className="mb-6 text-sm text-blue-200 leading-relaxed">
+              {message}
+            </p>
             <div className="flex justify-end gap-3">
               <motion.button
                 type="button"

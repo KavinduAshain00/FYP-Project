@@ -197,7 +197,10 @@ async function checkProgress(userId, progressData) {
       shouldEarn = true;
     else if (reqReq === "ai_explain_code_5" && merged.aiExplainCodeUses >= 5)
       shouldEarn = true;
-    else if (reqReq === "ai_explain_error_once" && merged.aiExplainErrorUses >= 1)
+    else if (
+      reqReq === "ai_explain_error_once" &&
+      merged.aiExplainErrorUses >= 1
+    )
       shouldEarn = true;
     else if (reqReq === "ai_explain_error_5" && merged.aiExplainErrorUses >= 5)
       shouldEarn = true;

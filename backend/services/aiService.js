@@ -642,7 +642,10 @@ function ensureVanillaStarterCode(sc, moduleTitle) {
     .slice(0, 80)
     .replace(/</g, "");
   if (!out.html.trim()) {
-    out.html = FALLBACK_STARTER_HTML.replace("Module starter", safeTitle || "Module starter");
+    out.html = FALLBACK_STARTER_HTML.replace(
+      "Module starter",
+      safeTitle || "Module starter",
+    );
   }
   if (!out.css.trim()) {
     out.css = FALLBACK_STARTER_CSS;
@@ -688,7 +691,9 @@ async function generateModuleCurriculumParts(opts) {
     ? opts.steps
         .map((s, i) => {
           const t = String(s?.title ?? "").trim();
-          const ins = String(s?.instruction ?? "").trim().slice(0, 600);
+          const ins = String(s?.instruction ?? "")
+            .trim()
+            .slice(0, 600);
           return t
             ? `${i + 1}. ${t}${ins ? `\n   What the student must do: ${ins}` : ""}`
             : null;
