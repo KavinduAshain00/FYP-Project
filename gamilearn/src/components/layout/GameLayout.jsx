@@ -82,7 +82,7 @@ export const GameSidebar = ({
                 key={i}
                 className="flex items-center gap-2.5 p-2 bg-blue-800 rounded-xl"
               >
-                <span className="w-7 h-7 flex items-center justify-center bg-blue-700 text-blue-50 rounded-lg">
+                <span className="w-7 h-7 flex items-center justify-center bg-blue-700 text-black rounded-lg">
                   <FaTrophy className="text-[10px]" />
                 </span>
                 <div className="flex-1 min-w-0">

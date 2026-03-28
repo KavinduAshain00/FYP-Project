@@ -88,7 +88,7 @@ const Signup = () => {
       <div
         className={`flex items-center justify-center w-10 h-10 rounded-xl text-sm font-bold ${
           step === 1
-            ? 'bg-gradient-to-br from-blue-400 to-cyan-400 text-blue-950 shadow-md shadow-cyan-500/25'
+            ? 'bg-blue-500 text-black shadow-md shadow-black/25'
             : 'bg-blue-700 text-blue-300'
         }`}
       >
@@ -96,13 +96,13 @@ const Signup = () => {
       </div>
       <div className="h-1 flex-1 max-w-[48px] rounded-full bg-blue-700 overflow-hidden">
         <div
-          className={`h-full rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 transition-all ${step === 2 ? 'w-full' : 'w-0'}`}
+          className={`h-full rounded-full bg-blue-400 transition-all ${step === 2 ? 'w-full' : 'w-0'}`}
         />
       </div>
       <div
         className={`flex items-center justify-center w-10 h-10 rounded-xl text-sm font-bold ${
           step === 2
-            ? 'bg-gradient-to-br from-blue-400 to-cyan-400 text-blue-950 shadow-md shadow-cyan-500/25'
+            ? 'bg-blue-500 text-black shadow-md shadow-black/25'
             : 'bg-blue-700 text-blue-300'
         }`}
       >
@@ -120,9 +120,8 @@ const Signup = () => {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, ease }}
-            className="lg:w-[38%] flex flex-col justify-center p-8 sm:p-12 bg-gradient-to-b from-blue-900 to-neutral-900 relative overflow-hidden"
+            className="lg:w-[38%] flex flex-col justify-center p-8 sm:p-12 bg-blue-900 relative overflow-hidden"
           >
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-cyan-400/10" />
             <div className="relative z-10 flex items-center gap-3 mb-6">
               <span className="w-11 h-11 rounded-xl bg-blue-800 flex items-center justify-center text-blue-50">
                 <FaBookOpen />
@@ -161,13 +160,13 @@ const Signup = () => {
                   className="w-full text-left rounded-2xl bg-blue-900 p-5 shadow-lg shadow-black/30 hover:bg-blue-800 transition-all disabled:bg-blue-900 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-start gap-4">
-                    <span className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center shrink-0 text-blue-50 shadow-md shadow-cyan-500/20">
+                    <span className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 text-black shadow-md shadow-black/25">
                       <FaRocket className="text-lg" />
                     </span>
                     <div>
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <h3 className="font-bold text-blue-50">I already code in JavaScript</h3>
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-gradient-to-r from-amber-400 to-orange-400 text-blue-950 shadow-sm">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-amber-500 text-blue-950 shadow-sm">
                           Fast track
                         </span>
                       </div>
@@ -184,7 +183,7 @@ const Signup = () => {
                   className="w-full text-left rounded-2xl bg-blue-900 p-5 shadow-lg shadow-black/30 hover:bg-blue-800 transition-all disabled:bg-blue-900 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-start gap-4">
-                    <span className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center shrink-0 text-white shadow-md shadow-emerald-500/25">
+                    <span className="w-12 h-12 rounded-xl bg-blue-700 flex items-center justify-center shrink-0 text-black shadow-md shadow-black/25">
                       <FaStar className="text-lg" />
                     </span>
                     <div>
@@ -221,9 +220,8 @@ const Signup = () => {
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.45, ease }}
-          className="lg:w-[44%] xl:w-[40%] flex flex-col justify-between p-8 sm:p-12 lg:p-14 bg-gradient-to-b from-blue-900 via-blue-900 to-neutral-900 relative overflow-hidden"
+          className="lg:w-[44%] xl:w-[40%] flex flex-col justify-between p-8 sm:p-12 lg:p-14 bg-blue-900 relative overflow-hidden"
         >
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-cyan-400/12 via-transparent to-fuchsia-500/10" />
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-10">
               <span className="w-12 h-12 rounded-2xl bg-blue-800 flex items-center justify-center text-blue-50 shadow-lg shadow-black/40">
@@ -336,7 +334,7 @@ const Signup = () => {
               </div>
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 font-semibold text-sm shadow-lg shadow-cyan-500/30 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-blue-500 text-black font-semibold text-sm shadow-md shadow-black/30 hover:bg-blue-400 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 Continue <FaArrowRight className="text-xs" />
               </button>

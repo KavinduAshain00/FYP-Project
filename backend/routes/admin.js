@@ -30,4 +30,8 @@ router.delete(
   adminController.revokeAchievement,
 );
 
+// AI: suggest module steps (admin curriculum helper)
+router.post("/modules/generate-steps", adminController.generateModuleSteps);
+router.post("/modules/generate-curriculum", adminController.generateModuleCurriculum);
+
 module.exports = router;

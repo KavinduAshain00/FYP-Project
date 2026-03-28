@@ -49,9 +49,8 @@ const ForgotPassword = () => {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.42, ease }}
-          className="lg:w-[40%] flex flex-col justify-center p-8 sm:p-12 bg-gradient-to-b from-blue-900 to-neutral-900 relative overflow-hidden"
+          className="lg:w-[40%] flex flex-col justify-center p-8 sm:p-12 bg-blue-900 relative overflow-hidden"
         >
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-teal-400/10 via-transparent to-cyan-400/10" />
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-6">
               <span className="w-12 h-12 rounded-2xl bg-blue-800 flex items-center justify-center text-blue-50 shadow-lg shadow-black/40">
@@ -100,7 +99,7 @@ const ForgotPassword = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 font-semibold text-sm shadow-lg shadow-cyan-500/30 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
+                  className="w-full py-3.5 rounded-2xl bg-blue-500 text-black font-semibold text-sm shadow-md shadow-black/30 hover:bg-blue-400 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >
                   {loading ? 'Sending…' : 'Send reset link'}
                 </button>
@@ -120,7 +119,7 @@ const ForgotPassword = () => {
                     onClick={() =>
                       navigate(`/reset-password?token=${encodeURIComponent(resetToken)}`)
                     }
-                    className="w-full py-3.5 rounded-2xl bg-blue-700 text-blue-50 font-semibold text-sm hover:bg-blue-600"
+                    className="w-full py-3.5 rounded-2xl bg-blue-700 text-black font-semibold text-sm hover:bg-blue-600"
                   >
                     Set new password
                   </button>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   FaEdit,
@@ -14,11 +15,11 @@ import {
   FaSort,
   FaSortUp,
   FaSortDown,
-  FaAward,
   FaCalendarAlt,
   FaBolt,
   FaUserPlus,
   FaUserMinus,
+  FaAward,
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useShellPagesCache } from '../context/ShellPagesCacheContext';
@@ -26,21 +27,12 @@ import { adminAPI, modulesAPI, achievementsAPI } from '../api/api';
 import { PageHeader } from '../components/layout/GameLayout';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import LoadingScreen from '../components/ui/LoadingScreen';
+import { MODULE_CATEGORIES, DIFFICULTIES } from './admin/moduleEditorUtils';
 
 const LEARNING_PATHS = ['none', 'javascript-basics', 'advanced'];
 
-const MODULE_CATEGORIES = [
-  'javascript-basics',
-  'game-development',
-  'multiplayer',
-  'advanced-concepts',
-  'react-fundamentals',
-  'react-game-dev',
-];
-
-const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'];
-
 const Admin = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { peek, put } = useShellPagesCache();
   const savedAdmin = peek('admin');
@@ -52,7 +44,6 @@ const Admin = () => {
   const [achievements, setAchievements] = useState(() => savedAdmin?.achievements ?? []);
   const [loading, setLoading] = useState(() => !hydratedAdmin);
   const [userModal, setUserModal] = useState(null);
-  const [moduleModal, setModuleModal] = useState(null);
   const [saving, setSaving] = useState(false);
   const [userSearch, setUserSearch] = useState(() => savedAdmin?.userSearch ?? '');
   const [moduleSearch, setModuleSearch] = useState(() => savedAdmin?.moduleSearch ?? '');
@@ -93,8 +84,6 @@ const Admin = () => {
     () => savedAdmin?.achievementSearch ?? ''
   );
   const MODULE_PAGE_SIZE = 10;
-  const [grantModal, setGrantModal] = useState(null);
-  const [grantSaving, setGrantSaving] = useState(false);
   const [adminActionUserId, setAdminActionUserId] = useState(null);
   const [confirmModal, setConfirmModal] = useState({
     open: false,
@@ -103,7 +92,6 @@ const Admin = () => {
     onConfirm: null,
   });
   const initialUserModalRef = useRef(null);
-  const initialModuleModalRef = useRef(null);
   const skipBootstrapLoad = useRef(hydratedAdmin);
   const skipUsersFetchOnce = useRef(hydratedAdmin);
 
@@ -294,44 +282,6 @@ const Admin = () => {
     }
   };
 
-  const handleSaveModule = async () => {
-    if (!moduleModal) return;
-    const payload = {
-      title: moduleModal.title,
-      description: moduleModal.description,
-      category: moduleModal.category,
-      difficulty: moduleModal.difficulty,
-      order: Number(moduleModal.order) || 0,
-      content: moduleModal.content || '',
-      moduleType: moduleModal.moduleType || 'vanilla',
-      starterCode: moduleModal.starterCode || {
-        html: '<!DOCTYPE html>...',
-        css: '',
-        javascript: '// Start here',
-        jsx: '',
-      },
-      objectives: Array.isArray(moduleModal.objectives) ? moduleModal.objectives : [],
-      hints: Array.isArray(moduleModal.hints) ? moduleModal.hints : [],
-    };
-    setSaving(true);
-    try {
-      if (moduleModal.id) {
-        await modulesAPI.update(moduleModal.id, payload);
-        toast.success('Module updated');
-      } else {
-        await modulesAPI.create(payload);
-        toast.success('Module created');
-      }
-      setModuleModal(null);
-      initialModuleModalRef.current = null;
-      await loadModules();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save module');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleDeleteModule = (m) => {
     setConfirmModal({
       open: true,
@@ -346,8 +296,6 @@ const Admin = () => {
     try {
       await modulesAPI.delete(m._id);
       toast.success('Module deleted');
-      setModuleModal(null);
-      initialModuleModalRef.current = null;
       await loadModules();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete module');
@@ -362,19 +310,6 @@ const Admin = () => {
       userModal.email !== a.email ||
       userModal.learningPath !== a.learningPath ||
       userModal.knowsJavaScript !== a.knowsJavaScript
-    );
-  };
-
-  const isModuleModalDirty = () => {
-    if (!moduleModal || !initialModuleModalRef.current) return false;
-    const a = initialModuleModalRef.current;
-    return (
-      moduleModal.title !== a.title ||
-      moduleModal.description !== a.description ||
-      moduleModal.category !== a.category ||
-      moduleModal.difficulty !== a.difficulty ||
-      String(moduleModal.order) !== String(a.order) ||
-      (moduleModal.content || '') !== (a.content || '')
     );
   };
 
@@ -396,24 +331,6 @@ const Admin = () => {
     initialUserModalRef.current = null;
   };
 
-  const closeModuleModal = (force = false) => {
-    if (!force && isModuleModalDirty()) {
-      setConfirmModal({
-        open: true,
-        title: 'Discard changes?',
-        message: 'You have unsaved changes. Close without saving?',
-        onConfirm: () => {
-          setConfirmModal((p) => ({ ...p, open: false }));
-          setModuleModal(null);
-          initialModuleModalRef.current = null;
-        },
-      });
-      return;
-    }
-    setModuleModal(null);
-    initialModuleModalRef.current = null;
-  };
-
   const openEditUser = (u) => {
     const data = {
       id: u.id,
@@ -424,41 +341,6 @@ const Admin = () => {
     };
     initialUserModalRef.current = { ...data };
     setUserModal(data);
-  };
-
-  const openEditModule = (m) => {
-    if (!m) {
-      const data = {
-        title: '',
-        description: '',
-        category: 'javascript-basics',
-        difficulty: 'beginner',
-        order: 0,
-        content: '',
-        moduleType: 'vanilla',
-        starterCode: { html: '', css: '', javascript: '', jsx: '' },
-        objectives: [],
-        hints: [],
-      };
-      initialModuleModalRef.current = { ...data };
-      setModuleModal(data);
-      return;
-    }
-    const data = {
-      id: m._id,
-      title: m.title,
-      description: m.description,
-      category: m.category,
-      difficulty: m.difficulty,
-      order: m.order ?? 0,
-      content: m.content ?? '',
-      moduleType: m.moduleType || 'vanilla',
-      starterCode: m.starterCode || { html: '', css: '', javascript: '', jsx: '' },
-      objectives: m.objectives || [],
-      hints: m.hints || [],
-    };
-    initialModuleModalRef.current = { ...data };
-    setModuleModal(data);
   };
 
   const totalUserPages = Math.max(1, userPagination.totalPages || 1);
@@ -540,21 +422,6 @@ const Admin = () => {
     return filteredModules.slice(start, start + MODULE_PAGE_SIZE);
   }, [filteredModules, modulePage]);
 
-  const handleGrantAchievement = async () => {
-    if (!grantModal?.userId || grantModal?.achievementId == null) return;
-    setGrantSaving(true);
-    try {
-      await adminAPI.grantAchievement(grantModal.userId, grantModal.achievementId);
-      toast.success('Achievement granted');
-      setGrantModal(null);
-      await loadUsers();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to grant achievement');
-    } finally {
-      setGrantSaving(false);
-    }
-  };
-
   const exportUsersCSV = async () => {
     const headers = ['Name', 'Email', 'Level', 'XP', 'Completed', 'Path', 'Role'];
     const res = await adminAPI
@@ -622,7 +489,7 @@ const Admin = () => {
               onClick={() => setTab(id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
                 tab === id
-                  ? 'bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 shadow-md shadow-cyan-500/30'
+                  ? 'bg-blue-500 text-black shadow-md shadow-black/25'
                   : 'text-blue-200 hover:text-blue-50 hover:bg-blue-800'
               }`}
             >
@@ -661,7 +528,7 @@ const Admin = () => {
               </div>
               <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-xl bg-blue-700 text-blue-50">
+                  <div className="p-2 rounded-xl bg-blue-700 text-black">
                     <FaTrophy className="text-xl" />
                   </div>
                   <span className="text-[13px] font-medium text-blue-300">Achievements</span>
@@ -681,7 +548,7 @@ const Admin = () => {
               </div>
               <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-xl bg-blue-700 text-blue-50">
+                  <div className="p-2 rounded-xl bg-blue-700 text-black">
                     <FaAward className="text-xl" />
                   </div>
                   <span className="text-[13px] font-medium text-blue-300">Avg level</span>
@@ -771,7 +638,7 @@ const Admin = () => {
               </div>
               <button
                 onClick={exportUsersCSV}
-                className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors"
               >
                 <FaFileExport /> Export CSV
               </button>
@@ -917,15 +784,6 @@ const Admin = () => {
                             </button>
                           )}
                           <button
-                            onClick={() =>
-                              setGrantModal({ userId: u.id, userName: u.name, achievementId: null })
-                            }
-                            className="p-2 text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
-                            title="Grant achievement"
-                          >
-                            <FaAward />
-                          </button>
-                          <button
                             onClick={() => openEditUser(u)}
                             className="p-2 text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
                             title="Edit"
@@ -958,7 +816,7 @@ const Admin = () => {
                   <button
                     onClick={() => setUserPage((p) => Math.max(1, p - 1))}
                     disabled={userPage <= 1}
-                    className="px-4 py-2 rounded-xl bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
+                    className="px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                   >
                     Previous
                   </button>
@@ -968,7 +826,7 @@ const Admin = () => {
                   <button
                     onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
                     disabled={userPage >= totalUserPages}
-                    className="px-4 py-2 rounded-xl bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
+                    className="px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                   >
                     Next
                   </button>
@@ -1002,9 +860,6 @@ const Admin = () => {
                       <th className="text-left py-3 px-4 font-medium text-blue-300">Points</th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">Category</th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">Earned by</th>
-                      <th className="text-right py-3 px-4 font-medium text-blue-300">
-                        Grant to user
-                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1018,21 +873,6 @@ const Admin = () => {
                         <td className="py-3 px-4 text-blue-300">{a.category || '-'}</td>
                         <td className="py-3 px-4 text-blue-300">
                           {achievementEarnedCount[a.id] ?? 0} users
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() =>
-                              setGrantModal({
-                                userId: null,
-                                userName: null,
-                                achievementId: a.id,
-                                achievementName: a.name,
-                              })
-                            }
-                            className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-blue-700 text-blue-100 hover:bg-blue-700"
-                          >
-                            Grant to user
-                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1095,8 +935,9 @@ const Admin = () => {
                 </select>
               </div>
               <button
-                onClick={() => openEditModule(null)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors"
+                type="button"
+                onClick={() => navigate('/admin/modules/new')}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors"
               >
                 <FaPlus />
                 Add module
@@ -1200,7 +1041,8 @@ const Admin = () => {
                         <td className="py-3 px-4 text-blue-300">{m.order ?? 0}</td>
                         <td className="py-3 px-4 text-right">
                           <button
-                            onClick={() => openEditModule(m)}
+                            type="button"
+                            onClick={() => navigate(`/admin/modules/${m._id}`)}
                             className="p-2 text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
                             title="Edit"
                           >
@@ -1231,7 +1073,7 @@ const Admin = () => {
                       type="button"
                       onClick={() => setModulePage((p) => Math.max(1, p - 1))}
                       disabled={modulePage <= 1}
-                      className="px-4 py-2 rounded-xl bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
+                      className="px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                     >
                       Previous
                     </button>
@@ -1242,7 +1084,7 @@ const Admin = () => {
                       type="button"
                       onClick={() => setModulePage((p) => Math.min(totalModulePages, p + 1))}
                       disabled={modulePage >= totalModulePages}
-                      className="px-4 py-2 rounded-xl bg-blue-700 text-blue-50 text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
+                      className="px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                     >
                       Next
                     </button>
@@ -1328,216 +1170,9 @@ const Admin = () => {
               <button
                 onClick={handleSaveUser}
                 disabled={saving}
-                className="px-4 py-2 bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-[13px] font-semibold rounded-xl shadow-md shadow-cyan-500/25 hover:brightness-110 transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
+                className="px-4 py-2 bg-blue-500 text-black text-[13px] font-semibold rounded-xl shadow-md shadow-black/25 hover:bg-blue-400 transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Module add/edit modal */}
-      {moduleModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/75 backdrop-blur-sm overflow-y-auto"
-          onClick={() => closeModuleModal()}
-          role="presentation"
-        >
-          <div
-            className="bg-blue-900 rounded-3xl w-full max-w-2xl p-6 shadow-2xl shadow-black/60 my-8"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            <h3 className="text-lg font-semibold text-blue-50 mb-4">
-              {moduleModal.id ? 'Edit module' : 'Add module'}
-            </h3>
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-              <div>
-                <label className="block text-[11px] font-medium text-blue-300 mb-1">Title</label>
-                <input
-                  type="text"
-                  value={moduleModal.title}
-                  onChange={(e) => setModuleModal((p) => ({ ...p, title: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-blue-300 mb-1">
-                  Description
-                </label>
-                <input
-                  type="text"
-                  value={moduleModal.description}
-                  onChange={(e) => setModuleModal((p) => ({ ...p, description: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-medium text-blue-300 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={moduleModal.category}
-                    onChange={(e) => setModuleModal((p) => ({ ...p, category: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
-                  >
-                    {MODULE_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-blue-300 mb-1">
-                    Difficulty
-                  </label>
-                  <select
-                    value={moduleModal.difficulty}
-                    onChange={(e) => setModuleModal((p) => ({ ...p, difficulty: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
-                  >
-                    {DIFFICULTIES.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-blue-300 mb-1">Order</label>
-                <input
-                  type="number"
-                  value={moduleModal.order}
-                  onChange={(e) => setModuleModal((p) => ({ ...p, order: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-blue-300 mb-1">
-                  Content (markdown)
-                </label>
-                <textarea
-                  value={moduleModal.content}
-                  onChange={(e) => setModuleModal((p) => ({ ...p, content: e.target.value }))}
-                  rows={4}
-                  className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50 font-mono"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-6">
-              <button
-                onClick={() => closeModuleModal()}
-                className="px-4 py-2 text-[13px] font-semibold text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveModule}
-                disabled={saving || !moduleModal.title?.trim()}
-                className="px-4 py-2 bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-[13px] font-semibold rounded-xl shadow-md shadow-cyan-500/25 hover:brightness-110 transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
-              >
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Grant achievement modal */}
-      {grantModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/75 backdrop-blur-sm"
-          onClick={() => setGrantModal(null)}
-          role="presentation"
-        >
-          <div
-            className="bg-blue-900 rounded-3xl w-full max-w-md p-6 shadow-2xl shadow-black/60"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            <h3 className="text-lg font-bold text-blue-50 mb-4 flex items-center gap-2">
-              <FaAward className="text-blue-50" /> Grant achievement
-            </h3>
-            {grantModal.userId ? (
-              <>
-                <p className="text-blue-300 text-[13px] mb-3">
-                  Grant an achievement to{' '}
-                  <span className="text-blue-50 font-medium">{grantModal.userName}</span>
-                </p>
-                <div>
-                  <label className="block text-[11px] font-medium text-blue-300 mb-1">
-                    Achievement
-                  </label>
-                  <select
-                    value={grantModal.achievementId != null ? grantModal.achievementId : ''}
-                    onChange={(e) =>
-                      setGrantModal((p) => ({
-                        ...p,
-                        achievementId: e.target.value === '' ? null : Number(e.target.value),
-                      }))
-                    }
-                    className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
-                  >
-                    <option value="">Select achievement</option>
-                    {achievements.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} (+{a.points} XP)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-blue-300 text-[13px] mb-3">
-                  Grant{' '}
-                  <span className="text-blue-50 font-medium">{grantModal.achievementName}</span>{' '}
-                  to a user
-                </p>
-                <div>
-                  <label className="block text-[11px] font-medium text-blue-300 mb-1">User</label>
-                  <select
-                    value={grantModal.userId != null ? grantModal.userId : ''}
-                    onChange={(e) => {
-                      const id = e.target.value;
-                      if (!id) {
-                        setGrantModal((p) => ({ ...p, userId: null, userName: null }));
-                        return;
-                      }
-                      const u = users.find((x) => x.id === id);
-                      setGrantModal((p) => ({ ...p, userId: id, userName: u?.name || '' }));
-                    }}
-                    className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
-                  >
-                    <option value="">Select user</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name} ({u.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
-            <div className="flex justify-end gap-2 mt-6">
-              <button
-                onClick={() => setGrantModal(null)}
-                className="px-4 py-2 text-[13px] font-semibold text-blue-300 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleGrantAchievement}
-                disabled={grantSaving || !grantModal.userId || grantModal.achievementId == null}
-                className="px-4 py-2 bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-[13px] font-semibold rounded-xl shadow-md shadow-cyan-500/25 hover:brightness-110 transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
-              >
-                {grantSaving ? 'Granting...' : 'Grant'}
               </button>
             </div>
           </div>

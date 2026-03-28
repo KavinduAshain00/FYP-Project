@@ -221,7 +221,7 @@ const Modules = () => {
                 <div className="flex items-center gap-3 mt-2">
                   <div className="h-2 flex-1 rounded-full bg-blue-800 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 transition-all duration-500 shadow-sm shadow-cyan-500/30"
+                      className="h-full rounded-full bg-blue-400 transition-all duration-500 shadow-sm shadow-black/20"
                       style={{ width: `${completionPct}%` }}
                     />
                   </div>
@@ -241,7 +241,7 @@ const Modules = () => {
                 <button
                   type="button"
                   onClick={() => handleStartModule(nextModule._id)}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-sm font-semibold shadow-lg shadow-cyan-500/30 hover:brightness-110 active:scale-[0.99] transition-all"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-blue-500 text-black text-sm font-semibold shadow-md shadow-black/30 hover:bg-blue-400 active:scale-[0.99] transition-all"
                 >
                   <FaPlay className="text-xs" /> Continue next
                 </button>
@@ -295,7 +295,7 @@ const Modules = () => {
                     setFilterDifficulty('all');
                     setQuestPage(1);
                   }}
-                  className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-medium text-blue-50 hover:bg-blue-600"
+                  className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-medium text-black hover:bg-blue-600"
                 >
                   Reset filters
                 </button>
@@ -328,7 +328,7 @@ const Modules = () => {
                     className="h-full w-full object-cover"
                     loading="lazy"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/80 to-transparent" />
+                  <div className="absolute inset-0 bg-neutral-900/70" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <h3 className="font-bold text-blue-50 text-base leading-snug line-clamp-2">
                       {module.title}
@@ -342,8 +342,8 @@ const Modules = () => {
                     )}
                   </div>
                   {done && (
-                    <div className="absolute top-3 right-3 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 px-2 py-1.5 shadow-lg shadow-emerald-500/30">
-                      <FaCheckCircle className="text-blue-950 w-4 h-4" />
+                    <div className="absolute top-3 right-3 rounded-xl bg-emerald-600 px-2 py-1.5 shadow-lg shadow-black/30">
+                      <FaCheckCircle className="text-white w-4 h-4" />
                     </div>
                   )}
                   {locked && !done && (
@@ -381,7 +381,7 @@ const Modules = () => {
                       <button
                         type="button"
                         onClick={() => handleStartModule(module._id)}
-                        className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-blue-50 hover:bg-blue-600"
+                        className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-black hover:bg-blue-600"
                       >
                         Practice again
                       </button>
@@ -405,8 +405,8 @@ const Modules = () => {
                       onClick={() => handleStartModule(module._id)}
                       className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
                         isNext
-                          ? 'bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 shadow-lg shadow-cyan-500/30 hover:brightness-110 active:scale-[0.99]'
-                          : 'bg-blue-700 text-blue-50 hover:bg-blue-600'
+                          ? 'bg-blue-500 text-black shadow-md shadow-black/30 hover:bg-blue-400 active:scale-[0.99]'
+                          : 'bg-blue-700 text-black hover:bg-blue-600'
                       }`}
                     >
                       {isNext ? 'Continue this module' : 'Open module'}
@@ -441,7 +441,7 @@ const Modules = () => {
               type="button"
               onClick={() => setQuestPage((p) => Math.max(1, p - 1))}
               disabled={questPage <= 1}
-              className={`${pageBtn} bg-blue-700 text-blue-50 hover:bg-blue-600`}
+              className={`${pageBtn} bg-blue-700 text-black hover:bg-blue-600`}
             >
               <FaChevronLeft className="text-xs" /> Newer
             </button>
@@ -452,7 +452,7 @@ const Modules = () => {
               type="button"
               onClick={() => setQuestPage((p) => Math.min(totalQuestPages, p + 1))}
               disabled={questPage >= totalQuestPages}
-              className={`${pageBtn} bg-blue-700 text-blue-50 hover:bg-blue-600`}
+              className={`${pageBtn} bg-blue-700 text-black hover:bg-blue-600`}
             >
               Older <FaChevronRight className="text-xs" />
             </button>

@@ -172,7 +172,7 @@ const Dashboard = () => {
   }
 
   const btnPrimary =
-    'inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-sm font-semibold shadow-lg shadow-cyan-500/30 hover:brightness-110 active:scale-[0.99] transition-all w-full sm:w-auto';
+    'inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-blue-500 text-black text-sm font-semibold shadow-md shadow-black/30 hover:bg-blue-400 active:scale-[0.99] transition-all w-full sm:w-auto';
 
   const pathLabel = profile?.learningPath?.replace('-', ' ') || 'All topics';
 
@@ -202,9 +202,7 @@ const Dashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease }}
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-900 to-neutral-900" />
-          <div className="absolute -top-10 right-20 w-64 h-64 rounded-full bg-cyan-400/20 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-16 left-10 w-72 h-72 rounded-full bg-violet-500/15 blur-3xl pointer-events-none" />
+          <div className="absolute inset-0 bg-blue-900" />
 
           <div className="relative p-6 sm:p-8 lg:p-5">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-3 items-stretch">
@@ -219,7 +217,7 @@ const Dashboard = () => {
                       />
                     ) : (
                       <div
-                        className="w-[4.25rem] h-[4.25rem] sm:w-[4.75rem] sm:h-[4.75rem] rounded-full flex items-center justify-center bg-gradient-to-br from-blue-500 via-blue-600 to-blue-800 shadow-xl shadow-black/40"
+                        className="w-[4.25rem] h-[4.25rem] sm:w-[4.75rem] sm:h-[4.75rem] rounded-full flex items-center justify-center bg-blue-600 shadow-xl shadow-black/40"
                         aria-hidden
                       >
                         <FaUserCircle className="text-[2.85rem] sm:text-[3.1rem] text-blue-100/90 -mb-0.5" />
@@ -254,7 +252,7 @@ const Dashboard = () => {
                   </div>
                   <div className="h-2.5 rounded-full bg-blue-800 overflow-hidden">
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-300"
+                      className="h-full rounded-full bg-blue-400"
                       initial={{ width: 0 }}
                       animate={{ width: `${((totalPoints % 200) / 200) * 100}%` }}
                       transition={{ duration: 0.8, ease }}
@@ -369,14 +367,7 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-            <div className="rounded-3xl bg-gradient-to-b from-blue-800/25 via-blue-900 to-neutral-900 shadow-xl shadow-black/35 overflow-hidden flex-1 min-h-0 flex flex-col relative">
-              <div
-                className="pointer-events-none absolute inset-0 opacity-[0.07]"
-                style={{
-                  backgroundImage:
-                    'repeating-linear-gradient(-12deg, transparent, transparent 12px, rgba(56,220,240,0.2) 12px, rgba(56,220,240,0.2) 13px)',
-                }}
-              />
+            <div className="rounded-3xl bg-blue-950 border border-blue-800/60 shadow-xl shadow-black/35 overflow-hidden flex-1 min-h-0 flex flex-col relative">
               {modulePath.length === 0 ? (
                 <p className="text-sm text-blue-300 p-8 text-center relative z-[1]">
                   Nothing listed on this path yet.{' '}
@@ -404,7 +395,7 @@ const Dashboard = () => {
                     </div>
                     <div className="mt-2 h-2 rounded-full bg-neutral-900 overflow-hidden">
                       <motion.div
-                        className="h-full rounded-full bg-gradient-to-r from-blue-500 via-blue-400 to-blue-300"
+                        className="h-full rounded-full bg-blue-500"
                         initial={false}
                         animate={{ width: `${pathProgressPercent}%` }}
                         transition={{ type: 'spring', stiffness: 120, damping: 22 }}
@@ -431,7 +422,7 @@ const Dashboard = () => {
                           !completedModuleIds.includes(prevIdStr);
                         const isLast = index === modulePath.length - 1;
                         const connectorClass = isCompleted
-                          ? 'bg-gradient-to-b from-blue-400 via-blue-500 to-blue-600'
+                          ? 'bg-blue-500'
                           : isLocked
                             ? 'bg-blue-900/90 opacity-70'
                             : 'bg-blue-700/50';
@@ -441,7 +432,7 @@ const Dashboard = () => {
                             return 'bg-blue-400 text-blue-950 shadow-lg shadow-blue-400/35';
                           }
                           if (isCurrent) {
-                            return 'bg-blue-500 text-blue-50 shadow-lg shadow-blue-400/45 animate-pulse';
+                            return 'bg-blue-500 text-black shadow-lg shadow-blue-400/45 animate-pulse';
                           }
                           if (isNext && !isLocked) {
                             return 'bg-blue-200 text-blue-950 shadow-lg shadow-blue-300/50';
@@ -526,7 +517,7 @@ const Dashboard = () => {
                                         </span>
                                       )}
                                       {isCurrent && (
-                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg bg-blue-500 text-blue-50">
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg bg-blue-500 text-black">
                                           <FaBolt className="text-[10px]" /> Active
                                         </span>
                                       )}
@@ -650,7 +641,7 @@ const Dashboard = () => {
                   className="w-full text-left rounded-2xl bg-blue-800 px-4 py-3 hover:bg-blue-600 transition-colors"
                 >
                   <p className="text-[11px] uppercase tracking-wider text-blue-300">Continue learning</p>
-                  <p className="text-sm text-blue-50 mt-1">
+                  <p className="text-sm text-black mt-1">
                     {continueModule
                       ? `Resume "${continueModule.title}" from where you stopped.`
                       : 'Open the next lesson on your path.'}
@@ -663,7 +654,7 @@ const Dashboard = () => {
                   className="w-full text-left rounded-2xl bg-blue-800 px-4 py-3 hover:bg-blue-600 transition-colors"
                 >
                   <p className="text-[11px] uppercase tracking-wider text-blue-300">Review progress</p>
-                  <p className="text-sm text-blue-50 mt-1">See badges, level updates, and account settings.</p>
+                  <p className="text-sm text-black mt-1">See badges, level updates, and account settings.</p>
                 </button>
 
                 <button
@@ -672,8 +663,8 @@ const Dashboard = () => {
                   className="w-full text-left rounded-2xl bg-blue-800 px-4 py-3 hover:bg-blue-600 transition-colors"
                 >
                   <p className="text-[11px] uppercase tracking-wider text-blue-300">Explore modules</p>
-                  <p className="text-sm text-blue-50 mt-1 flex items-center gap-1">
-                    Browse by topic and difficulty <FaArrowRight className="text-xs text-blue-200" />
+                  <p className="text-sm text-black mt-1 flex items-center gap-1">
+                    Browse by topic and difficulty <FaArrowRight className="text-xs text-black/70" />
                   </p>
                 </button>
               </div>

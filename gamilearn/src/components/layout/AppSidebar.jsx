@@ -20,7 +20,13 @@ const ROUTE_ORDER = ['/dashboard', '/modules', '/profile', '/admin', '/editor'];
 
 const getRouteDepth = (pathname) => {
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) return 0;
-  if (pathname === '/modules' || pathname === '/profile' || pathname === '/admin') return 1;
+  if (
+    pathname === '/modules' ||
+    pathname === '/profile' ||
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/')
+  )
+    return 1;
   return 2;
 };
 
@@ -72,8 +78,8 @@ function LogoutControl({ onNavigate, compact = false }) {
         onClick={() => setShowLogoutConfirm(true)}
         className={`w-full rounded-2xl text-sm font-semibold transition-colors shadow-md shadow-blue-950/25 ${
           compact
-            ? 'px-3 py-2.5 bg-blue-700/95 text-blue-50 hover:bg-sky-600'
-            : 'px-4 py-3 bg-blue-700/95 text-blue-50 hover:bg-sky-600'
+            ? 'px-3 py-2.5 bg-blue-700/95 text-black hover:bg-blue-600'
+            : 'px-4 py-3 bg-blue-700/95 text-black hover:bg-blue-600'
         }`}
       >
         <span className="inline-flex items-center gap-2">
@@ -149,7 +155,7 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
               onClick={() => handleClick(link.path)}
               className={`w-full rounded-2xl px-3 py-3 text-left transition-colors ${
                 active
-                  ? 'bg-blue-400 text-blue-950 shadow-md shadow-blue-400/30'
+                  ? 'bg-blue-400 text-black shadow-md shadow-blue-400/30'
                   : 'bg-blue-900 text-blue-200 hover:bg-blue-700 hover:text-blue-50'
               }`}
             >
@@ -177,7 +183,7 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
         {user && (
           <div className="mb-3 rounded-2xl bg-blue-900 p-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-700 text-blue-50 text-sm font-bold shrink-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-700 text-black text-sm font-bold shrink-0">
                 {(user.name || '?').charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
@@ -215,7 +221,10 @@ export default function AppSidebar() {
     }
   }, [mobileOpen]);
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) =>
+    path === '/admin'
+      ? location.pathname === '/admin' || location.pathname.startsWith('/admin/')
+      : location.pathname === path;
   const closeMobile = () => setMobileOpen(false);
 
   const drawerVariants = {

@@ -43,7 +43,7 @@ const ConfirmModal = ({ open, title = 'Confirm', message = '', onConfirm, onCanc
                 type="button"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-blue-50 hover:bg-blue-600 transition-colors"
+                className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-black hover:bg-blue-600 transition-colors"
                 onClick={onCancel}
               >
                 Cancel
@@ -52,7 +52,7 @@ const ConfirmModal = ({ open, title = 'Confirm', message = '', onConfirm, onCanc
                 type="button"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="rounded-xl bg-blue-400 px-4 py-2.5 text-sm font-semibold text-blue-950 hover:bg-blue-300 transition-colors"
+                className="rounded-xl bg-blue-400 px-4 py-2.5 text-sm font-semibold text-black hover:bg-blue-300 transition-colors"
                 onClick={onConfirm}
               >
                 Confirm

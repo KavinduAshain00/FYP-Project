@@ -149,6 +149,10 @@ export const adminAPI = {
     api.delete(`/admin/users/${userId}/achievements/${achievementId}`),
   grantAdmin: (userId) => api.post(`/admin/users/${userId}/grant-admin`),
   revokeAdmin: (userId) => api.delete(`/admin/users/${userId}/revoke-admin`),
+  /** Body: { title, description?, content?, category?, difficulty?, moduleType?, stepCount? } */
+  generateModuleSteps: (body) => api.post('/admin/modules/generate-steps', body),
+  /** Body: { title, ..., parts: ('objectives'|'hints'|'starterCode')[], steps? } */
+  generateModuleCurriculum: (body) => api.post('/admin/modules/generate-curriculum', body),
 };
 
 // Achievements cache: single key, invalidate on logout or when user earns

@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Achievement = require('../models/Achievement');
 const { isAdmin } = require('../utils/admin');
 const { XP_PER_LEVEL } = require('../constants/levelRanks');
+const aiService = require('../services/aiService');
 
 const POPULATE_OPTS = [
   { path: 'completedModules.moduleId', select: 'title category' },
@@ -431,6 +432,81 @@ async function getStats(req, res) {
   }
 }
 
+/**
+ * POST /api/admin/modules/generate-steps
+ * Body: { title, description?, content?, category?, difficulty?, moduleType?, stepCount? }
+ */
+async function generateModuleSteps(req, res) {
+  try {
+    const { title, description, content, category, difficulty, moduleType, stepCount } = req.body || {};
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ message: 'Title is required to generate steps' });
+    }
+    const steps = await aiService.generateModuleSteps({
+      title: String(title).trim(),
+      description: description != null ? String(description) : '',
+      content: content != null ? String(content) : '',
+      category: category != null ? String(category) : '',
+      difficulty: difficulty != null ? String(difficulty) : 'beginner',
+      moduleType: moduleType != null ? String(moduleType) : 'vanilla',
+      stepCount,
+    });
+    return res.json({ steps });
+  } catch (error) {
+    console.error('Admin generateModuleSteps error:', error);
+    const message =
+      error?.message && String(error.message).includes('GITHUB_TOKEN')
+        ? 'AI is not configured (missing GITHUB_TOKEN)'
+        : error?.message || 'Failed to generate steps';
+    return res.status(500).json({ message });
+  }
+}
+
+/**
+ * POST /api/admin/modules/generate-curriculum
+ * Body: { title, description?, content?, category?, difficulty?, moduleType?, parts: ('objectives'|'hints'|'starterCode')[], steps? }
+ */
+async function generateModuleCurriculum(req, res) {
+  try {
+    const {
+      title,
+      description,
+      content,
+      category,
+      difficulty,
+      moduleType,
+      parts,
+      steps,
+    } = req.body || {};
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ message: 'Title is required' });
+    }
+    if (!Array.isArray(parts) || parts.length === 0) {
+      return res.status(400).json({
+        message: 'parts must be a non-empty array (objectives, hints, starterCode)',
+      });
+    }
+    const result = await aiService.generateModuleCurriculumParts({
+      title: String(title).trim(),
+      description: description != null ? String(description) : '',
+      content: content != null ? String(content) : '',
+      category: category != null ? String(category) : '',
+      difficulty: difficulty != null ? String(difficulty) : 'beginner',
+      moduleType: moduleType != null ? String(moduleType) : 'vanilla',
+      parts,
+      steps: Array.isArray(steps) ? steps : undefined,
+    });
+    return res.json(result);
+  } catch (error) {
+    console.error('Admin generateModuleCurriculum error:', error);
+    const message =
+      error?.message && String(error.message).includes('GITHUB_TOKEN')
+        ? 'AI is not configured (missing GITHUB_TOKEN)'
+        : error?.message || 'Failed to generate curriculum content';
+    return res.status(500).json({ message });
+  }
+}
+
 module.exports = {
   listUsers,
   getUserById,
@@ -445,4 +521,6 @@ module.exports = {
   grantAdminToUser,
   revokeAdminFromUser,
   getStats,
+  generateModuleSteps,
+  generateModuleCurriculum,
 };

@@ -147,7 +147,7 @@ const Profile = () => {
   const nextAchievementAvatar = avatarGroups.achievement.find((a) => !a.unlocked) || null;
 
   const btnPrimary =
-    'inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-sm font-semibold shadow-lg shadow-cyan-500/25 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none';
+    'inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-blue-500 text-black text-sm font-semibold shadow-md shadow-black/25 hover:bg-blue-400 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none';
   const inputShell =
     'w-full flex items-center gap-2 rounded-2xl bg-blue-800 px-4 py-3 focus-within:outline focus-within:outline-2 focus-within:outline-blue-400/50';
   const inputClass =
@@ -192,7 +192,7 @@ const Profile = () => {
       label: 'Modules done',
       value: completedModules,
       icon: FaGraduationCap,
-      iconClass: 'text-sky-300',
+      iconClass: 'text-blue-300',
     },
     {
       label: 'Achievements',
@@ -215,7 +215,7 @@ const Profile = () => {
       </header>
 
       {/* Hero */}
-      <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-blue-800/70 via-blue-900 to-blue-950/90 shadow-xl shadow-blue-950/30">
+      <section className="overflow-hidden rounded-3xl bg-blue-900 border border-blue-800/60 shadow-xl shadow-blue-950/30">
         <div className="p-6 sm:p-8">
           <div className="flex flex-col gap-8 md:flex-row md:items-start md:gap-10">
             <div className="relative mx-auto shrink-0 md:mx-0">
@@ -226,13 +226,13 @@ const Profile = () => {
                   className="h-32 w-32 rounded-2xl object-cover shadow-lg shadow-blue-950/40 sm:h-36 sm:w-36"
                 />
               </div>
-              <span className="absolute -bottom-1 -right-1 rounded-xl bg-gradient-to-r from-amber-300 to-orange-400 px-2.5 py-1 text-xs font-bold text-blue-950 shadow-md shadow-amber-500/30">
+              <span className="absolute -bottom-1 -right-1 rounded-xl bg-amber-500 px-2.5 py-1 text-xs font-bold text-blue-950 shadow-md shadow-black/20">
                 Lv {level}
               </span>
               <button
                 type="button"
                 onClick={() => setEditMode((v) => !v)}
-                className="absolute -right-1 -top-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-blue-50 shadow-lg shadow-blue-950/40 transition-colors hover:bg-sky-500"
+                className="absolute -right-1 -top-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-black shadow-lg shadow-blue-950/40 transition-colors hover:bg-blue-500"
                 aria-label={editMode ? 'Close profile editor' : 'Edit profile'}
               >
                 <FaEdit className="text-sm" />
@@ -243,7 +243,7 @@ const Profile = () => {
               <h2 className="text-2xl font-bold text-blue-50 sm:text-3xl">{name || user?.name}</h2>
               <p className="mt-1 truncate text-sm text-blue-300">{user?.email}</p>
               <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-2 rounded-2xl bg-blue-950/35 px-4 py-2.5 text-sm md:justify-start">
-                <FaShieldAlt className="text-sky-300" aria-hidden />
+                <FaShieldAlt className="text-blue-300" aria-hidden />
                 <span className="text-blue-300">Path</span>
                 <span className="font-semibold capitalize text-blue-50">
                   {profile?.learningPath?.replace('-', ' ') || 'Explorer'}
@@ -261,7 +261,7 @@ const Profile = () => {
                 </div>
                 <div className="h-3 overflow-hidden rounded-full bg-blue-950/60">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 transition-all duration-500 shadow-sm shadow-cyan-500/25"
+                    className="h-full rounded-full bg-blue-400 transition-all duration-500 shadow-sm shadow-black/20"
                     style={{ width: `${Math.min(100, Math.max(0, xpPct))}%` }}
                   />
                 </div>
@@ -271,7 +271,7 @@ const Profile = () => {
                 <button
                   type="button"
                   onClick={() => setEditMode(true)}
-                  className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-blue-50 transition-colors hover:bg-sky-600"
+                  className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-blue-500"
                 >
                   <FaEdit /> Edit name & avatar
                 </button>
@@ -314,7 +314,7 @@ const Profile = () => {
               <button
                 type="button"
                 onClick={() => setEditMode((v) => !v)}
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-blue-50 transition-colors hover:bg-blue-600"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-blue-600"
               >
                 {editMode ? 'Done browsing' : 'Customize'} <FaArrowRight className="text-xs" />
               </button>
@@ -544,7 +544,7 @@ const Profile = () => {
                 key={ach.id}
                 className={`relative flex gap-4 overflow-hidden rounded-2xl p-4 sm:p-5 ${
                   ach.earned
-                    ? 'bg-gradient-to-br from-cyan-950/50 via-blue-800/95 to-blue-950/90 shadow-lg shadow-cyan-500/15 ring-2 ring-cyan-400/50'
+                    ? 'bg-blue-800 shadow-lg shadow-black/20 ring-2 ring-blue-400/50'
                     : 'bg-blue-950/90 shadow-inner shadow-blue-950/40 ring-1 ring-amber-900/40'
                 }`}
               >
@@ -557,8 +557,8 @@ const Profile = () => {
                 <div
                   className={`w-1.5 shrink-0 self-stretch rounded-full ${
                     ach.earned
-                      ? 'bg-gradient-to-b from-cyan-300 to-teal-400 shadow-[0_0_12px_rgba(34,211,238,0.45)]'
-                      : 'bg-gradient-to-b from-amber-600/70 to-amber-900/80'
+                      ? 'bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.45)]'
+                      : 'bg-amber-800'
                   }`}
                   aria-hidden
                 />

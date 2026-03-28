@@ -392,7 +392,7 @@ const CodeEditor = () => {
   }, [isMultiplayerModule]);
 
   const difficultyStyles = {
-    beginner: 'bg-teal-900 text-teal-100',
+    beginner: 'bg-blue-900 text-blue-100',
     intermediate: 'bg-blue-800 text-blue-100',
     advanced: 'bg-blue-900 text-blue-200',
   };
@@ -1688,7 +1688,7 @@ const CodeEditor = () => {
                     </div>
                     <button
                       onClick={() => setShowOverviewPopup(false)}
-                      className="mt-6 w-full py-3 rounded-2xl bg-teal-800 text-teal-50 font-semibold shadow-md shadow-black/30 hover:bg-teal-700 transition-all"
+                      className="mt-6 w-full py-3 rounded-2xl bg-blue-600 text-black font-semibold shadow-md shadow-black/30 hover:bg-blue-500 transition-all"
                     >
                       Continue to editor
                     </button>
@@ -1706,7 +1706,7 @@ const CodeEditor = () => {
                         className="absolute inset-0 w-full h-full object-cover"
                       />
                       <div
-                        className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/55 to-neutral-900/10 pointer-events-none"
+                        className="absolute inset-0 bg-neutral-900/55 pointer-events-none"
                         aria-hidden
                       />
                       <div className="absolute bottom-0 left-0 right-0 px-5 sm:px-6 py-4">
@@ -1772,7 +1772,7 @@ const CodeEditor = () => {
                     <div className="shrink-0 px-5 sm:px-6 pb-5 bg-neutral-900">
                       <button
                         onClick={() => setShowOverviewPopup(false)}
-                        className="w-full py-2.5 rounded-2xl bg-teal-800 text-teal-50 text-sm font-semibold shadow-md shadow-black/30 hover:bg-teal-700 transition-all"
+                        className="w-full py-2.5 rounded-2xl bg-blue-600 text-black text-sm font-semibold shadow-md shadow-black/30 hover:bg-blue-500 transition-all"
                       >
                         Start coding
                       </button>
@@ -1787,7 +1787,7 @@ const CodeEditor = () => {
                         className="absolute inset-0 w-full h-full object-cover"
                       />
                       <div
-                        className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/55 to-neutral-900/10 pointer-events-none"
+                        className="absolute inset-0 bg-neutral-900/55 pointer-events-none"
                         aria-hidden
                       />
                       <div className="absolute bottom-0 left-0 right-0 px-5 sm:px-6 py-4">
@@ -1817,7 +1817,7 @@ const CodeEditor = () => {
                     <div className="shrink-0 px-5 sm:px-6 pb-5 bg-neutral-900">
                       <button
                         onClick={() => setShowOverviewPopup(false)}
-                        className="w-full py-2.5 rounded-2xl bg-teal-800 text-teal-50 text-sm font-semibold shadow-md shadow-black/30 hover:bg-teal-700 transition-all"
+                        className="w-full py-2.5 rounded-2xl bg-blue-600 text-black text-sm font-semibold shadow-md shadow-black/30 hover:bg-blue-500 transition-all"
                       >
                         Start coding
                       </button>
@@ -1849,7 +1849,7 @@ const CodeEditor = () => {
               <FaArrowLeft className="text-xs" />
             </button>
             <div className="min-w-0 flex-1 flex items-start gap-3">
-              <span className="hidden sm:flex shrink-0 w-9 h-9 rounded-lg bg-neutral-900 items-center justify-center text-teal-400">
+              <span className="hidden sm:flex shrink-0 w-9 h-9 rounded-lg bg-neutral-900 items-center justify-center text-blue-400">
                 {isMultiplayerModule ? <FaUsers className="text-sm" /> : <FaCode className="text-sm" />}
               </span>
               <div className="min-w-0">
@@ -1891,7 +1891,7 @@ const CodeEditor = () => {
               onClick={() => setShowTutorSidebar(!showTutorSidebar)}
               className={`min-h-9 inline-flex items-center justify-center gap-2 px-4 rounded-xl text-xs font-semibold transition-colors ${
                 showTutorSidebar
-                  ? 'bg-blue-600 text-blue-50'
+                  ? 'bg-blue-600 text-black'
                   : 'bg-blue-900 text-blue-200 hover:text-blue-50 hover:bg-blue-800'
               }`}
             >
@@ -1901,7 +1901,7 @@ const CodeEditor = () => {
               type="button"
               onClick={handleCompleteModule}
               disabled={!allStepsVerified}
-              className="min-h-9 inline-flex items-center justify-center gap-2 px-5 rounded-xl bg-teal-700 text-teal-50 text-xs font-bold hover:bg-teal-600 transition-colors disabled:bg-neutral-800 disabled:text-blue-500 disabled:cursor-not-allowed"
+              className="min-h-9 inline-flex items-center justify-center gap-2 px-5 rounded-xl bg-blue-600 text-black text-xs font-bold hover:bg-blue-500 transition-colors disabled:bg-neutral-800 disabled:text-blue-500 disabled:cursor-not-allowed"
             >
               <FaCheck className="text-[9px]" /> Complete
             </button>
@@ -1946,7 +1946,7 @@ const CodeEditor = () => {
                           stepsVerified[i]
                             ? 'bg-emerald-700'
                             : i === currentStepIndex
-                              ? 'bg-teal-600'
+                              ? 'bg-blue-600'
                               : 'bg-neutral-800'
                         } ${justVerified ? 'shadow-[0_0_10px_rgba(16,185,129,0.25)]' : ''}`}
                         animate={justVerified ? { scale: [1, 1.2, 1] } : {}}
@@ -1975,7 +1975,7 @@ const CodeEditor = () => {
                 |
               </span>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-300 whitespace-nowrap">
-                <FaCode className="text-teal-500/90 text-[11px]" /> {codeChanges}
+                <FaCode className="text-blue-400 text-[11px]" /> {codeChanges}
               </span>
             </div>
           </div>
@@ -1994,7 +1994,7 @@ const CodeEditor = () => {
               transition={{ type: 'spring', damping: 20, stiffness: 300 }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg ${
                 m.type === 'success'
-                  ? 'bg-teal-900/95 text-teal-100 shadow-md shadow-black/40'
+                  ? 'bg-blue-950 text-blue-100 shadow-md shadow-black/40'
                   : m.type === 'error'
                     ? 'bg-red-900/90 text-red-100 shadow-md shadow-black/40'
                     : 'bg-blue-900/90 text-blue-100 shadow-md shadow-black/40'
@@ -2063,7 +2063,7 @@ const CodeEditor = () => {
                         setLectureSlideIndex(0);
                         setShowOverviewPopup(true);
                       }}
-                      className="w-full mb-3 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-teal-800/90 text-teal-100 text-xs font-semibold hover:bg-teal-700 transition-colors"
+                      className="w-full mb-3 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 text-black text-xs font-semibold hover:bg-blue-500 transition-colors"
                     >
                       <FaBookOpen className="text-xs" /> Open Lecture
                     </button>
@@ -2126,7 +2126,7 @@ const CodeEditor = () => {
                             verified
                               ? 'bg-emerald-800/90 text-emerald-50 shadow-sm shadow-black/30'
                               : isCurrent
-                                ? 'bg-teal-700 text-teal-50 shadow-sm shadow-black/30'
+                                ? 'bg-blue-600 text-black shadow-sm shadow-black/30'
                                 : failedFeedback
                                   ? 'bg-blue-700 text-blue-100'
                                   : 'bg-neutral-900 text-blue-400'
@@ -2159,7 +2159,7 @@ const CodeEditor = () => {
                         <p
                           className={`text-xs font-medium leading-tight truncate ${
                             isCurrent
-                              ? 'text-teal-400/90'
+                              ? 'text-blue-300'
                               : verified
                                 ? 'text-emerald-400/90'
                                 : failedFeedback
@@ -2315,7 +2315,7 @@ const CodeEditor = () => {
                               whileTap={{ scale: 0.98 }}
                               className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] transition ${
                                 mcqSelectedIndex === idx
-                                  ? 'bg-blue-500 text-blue-50 shadow-sm shadow-black'
+                                  ? 'bg-blue-500 text-black shadow-sm shadow-black'
                                   : 'bg-neutral-900 text-blue-200 hover:bg-neutral-800'
                               }`}
                             >
@@ -2329,7 +2329,7 @@ const CodeEditor = () => {
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: 'auto' }}
                               exit={{ opacity: 0, height: 0 }}
-                              className={`overflow-hidden rounded-lg p-2 text-[11px] break-words ${mcqResult.correct ? 'bg-blue-500 text-white' : 'bg-blue-700 text-white'}`}
+                              className={`overflow-hidden rounded-lg p-2 text-[11px] break-words ${mcqResult.correct ? 'bg-blue-500 text-black' : 'bg-blue-700 text-black'}`}
                             >
                               {mcqResult.explanation}
                             </motion.div>
@@ -2341,7 +2341,7 @@ const CodeEditor = () => {
                           type="button"
                           onClick={handleMCQSubmit}
                           disabled={mcqVerifyLoading || mcqSelectedIndex == null}
-                          className="flex-1 py-1.5 rounded-xl bg-teal-800 text-teal-50 text-xs font-bold shadow-md shadow-black/30 hover:bg-teal-700 disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
+                          className="flex-1 py-1.5 rounded-xl bg-blue-600 text-black text-xs font-bold shadow-md shadow-black/30 hover:bg-blue-500 disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
                         >
                           {mcqVerifyLoading ? 'Checking your answer…' : 'Check answer'}
                         </button>
@@ -2386,7 +2386,7 @@ const CodeEditor = () => {
                       {currentStep?.instruction ?? currentStep?.title ?? 'Complete this step.'}
                     </p>
                     {currentStep?.concept && (
-                      <p className="text-[10px] text-teal-400/90 mt-1.5 italic pl-2 line-clamp-2 bg-neutral-900 rounded-md py-0.5">
+                      <p className="text-[10px] text-blue-300 mt-1.5 italic pl-2 line-clamp-2 bg-neutral-900 rounded-md py-0.5">
                         {currentStep.concept}
                       </p>
                     )}
@@ -2395,12 +2395,12 @@ const CodeEditor = () => {
                     type="button"
                     onClick={handleVerifyCode}
                     disabled={verifyLoading}
-                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-teal-800 text-teal-50 text-xs font-bold shadow-md shadow-black/30 hover:bg-teal-700 disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-blue-600 text-black text-xs font-bold shadow-md shadow-black/30 hover:bg-blue-500 disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
                   >
                     {verifyLoading ? (
                       <>
                         <div
-                          className="h-3 w-3 rounded-full border-2 border-teal-300/50 border-t-teal-200 animate-spin"
+                          className="h-3 w-3 rounded-full border-2 border-blue-400/50 border-t-blue-200 animate-spin"
                           aria-hidden
                         />
                         Checking your code…
@@ -2430,7 +2430,7 @@ const CodeEditor = () => {
                         className={`rounded-lg p-2 text-[11px] leading-relaxed ${
                           verifyPassed
                             ? 'bg-emerald-800/90 text-emerald-50'
-                            : 'bg-blue-600 text-white'
+                            : 'bg-blue-600 text-black'
                         }`}
                       >
                         {verifyFeedback}
@@ -2455,7 +2455,7 @@ const CodeEditor = () => {
           onPointerUp={handleLeftResizePointerUp}
           onPointerCancel={handleLeftResizePointerUp}
           onLostPointerCapture={handleResizeLostCapture}
-          className="relative z-20 flex w-3 shrink-0 cursor-col-resize touch-none select-none justify-center hover:[&>div]:bg-teal-600 active:[&>div]:bg-teal-600"
+          className="relative z-20 flex w-3 shrink-0 cursor-col-resize touch-none select-none justify-center hover:[&>div]:bg-blue-600 active:[&>div]:bg-blue-600"
           title="Drag to resize lesson panel"
         >
           <div className="pointer-events-none w-px h-full bg-neutral-700 transition-colors" />
@@ -2485,7 +2485,7 @@ const CodeEditor = () => {
                 whileTap={{ scale: 0.98 }}
                 className={`px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition rounded-t-lg ${
                   activeTab === tab
-                    ? 'text-white bg-teal-700'
+                    ? 'text-black bg-blue-600'
                     : 'text-blue-400/85 hover:text-blue-100 hover:bg-neutral-900/80'
                 }`}
                 onClick={() => setActiveTab(tab)}
@@ -2525,12 +2525,12 @@ const CodeEditor = () => {
                   className="absolute bottom-4 right-4 left-4 sm:left-auto z-30 w-auto max-w-full sm:max-w-md rounded-2xl border border-neutral-800 bg-neutral-900 shadow-2xl shadow-black overflow-hidden"
                 >
                   <div className="flex items-start gap-3 p-4">
-                    <div className="shrink-0 w-9 h-9 rounded-xl bg-teal-700 flex items-center justify-center">
-                      <FaLightbulb className="text-teal-100 text-sm" />
+                    <div className="shrink-0 w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center">
+                      <FaLightbulb className="text-black text-sm" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className="rounded-full bg-neutral-900 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-teal-400/90">
+                        <span className="rounded-full bg-neutral-900 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-300">
                           Step {currentStepIndex + 1}/{steps.length}
                         </span>
                         <span className="text-sm font-medium text-blue-50 leading-snug">
@@ -2541,7 +2541,7 @@ const CodeEditor = () => {
                         {currentStep.instruction || currentStep.title}
                       </p>
                       {currentStep.concept && (
-                        <p className="text-xs text-teal-400/90 bg-neutral-900 rounded-lg px-3 py-2 leading-relaxed">
+                        <p className="text-xs text-blue-300 bg-neutral-900 rounded-lg px-3 py-2 leading-relaxed">
                           {currentStep.concept}
                         </p>
                       )}
@@ -2564,7 +2564,7 @@ const CodeEditor = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ type: 'spring', damping: 20 }}
                 onClick={() => setShowStepGuide(true)}
-                className="absolute bottom-4 right-4 z-30 flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-xs font-semibold text-teal-400/90 hover:bg-neutral-900 transition shadow-lg shadow-black"
+                className="absolute bottom-4 right-4 z-30 flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-xs font-semibold text-blue-300 hover:bg-neutral-900 transition shadow-lg shadow-black"
                 title="Show step guide"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
@@ -2679,7 +2679,7 @@ const CodeEditor = () => {
                       key={`editor-err-${i}`}
                       className="flex items-start gap-2 text-[11px] rounded-lg bg-blue-700 px-2 py-1.5"
                     >
-                      <span className="shrink-0 w-5 h-5 rounded bg-blue-600 text-blue-50 flex items-center justify-center text-[10px] font-bold">
+                      <span className="shrink-0 w-5 h-5 rounded bg-blue-600 text-black flex items-center justify-center text-[10px] font-bold">
                         !
                       </span>
                       <span className="text-blue-100 break-words flex-1 min-w-0 font-medium">
@@ -2689,7 +2689,7 @@ const CodeEditor = () => {
                         type="button"
                         onClick={() => handleExplainErrorClick(msg)}
                         disabled={explainErrorLoading}
-                        className="shrink-0 rounded-md px-2 py-0.5 text-[9px] font-bold bg-blue-600 text-blue-50 hover:bg-blue-500 disabled:bg-blue-700 disabled:text-blue-300 disabled:cursor-not-allowed transition-colors"
+                        className="shrink-0 rounded-md px-2 py-0.5 text-[9px] font-bold bg-blue-600 text-black hover:bg-blue-500 disabled:bg-blue-700 disabled:text-blue-300 disabled:cursor-not-allowed transition-colors"
                       >
                         Explain
                       </button>
@@ -2713,7 +2713,7 @@ const CodeEditor = () => {
           onPointerUp={handleRightResizePointerUp}
           onPointerCancel={handleRightResizePointerUp}
           onLostPointerCapture={handleResizeLostCapture}
-          className="relative z-20 flex w-3 shrink-0 cursor-col-resize touch-none select-none justify-center hover:[&>div]:bg-teal-600 active:[&>div]:bg-teal-600"
+          className="relative z-20 flex w-3 shrink-0 cursor-col-resize touch-none select-none justify-center hover:[&>div]:bg-blue-600 active:[&>div]:bg-blue-600"
           title="Drag to resize preview panel"
         >
           <div className="pointer-events-none w-px h-full bg-neutral-700 transition-colors" />
@@ -2740,7 +2740,7 @@ const CodeEditor = () => {
                   {
                     key: 'server',
                     label: 'Server',
-                    activeClass: 'text-white bg-teal-700',
+                    activeClass: 'text-black bg-blue-600',
                   },
                   {
                     key: 'player1',
@@ -2804,7 +2804,7 @@ const CodeEditor = () => {
                       : 'absolute w-px h-px opacity-0 pointer-events-none overflow-hidden'
                   }
                 >
-                  <div className="px-2 py-1 bg-blue-600 text-blue-100 text-[10px] font-bold text-center shrink-0">
+                  <div className="px-2 py-1 bg-blue-600 text-black text-[10px] font-bold text-center shrink-0">
                     Client 2
                   </div>
                   <iframe
@@ -2862,7 +2862,7 @@ const CodeEditor = () => {
               onPointerUp={handleConsoleResizePointerUp}
               onPointerCancel={handleConsoleResizePointerUp}
               onLostPointerCapture={handleResizeLostCapture}
-              className="relative z-20 h-3 shrink-0 cursor-row-resize touch-none select-none flex items-center justify-center hover:[&>div]:bg-teal-600 active:[&>div]:bg-teal-600"
+              className="relative z-20 h-3 shrink-0 cursor-row-resize touch-none select-none flex items-center justify-center hover:[&>div]:bg-blue-600 active:[&>div]:bg-blue-600"
               title="Drag to resize console"
             >
               <div className="pointer-events-none w-14 h-0.5 rounded-full bg-neutral-700 transition-colors" />
@@ -2933,7 +2933,7 @@ const CodeEditor = () => {
                               entry.level === 'error'
                                 ? 'text-blue-100 bg-blue-700'
                                 : entry.level === 'warn'
-                                  ? 'text-blue-100 bg-blue-600'
+                                  ? 'text-black bg-blue-600'
                                   : entry.level === 'info'
                                     ? 'text-black bg-blue-400'
                                     : 'text-blue-300 bg-white/[0.03]'
@@ -2972,7 +2972,7 @@ const CodeEditor = () => {
                               entry.level === 'error'
                                 ? 'text-blue-100 bg-blue-700'
                                 : entry.level === 'warn'
-                                  ? 'text-blue-100 bg-blue-600'
+                                  ? 'text-black bg-blue-600'
                                   : entry.level === 'info'
                                     ? 'text-black bg-blue-400'
                                     : 'text-blue-300 bg-white/[0.03]'
@@ -2998,7 +2998,7 @@ const CodeEditor = () => {
                           entry.level === 'error'
                             ? 'text-blue-100 bg-blue-700'
                             : entry.level === 'warn'
-                              ? 'text-blue-100 bg-blue-600'
+                              ? 'text-black bg-blue-600'
                               : entry.level === 'info'
                                 ? 'text-black bg-blue-400'
                                 : 'text-blue-300 bg-white/[0.03]'
@@ -3055,7 +3055,7 @@ const CodeEditor = () => {
                             type="button"
                             onClick={() => handleExplainErrorClick(msg)}
                             disabled={explainErrorLoading}
-                            className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold bg-blue-600 text-blue-50 hover:bg-blue-500 disabled:bg-blue-700 disabled:text-blue-300 disabled:cursor-not-allowed transition-colors"
+                            className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold bg-blue-600 text-black hover:bg-blue-500 disabled:bg-blue-700 disabled:text-blue-300 disabled:cursor-not-allowed transition-colors"
                           >
                             Explain
                           </button>
@@ -3175,7 +3175,7 @@ const CodeEditor = () => {
                       type="button"
                       onClick={handleExplainSelection}
                       disabled={explainCodeLoading}
-                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-xl bg-blue-700 text-blue-50 text-[10px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-xl bg-blue-700 text-black text-[10px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed transition-colors"
                     >
                       <FaMagic className="text-[8px]" /> Explain code
                     </button>
@@ -3208,7 +3208,7 @@ const CodeEditor = () => {
                     <button
                       type="submit"
                       disabled={tutorLoading || !tutorQuestion.trim()}
-                      className="shrink-0 w-9 h-9 rounded-xl bg-teal-800 text-teal-50 flex items-center justify-center shadow-md shadow-black/30 hover:bg-teal-700 disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed transition-all"
+                      className="shrink-0 w-9 h-9 rounded-xl bg-blue-600 text-black flex items-center justify-center shadow-md shadow-black/30 hover:bg-blue-500 disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed transition-all"
                     >
                       <FaChevronRight className="text-xs" />
                     </button>

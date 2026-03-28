@@ -22,6 +22,7 @@ import Modules from './pages/Modules';
 import CodeEditor from './pages/CodeEditor';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+import AdminModuleEditor from './pages/AdminModuleEditor';
 
 function PublicLayout() {
   const location = useLocation();
@@ -45,13 +46,13 @@ function EditorShell() {
   );
 }
 
-function AdminPageGate() {
+function AdminGateLayout() {
   const { user } = useAuth();
   if (!user?.isAdmin) {
     toast.error('You need admin access to view this page.');
     return <Navigate to="/dashboard" replace />;
   }
-  return <Admin />;
+  return <Outlet />;
 }
 
 function AppRoutes() {
@@ -88,7 +89,10 @@ function AppRoutes() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/modules" element={<Modules />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/admin" element={<AdminPageGate />} />
+            <Route element={<AdminGateLayout />}>
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/admin/modules/:moduleId" element={<AdminModuleEditor />} />
+            </Route>
           </Route>
         </Route>
 

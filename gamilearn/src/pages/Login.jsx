@@ -61,9 +61,8 @@ const Login = () => {
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.45, ease }}
-          className="lg:w-[44%] xl:w-[40%] flex flex-col justify-between p-8 sm:p-12 lg:p-14 bg-gradient-to-b from-blue-900 via-blue-900 to-neutral-900 relative overflow-hidden"
+          className="lg:w-[44%] xl:w-[40%] flex flex-col justify-between p-8 sm:p-12 lg:p-14 bg-blue-900 relative overflow-hidden"
         >
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-400/15 via-transparent to-violet-500/10" />
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.12]"
             style={{
@@ -88,15 +87,15 @@ const Login = () => {
             </h2>
             <ul className="mt-8 space-y-3 text-sm text-blue-100 max-w-sm">
               <li className="flex gap-2">
-                <span className="text-cyan-300 font-bold">1.</span>
+                <span className="text-blue-300 font-bold">1.</span>
                 Dashboard shows exactly what to do next
               </li>
               <li className="flex gap-2">
-                <span className="text-cyan-300 font-bold">2.</span>
+                <span className="text-blue-300 font-bold">2.</span>
                 Editor saves as you type
               </li>
               <li className="flex gap-2">
-                <span className="text-cyan-300 font-bold">3.</span>
+                <span className="text-blue-300 font-bold">3.</span>
                 XP and achievements track progress
               </li>
             </ul>
@@ -172,7 +171,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 font-semibold text-sm shadow-lg shadow-cyan-500/30 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-blue-500 text-black font-semibold text-sm shadow-md shadow-black/30 hover:bg-blue-400 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {loading ? 'Signing in…' : 'Sign in'}
                 {!loading && <FaArrowRight className="text-xs" />}
