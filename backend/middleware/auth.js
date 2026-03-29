@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { isAdmin } = require("../utils/admin");
+const { jwtVerifyOptions } = require("../utils/jwt");
 
 const auth = async (req, res, next) => {
   // Allow preflight requests to pass through without authentication
@@ -20,7 +21,11 @@ const auth = async (req, res, next) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET,
+      jwtVerifyOptions,
+    );
 
     // Find user
     const user = await User.findById(decoded.userId).select("-password");

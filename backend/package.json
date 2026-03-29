@@ -19,7 +19,8 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "seed": "node seed.js && node seedAchievements.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "benchmark:ai-models": "node benchmark/ai_models_benchmark.js"
   },
   "dependencies": {
     "@azure-rest/ai-inference": "latest",
@@ -31,6 +32,7 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.1",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.3.0"
   },
@@ -39,5 +41,13 @@
     "eslint": "^10.0.3",
     "nodemon": "^3.1.14",
     "globals": "^17.4.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "path-to-regexp": "^8.4.0",
+      "flatted": "^3.4.2",
+      "picomatch": "^2.3.2",
+      "brace-expansion": "^5.0.5"
+    }
   }
 }

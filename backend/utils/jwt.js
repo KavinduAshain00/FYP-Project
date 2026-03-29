@@ -5,11 +5,18 @@ const jwt = require("jsonwebtoken");
  * @param {string} userId - MongoDB user _id
  * @returns {string} JWT token
  */
+const JWT_ALG = "HS256";
+
 function generateToken(userId) {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ userId }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+    algorithm: JWT_ALG,
+  });
 }
 
 const PASSWORD_RESET_EXPIRY = "1h";
+
+const jwtVerifyOptions = { algorithms: [JWT_ALG] };
 
 /**
  * Sign a password-reset token (stored on frontend, not in DB).
@@ -20,7 +27,7 @@ function signPasswordResetToken(email) {
   return jwt.sign(
     { email: email.toLowerCase(), purpose: "password-reset" },
     process.env.JWT_SECRET,
-    { expiresIn: PASSWORD_RESET_EXPIRY },
+    { expiresIn: PASSWORD_RESET_EXPIRY, algorithm: JWT_ALG },
   );
 }
 
@@ -31,7 +38,11 @@ function signPasswordResetToken(email) {
  * @throws if invalid or expired
  */
 function verifyPasswordResetToken(token) {
-  const payload = jwt.verify(token, process.env.JWT_SECRET);
+  const payload = jwt.verify(
+    token,
+    process.env.JWT_SECRET,
+    jwtVerifyOptions,
+  );
   if (payload.purpose !== "password-reset" || !payload.email) {
     throw new Error("Invalid reset token");
   }
@@ -42,4 +53,5 @@ module.exports = {
   generateToken,
   signPasswordResetToken,
   verifyPasswordResetToken,
+  jwtVerifyOptions,
 };

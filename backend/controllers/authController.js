@@ -61,8 +61,6 @@ async function signup(req, res) {
     if (typeof password !== 'string' || password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
-    console.log('[Auth] signup', { email: emailTrimmed });
-
     const existingUser = await User.findOne({ email: emailTrimmed.toLowerCase() });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists with this email' });
@@ -93,7 +91,6 @@ async function signup(req, res) {
     }
 
     await grantSignupAchievement(user._id);
-    console.log('[Auth] signup success', { userId: user._id?.toString(), email });
     const token = generateToken(user._id);
 
     const savedUser = await User.findById(user._id)
@@ -126,9 +123,9 @@ async function login(req, res) {
     if (!email || !password) {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
-    console.log('[Auth] login', { email });
 
-    const user = await User.findOne({ email });
+    const emailNormalized = String(email).trim().toLowerCase();
+    const user = await User.findOne({ email: emailNormalized });
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -139,7 +136,6 @@ async function login(req, res) {
     }
 
     const token = generateToken(user._id);
-    console.log('[Auth] login success', { userId: user._id?.toString(), email });
     const fullUser = await User.findById(user._id)
       .select('-password')
       .populate('completedModules.moduleId', 'title category')

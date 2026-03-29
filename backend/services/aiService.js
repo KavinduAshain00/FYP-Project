@@ -33,7 +33,9 @@ if (!GITHUB_TOKEN) {
   );
 }
 
-console.log(`Using GitHub Models with model ${AI_MODEL}`);
+if (process.env.NODE_ENV !== "production") {
+  console.log(`Using GitHub Models with model ${AI_MODEL}`);
+}
 
 /** Generate text with a specific model. */
 async function generateTextWithModel(prompt, options = {}, model = AI_MODEL) {
