@@ -1,12 +1,44 @@
+const mongoose = require('mongoose');
 const ai = require('../services/aiService');
 const { AI_CODER_MODEL } = require('../constants/ai');
+const lessonXpService = require('../services/lessonXpService');
 const {
   assessQuestionConfidence,
   getFallbackHints,
   buildPedagogicalPrompt,
 } = require('../utils/tutor');
 
-/** POST /api/tutor/mcq/generate - Generate 1-2 MCQs for a step (uses qwen3-coder:480b) */
+function parseStepIndex(si) {
+  if (typeof si === 'number' && !Number.isNaN(si)) return si;
+  const n = parseInt(si, 10);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+/** Attach server XP when step verification passes (once per module step). */
+async function jsonStepVerify(req, res, correct, feedback) {
+  const { moduleId, stepIndex: si } = req.body;
+  const stepIndexNum = parseStepIndex(si);
+  const payload = { correct, feedback, xpAwarded: 0 };
+  if (
+    correct &&
+    req.user?._id &&
+    moduleId &&
+    mongoose.Types.ObjectId.isValid(String(moduleId)) &&
+    Number.isFinite(stepIndexNum) &&
+    stepIndexNum >= 0
+  ) {
+    const grant = await lessonXpService.grantStepVerifyXp(req.user._id, moduleId, stepIndexNum);
+    payload.xpAwarded = grant.xpAwarded;
+    if (grant.awarded) {
+      payload.totalPoints = grant.totalPoints;
+      payload.level = grant.level;
+      payload.levelInfo = grant.levelInfo;
+    }
+  }
+  return res.json(payload);
+}
+
+/** POST /api/tutor/mcq/generate - Generate 1-2 MCQs for a step */
 async function generateMCQs(req, res) {
   const { stepTitle, stepConcept, moduleTitle, count } = req.body;
   if (!stepTitle || typeof stepTitle !== 'string') {
@@ -30,7 +62,7 @@ async function generateMCQs(req, res) {
   }
 }
 
-/** POST /api/tutor/mcq/verify - Verify MCQ answer and return explanation if wrong (qwen3-coder:480b) */
+/** POST /api/tutor/mcq/verify - Verify MCQ answer; return explanation if wrong */
 async function verifyMCQ(req, res) {
   const { question, options, correctIndex, selectedIndex } = req.body;
   if (
@@ -46,12 +78,43 @@ async function verifyMCQ(req, res) {
   try {
     console.log('[Tutor] verifyMCQ', { correct: selectedIndex === correctIndex });
     const result = await ai.verifyMCQAnswer(question, options, correctIndex, selectedIndex);
-    return res.json(result);
+    const payload = { ...result, xpAwarded: 0 };
+    if (result.correct && req.user?._id) {
+      const { moduleId, stepIndex, questionIndex } = req.body;
+      const si = parseStepIndex(stepIndex);
+      const qi =
+        typeof questionIndex === 'number' && !Number.isNaN(questionIndex)
+          ? questionIndex
+          : parseInt(questionIndex, 10);
+      if (
+        moduleId &&
+        mongoose.Types.ObjectId.isValid(String(moduleId)) &&
+        Number.isFinite(si) &&
+        si >= 0 &&
+        Number.isFinite(qi) &&
+        qi >= 0
+      ) {
+        const grant = await lessonXpService.grantMcqCorrectXp(
+          req.user._id,
+          moduleId,
+          si,
+          qi,
+        );
+        payload.xpAwarded = grant.xpAwarded;
+        if (grant.awarded) {
+          payload.totalPoints = grant.totalPoints;
+          payload.level = grant.level;
+          payload.levelInfo = grant.levelInfo;
+        }
+      }
+    }
+    return res.json(payload);
   } catch (err) {
     console.error('[Tutor] verifyMCQ error', err.message || err);
     return res.status(500).json({
       correct: false,
       explanation: "We couldn't check your answer. Please try again.",
+      xpAwarded: 0,
     });
   }
 }
@@ -109,7 +172,7 @@ async function explainError(req, res) {
 
 /** POST /api/tutor/lecture-notes - Generate lecture notes from module learning overview */
 async function generateLectureNotes(req, res) {
-  const { overview, moduleTitle, difficulty, category, steps, objectives, userLevel } = req.body;
+  const { overview, moduleTitle, difficulty, category, steps, userLevel } = req.body;
   if (!overview || typeof overview !== 'string' || !overview.trim()) {
     return res.status(400).json({ error: 'overview (string) is required' });
   }
@@ -121,7 +184,6 @@ async function generateLectureNotes(req, res) {
       difficulty: difficulty || 'beginner',
       category: category || '',
       steps: Array.isArray(steps) ? steps : undefined,
-      objectives: Array.isArray(objectives) ? objectives : undefined,
       userLevel: userLevel || '',
     });
     return res.json({ lectureNotes: notes });
@@ -134,8 +196,8 @@ async function generateLectureNotes(req, res) {
 }
 
 /**
- * POST /api/tutor - AI tutor / hints
- * Code is summarized to markdown and verified; tutor response is verified before return.
+ * POST /api/tutor - Hints and short answers from the tutor pipeline.
+ * Code is summarized to markdown and verified before return.
  */
 async function postTutor(req, res) {
   const { message, context } = req.body;
@@ -173,7 +235,6 @@ async function postTutor(req, res) {
           context.code.html,
           context.code.css,
           context.code.javascript,
-          context.code.jsx,
         ]
           .filter(Boolean)
           .join('\n')
@@ -185,7 +246,6 @@ async function postTutor(req, res) {
         const codeObj = {};
         if (file.includes('html')) codeObj.html = context.code;
         else if (file.includes('css')) codeObj.css = context.code;
-        else if (file.includes('jsx')) codeObj.jsx = context.code;
         else codeObj.javascript = context.code;
         codeSummary = await ai.summarizeCodeToMarkdown(codeObj);
       }
@@ -293,16 +353,15 @@ function getCodeForVerify(code) {
     html: code.html || '',
     css: code.css || '',
     js: (code.javascript !== undefined ? code.javascript : code.js) || '',
-    jsx: code.jsx || '',
   };
 }
 
 /**
  * Check if code is effectively empty: only whitespace or almost no code.
- * Returns true if code should be rejected as "empty" before calling AI.
+ * Returns true if code should be rejected as "empty" before remote verification.
  */
 function isCodeEmptyForStep(normalized) {
-  const full = [normalized.html, normalized.css, normalized.js, normalized.jsx].join('\n');
+  const full = [normalized.html, normalized.css, normalized.js].join('\n');
   const noWhitespace = full.replace(/\s+/g, ' ').trim();
   if (noWhitespace.length < 25) return true;
   const withoutComments = noWhitespace
@@ -316,7 +375,7 @@ function isCodeEmptyForStep(normalized) {
 }
 
 /**
- * Parse AI verification response into { correct: boolean, feedback: string }.
+ * Parse step verification JSON into { correct: boolean, feedback: string }.
  * Handles JSON in code blocks, extra text, and malformed output.
  */
 function parseVerificationResponse(raw) {
@@ -519,8 +578,8 @@ function checkCommentsStep(stepDescription, normalized) {
 }
 
 /**
- * POST /api/tutor/verify - AI verify if user code satisfies current step objective
- * Body: { stepIndex, stepDescription, stepInstruction?, stepConcept?, code, moduleTitle?, objectives?, verifyType?, consoleOutput?, expectedConsole? }
+ * POST /api/tutor/verify - Check whether user code satisfies the current step.
+ * Body: { stepIndex, stepDescription, stepInstruction?, stepConcept?, code, moduleTitle?, verifyType?, consoleOutput?, expectedConsole? }
  * Returns: { correct: boolean, feedback: string }
  */
 async function verifyStep(req, res) {
@@ -531,7 +590,6 @@ async function verifyStep(req, res) {
     stepConcept,
     code,
     moduleTitle,
-    objectives,
     verifyType,
     consoleOutput,
     expectedConsole,
@@ -545,7 +603,7 @@ async function verifyStep(req, res) {
     return res.status(400).json({ error: 'stepDescription (string) is required' });
   }
   if (!code || typeof code !== 'object') {
-    return res.status(400).json({ error: 'code (object with html/css/js/jsx) is required' });
+    return res.status(400).json({ error: 'code (object with html/css/javascript) is required' });
   }
 
   console.log('[Tutor] verifyStep', { userId, stepIndex, verifyType, moduleTitle });
@@ -554,14 +612,14 @@ async function verifyStep(req, res) {
   // --- verifyType: checkConsole (non-coding step: user must run and have console output) ---
   if (verifyType === 'checkConsole') {
     const result = checkConsoleOutput(consoleOutput || [], expectedConsole);
-    return res.json({ correct: result.ok, feedback: result.feedback });
+    return jsonStepVerify(req, res, result.ok, result.feedback);
   }
 
   // --- verifyType: checkComments (comment-only step; allow minimal/comment-only code) ---
   if (verifyType === 'checkComments') {
     const commentResult = checkCommentsStep(stepDescription, normalized);
     if (commentResult) {
-      return res.json(commentResult);
+      return jsonStepVerify(req, res, commentResult.correct, commentResult.feedback);
     }
     const hasComment = (normalized.js || '').includes('//') || (normalized.js || '').includes('/*');
     if (!hasComment) {
@@ -569,12 +627,10 @@ async function verifyStep(req, res) {
         correct: false,
         feedback:
           'Add a comment in your code (single-line // or multi-line /* */), then click Check again.',
+        xpAwarded: 0,
       });
     }
-    return res.json({
-      correct: true,
-      feedback: 'Comment found. Step complete!',
-    });
+    return jsonStepVerify(req, res, true, 'Comment found. Step complete!');
   }
 
   // --- verifyType: code (default) - require non-empty code ---
@@ -583,6 +639,7 @@ async function verifyStep(req, res) {
       correct: false,
       feedback:
         "Write some code that addresses this step before verifying. Comments or empty code won't pass.",
+      xpAwarded: 0,
     });
   }
 
@@ -591,7 +648,6 @@ async function verifyStep(req, res) {
       normalized.html ? `HTML:\n${normalized.html}` : '',
       normalized.css ? `CSS:\n${normalized.css}` : '',
       normalized.js ? `JavaScript:\n${normalized.js}` : '',
-      normalized.jsx ? `JSX/React:\n${normalized.jsx}` : '',
     ]
       .filter(Boolean)
       .join('\n\n---\n\n');
@@ -603,7 +659,6 @@ async function verifyStep(req, res) {
 
 MODULE: ${moduleTitle || 'Programming module'}
 STEP TITLE (index ${stepIndex}): "${stepDescription}"${instructionCtx}${conceptCtx}
-${objectives?.length ? `Module objectives for context: ${objectives.join('; ')}` : ''}
 
 STUDENT'S CURRENT CODE:
 ${codeBlock}
@@ -636,12 +691,13 @@ Respond with ONLY a JSON object: {"correct": true or false, "feedback": "brief s
     );
     const result = parseVerificationResponse(raw);
     console.log('[Tutor] verifyStep result', { userId, stepIndex, correct: result.correct });
-    return res.json({ correct: result.correct, feedback: result.feedback });
+    return jsonStepVerify(req, res, result.correct, result.feedback);
   } catch (err) {
     console.error('[Tutor] verifyStep error', { userId, stepIndex, error: err.message });
     return res.status(500).json({
       correct: false,
       feedback: 'Verification service failed. Please try again.',
+      xpAwarded: 0,
     });
   }
 }

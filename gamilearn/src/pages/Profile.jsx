@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { toast } from 'react-toastify';
+import { useEffect, useState, useRef } from "react";
+import { toast } from "react-toastify";
 import {
   FaArrowRight,
   FaBolt,
@@ -14,53 +14,62 @@ import {
   FaLink,
   FaTrophy,
   FaUser,
-} from 'react-icons/fa';
-import { useAuth } from '../context/AuthContext';
-import { useShellPagesCache } from '../context/ShellPagesCacheContext';
-import { achievementsAPI, userAPI } from '../api/api';
-import LoadingScreen from '../components/ui/LoadingScreen';
-
-const buildPromptUrl = (prompt) =>
-  `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=768&height=768&seed=42&nologo=true`;
-
-const defaultAvatarPrompt = 'Stylized hero portrait, simple avatar';
+  FaUserCircle,
+} from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
+import { useShellPagesCache } from "../utils/shellPagesCacheContext";
+import { achievementsAPI, userAPI } from "../api/api";
+import LoadingScreen from "../components/ui/LoadingScreen";
+import { getXpBarProps } from "../utils/levelFromApi";
 
 const groupAvatarsByUnlock = (avatars) => {
-  const default_ = avatars.filter((a) => a.unlockType === 'default');
+  const default_ = avatars.filter((a) => a.unlockType === "default");
   const level = avatars
-    .filter((a) => a.unlockType === 'level')
+    .filter((a) => a.unlockType === "level")
     .sort((a, b) => {
-      const lvA = parseInt(a.requirementTag?.replace(/\D/g, '') || '0', 10);
-      const lvB = parseInt(b.requirementTag?.replace(/\D/g, '') || '0', 10);
+      const lvA = parseInt(a.requirementTag?.replace(/\D/g, "") || "0", 10);
+      const lvB = parseInt(b.requirementTag?.replace(/\D/g, "") || "0", 10);
       return lvA - lvB;
     });
-  const achievement = avatars.filter((a) => a.unlockType === 'achievement');
+  const achievement = avatars.filter((a) => a.unlockType === "achievement");
   return { default: default_, level, achievement };
 };
 
 const Profile = () => {
   const { user, refreshProfile } = useAuth();
   const { peek, put } = useShellPagesCache();
-  const saved = peek('profile');
+  const saved = peek("profile");
 
   const [profile, setProfile] = useState(() => saved?.profile ?? null);
-  const [achievements, setAchievements] = useState(() => saved?.achievements ?? []);
+  const [achievements, setAchievements] = useState(
+    () => saved?.achievements ?? [],
+  );
   const [avatars, setAvatars] = useState(() => saved?.avatars ?? []);
-  const [name, setName] = useState(() => saved?.name ?? saved?.profile?.name ?? '');
+  const [name, setName] = useState(
+    () => saved?.name ?? saved?.profile?.name ?? "",
+  );
   const [avatarUrl, setAvatarUrl] = useState(
-    () => saved?.avatarUrl ?? saved?.profile?.avatarUrl ?? ''
+    () => saved?.avatarUrl ?? saved?.profile?.avatarUrl ?? "",
   );
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(() => saved?.editMode ?? false);
   const [loading, setLoading] = useState(() => (saved?.profile ? false : true));
-  const [changePasswordCurrent, setChangePasswordCurrent] = useState('');
-  const [changePasswordNew, setChangePasswordNew] = useState('');
-  const [changePasswordConfirm, setChangePasswordConfirm] = useState('');
+  const [changePasswordCurrent, setChangePasswordCurrent] = useState("");
+  const [changePasswordNew, setChangePasswordNew] = useState("");
+  const [changePasswordConfirm, setChangePasswordConfirm] = useState("");
   const [changePasswordSaving, setChangePasswordSaving] = useState(false);
 
   const snapshotRef = useRef({});
-  snapshotRef.current = { profile, achievements, avatars, name, avatarUrl, editMode, loading };
-  useEffect(() => () => put('profile', snapshotRef.current), [put]);
+  snapshotRef.current = {
+    profile,
+    achievements,
+    avatars,
+    name,
+    avatarUrl,
+    editMode,
+    loading,
+  };
+  useEffect(() => () => put("profile", snapshotRef.current), [put]);
 
   const profileRef = useRef(profile);
   profileRef.current = profile;
@@ -77,12 +86,12 @@ const Profile = () => {
         ]);
         const userData = profileRes.data.user;
         setProfile(userData);
-        setName(userData.name || '');
-        setAvatarUrl(userData.avatarUrl || '');
+        setName(userData.name || "");
+        setAvatarUrl(userData.avatarUrl || "");
         setAchievements(achievementsRes.data.achievements || []);
         setAvatars(avatarsRes.data.avatars || []);
       } catch (error) {
-        console.error('Error loading profile:', error);
+        console.error("Error loading profile:", error);
       } finally {
         setLoading(false);
       }
@@ -92,7 +101,7 @@ const Profile = () => {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast.error('Please enter a display name.');
+      toast.error("Please enter a display name.");
       return;
     }
     setSaving(true);
@@ -102,7 +111,7 @@ const Profile = () => {
         avatarUrl: avatarUrl.trim(),
       });
       await refreshProfile?.();
-      toast.success('Profile updated successfully.');
+      toast.success("Profile updated successfully.");
       setEditMode(false);
     } catch {
       toast.error("We couldn't save your profile. Please try again.");
@@ -114,48 +123,51 @@ const Profile = () => {
   const handleChangePassword = async (e) => {
     e.preventDefault();
     if (changePasswordNew !== changePasswordConfirm) {
-      toast.error('New passwords do not match.');
+      toast.error("New passwords do not match.");
       return;
     }
     if (changePasswordNew.length < 6) {
-      toast.error('New password must be at least 6 characters.');
+      toast.error("New password must be at least 6 characters.");
       return;
     }
     setChangePasswordSaving(true);
     try {
       await userAPI.changePassword(changePasswordCurrent, changePasswordNew);
-      toast.success('Password updated.');
-      setChangePasswordCurrent('');
-      setChangePasswordNew('');
-      setChangePasswordConfirm('');
+      toast.success("Password updated.");
+      setChangePasswordCurrent("");
+      setChangePasswordNew("");
+      setChangePasswordConfirm("");
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not update password.');
+      toast.error(err.response?.data?.message || "Could not update password.");
     } finally {
       setChangePasswordSaving(false);
     }
   };
 
   const levelInfo = profile?.levelInfo || user?.levelInfo || null;
-  const totalPoints = levelInfo?.totalPoints ?? profile?.totalPoints ?? user?.totalPoints ?? 0;
+  const xpBar = getXpBarProps(levelInfo);
+  const totalPoints =
+    levelInfo?.totalPoints ?? profile?.totalPoints ?? user?.totalPoints ?? 0;
   const level = levelInfo?.level ?? profile?.level ?? user?.level ?? 1;
-  const xpToNext = levelInfo?.xpProgress?.xpToNext ?? 200;
+  const xpToNext = xpBar.xpToNext;
   const earnedAchievements = achievements.filter((item) => item.earned).length;
   const completedModules = profile?.completedModules?.length || 0;
   const avatarGroups = groupAvatarsByUnlock(avatars);
   const unlockedAvatarCount = avatars.filter((a) => a.unlocked).length;
   const nextLevelAvatar = avatarGroups.level.find((a) => !a.unlocked) || null;
-  const nextAchievementAvatar = avatarGroups.achievement.find((a) => !a.unlocked) || null;
+  const nextAchievementAvatar =
+    avatarGroups.achievement.find((a) => !a.unlocked) || null;
 
   const btnPrimary =
-    'inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 text-sm font-semibold shadow-lg shadow-cyan-500/25 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none';
+    "inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-blue-500 text-black text-sm font-semibold shadow-md shadow-black/25 hover:bg-blue-400 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none";
   const inputShell =
-    'w-full flex items-center gap-2 rounded-2xl bg-blue-800 px-4 py-3 focus-within:outline focus-within:outline-2 focus-within:outline-blue-400/50';
+    "w-full flex items-center gap-2 rounded-2xl bg-blue-800 px-4 py-3 focus-within:outline focus-within:outline-2 focus-within:outline-blue-400/50";
   const inputClass =
-    'flex-1 bg-transparent text-blue-50 text-sm outline-none placeholder-blue-300';
+    "flex-1 bg-transparent text-blue-50 text-sm outline-none placeholder-blue-300";
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+      <div className="mx-auto max-w-5xl min-w-0 px-4 py-10 sm:px-6">
         <LoadingScreen
           message="Loading your profile"
           subMessage="Getting your account, badges, and avatar options"
@@ -165,9 +177,24 @@ const Profile = () => {
   }
 
   const avatarSections = [
-    { key: 'default', title: 'Starter avatars', icon: FaStar, list: avatarGroups.default },
-    { key: 'level', title: 'Level unlocks', icon: FaCrown, list: avatarGroups.level },
-    { key: 'achievement', title: 'Achievement unlocks', icon: FaTrophy, list: avatarGroups.achievement },
+    {
+      key: "default",
+      title: "Starter avatars",
+      icon: FaStar,
+      list: avatarGroups.default,
+    },
+    {
+      key: "level",
+      title: "Level unlocks",
+      icon: FaCrown,
+      list: avatarGroups.level,
+    },
+    {
+      key: "achievement",
+      title: "Achievement unlocks",
+      icon: FaTrophy,
+      list: avatarGroups.achievement,
+    },
   ].filter((s) => s.list.length > 0);
 
   const sortedAchievements = [...achievements].sort((a, b) => {
@@ -177,76 +204,93 @@ const Profile = () => {
 
   const statTiles = [
     {
-      label: 'Total XP',
+      label: "Total XP",
       value: totalPoints,
       icon: FaBolt,
-      iconClass: 'text-cyan-300',
+      iconClass: "text-cyan-300",
     },
     {
-      label: 'Level',
+      label: "Level",
       value: level,
       icon: FaCrown,
-      iconClass: 'text-amber-300',
+      iconClass: "text-amber-300",
     },
     {
-      label: 'Modules done',
+      label: "Modules done",
       value: completedModules,
       icon: FaGraduationCap,
-      iconClass: 'text-sky-300',
+      iconClass: "text-blue-300",
     },
     {
-      label: 'Achievements',
+      label: "Achievements",
       value: `${earnedAchievements}/${achievements.length}`,
       icon: FaTrophy,
-      iconClass: 'text-blue-200',
+      iconClass: "text-blue-200",
     },
   ];
 
-  const xpPct = levelInfo?.xpProgress?.percentage ?? ((totalPoints % 200) / 200) * 100;
+  const xpPct = xpBar.percentage;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 pb-20 text-blue-50 sm:px-6 sm:py-10">
+    <div className="mx-auto max-w-5xl min-w-0 px-4 py-8 pb-20 text-blue-50 sm:px-6 sm:py-10">
       <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-400">Account</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-blue-50 sm:text-4xl">Profile</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-400">
+          Account
+        </p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-blue-50 sm:text-4xl">
+          Profile
+        </h1>
         <p className="mt-2 max-w-xl text-sm text-blue-300">
           Your progress, avatar, and security settings in one place.
         </p>
       </header>
 
       {/* Hero */}
-      <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-blue-800/70 via-blue-900 to-blue-950/90 shadow-xl shadow-blue-950/30">
+      <section className="overflow-hidden rounded-3xl bg-blue-900 border border-blue-800/60 shadow-xl shadow-blue-950/30">
         <div className="p-6 sm:p-8">
           <div className="flex flex-col gap-8 md:flex-row md:items-start md:gap-10">
             <div className="relative mx-auto shrink-0 md:mx-0">
               <div className="rounded-3xl bg-blue-950/40 p-1.5 shadow-inner shadow-blue-950/50">
-                <img
-                  src={avatarUrl.trim() ? avatarUrl : buildPromptUrl(defaultAvatarPrompt)}
-                  alt=""
-                  className="h-32 w-32 rounded-2xl object-cover shadow-lg shadow-blue-950/40 sm:h-36 sm:w-36"
-                />
+                {avatarUrl.trim() ? (
+                  <img
+                    src={avatarUrl.trim()}
+                    alt={`${name || user?.name || "Your"} profile photo`}
+                    className="h-32 w-32 rounded-2xl object-cover object-center shadow-lg shadow-blue-950/40 sm:h-36 sm:w-36"
+                  />
+                ) : (
+                  <div
+                    className="flex h-32 w-32 items-center justify-center rounded-full bg-blue-600 shadow-lg shadow-blue-950/40 sm:h-36 sm:w-36"
+                    aria-hidden
+                  >
+                    <FaUserCircle className="-mb-1 text-[4.75rem] text-blue-100/90 sm:text-[5.5rem]" />
+                  </div>
+                )}
               </div>
-              <span className="absolute -bottom-1 -right-1 rounded-xl bg-gradient-to-r from-amber-300 to-orange-400 px-2.5 py-1 text-xs font-bold text-blue-950 shadow-md shadow-amber-500/30">
+              <span className="absolute -bottom-1 -right-1 rounded-xl bg-amber-500 px-2.5 py-1 text-xs font-bold text-blue-950 shadow-md shadow-black/20">
                 Lv {level}
               </span>
               <button
                 type="button"
                 onClick={() => setEditMode((v) => !v)}
-                className="absolute -right-1 -top-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-blue-50 shadow-lg shadow-blue-950/40 transition-colors hover:bg-sky-500"
-                aria-label={editMode ? 'Close profile editor' : 'Edit profile'}
+                className="absolute -right-1 -top-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-black shadow-lg shadow-blue-950/40 transition-colors hover:bg-blue-500"
+                aria-label={editMode ? "Close profile editor" : "Edit profile"}
               >
                 <FaEdit className="text-sm" />
               </button>
             </div>
 
             <div className="min-w-0 flex-1 text-center md:text-left">
-              <h2 className="text-2xl font-bold text-blue-50 sm:text-3xl">{name || user?.name}</h2>
-              <p className="mt-1 truncate text-sm text-blue-300">{user?.email}</p>
+              <h2 className="text-2xl font-bold text-blue-50 sm:text-3xl">
+                {name || user?.name}
+              </h2>
+              <p className="mt-1 break-all text-sm text-blue-300 sm:break-words md:truncate">
+                {user?.email}
+              </p>
               <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-2 rounded-2xl bg-blue-950/35 px-4 py-2.5 text-sm md:justify-start">
-                <FaShieldAlt className="text-sky-300" aria-hidden />
+                <FaShieldAlt className="text-blue-300" aria-hidden />
                 <span className="text-blue-300">Path</span>
                 <span className="font-semibold capitalize text-blue-50">
-                  {profile?.learningPath?.replace('-', ' ') || 'Explorer'}
+                  {profile?.learningPath?.replace("-", " ") || "Explorer"}
                 </span>
               </div>
 
@@ -257,11 +301,13 @@ const Profile = () => {
                     <span className="text-blue-500"> → </span>
                     {level + 1}
                   </span>
-                  <span className="font-medium tabular-nums text-blue-100">{xpToNext} XP to go</span>
+                  <span className="font-medium tabular-nums text-blue-100">
+                    {xpToNext} XP to go
+                  </span>
                 </div>
                 <div className="h-3 overflow-hidden rounded-full bg-blue-950/60">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 transition-all duration-500 shadow-sm shadow-cyan-500/25"
+                    className="h-full rounded-full bg-blue-400 transition-all duration-500 shadow-sm shadow-black/20"
                     style={{ width: `${Math.min(100, Math.max(0, xpPct))}%` }}
                   />
                 </div>
@@ -271,7 +317,7 @@ const Profile = () => {
                 <button
                   type="button"
                   onClick={() => setEditMode(true)}
-                  className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-blue-50 transition-colors hover:bg-sky-600"
+                  className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-blue-500"
                 >
                   <FaEdit /> Edit name & avatar
                 </button>
@@ -279,19 +325,26 @@ const Profile = () => {
             </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-8 grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
             {statTiles.map((s) => {
               const Icon = s.icon;
               return (
                 <div
                   key={s.label}
-                  className="rounded-2xl bg-blue-950/40 px-4 py-3 shadow-md shadow-blue-950/25"
+                  className="rounded-2xl bg-blue-950/40 px-3 py-2.5 shadow-md shadow-blue-950/25 sm:px-4 sm:py-3"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">{s.label}</p>
-                    <Icon className={`text-lg opacity-90 ${s.iconClass}`} aria-hidden />
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">
+                      {s.label}
+                    </p>
+                    <Icon
+                      className={`text-lg opacity-90 ${s.iconClass}`}
+                      aria-hidden
+                    />
                   </div>
-                  <p className="mt-1 text-xl font-bold tabular-nums text-blue-50 sm:text-2xl">{s.value}</p>
+                  <p className="mt-1 text-lg font-bold tabular-nums text-blue-50 sm:text-xl md:text-2xl">
+                    {s.value}
+                  </p>
                 </div>
               );
             })}
@@ -299,34 +352,47 @@ const Profile = () => {
         </div>
       </section>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+      <div className="mt-8 grid gap-6 min-w-0 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <section className="rounded-3xl bg-blue-900/80 p-6 shadow-xl shadow-blue-950/25 sm:p-7">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-400">Avatar studio</p>
-                <h2 className="mt-1 text-xl font-bold text-blue-50">Look & display name</h2>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-400">
+                  Avatar studio
+                </p>
+                <h2 className="mt-1 text-xl font-bold text-blue-50">
+                  Look & display name
+                </h2>
                 <p className="mt-2 text-sm text-blue-300">
-                  <span className="font-semibold text-blue-100">{unlockedAvatarCount}</span> of{' '}
-                  <span className="font-semibold text-blue-100">{avatars.length}</span> avatars unlocked.
+                  <span className="font-semibold text-blue-100">
+                    {unlockedAvatarCount}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-semibold text-blue-100">
+                    {avatars.length}
+                  </span>{" "}
+                  avatars unlocked.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setEditMode((v) => !v)}
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-blue-50 transition-colors hover:bg-blue-600"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-blue-600"
               >
-                {editMode ? 'Done browsing' : 'Customize'} <FaArrowRight className="text-xs" />
+                {editMode ? "Done browsing" : "Customize"}{" "}
+                <FaArrowRight className="text-xs" />
               </button>
             </div>
 
             <div className="mb-6 grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl bg-blue-800/80 px-4 py-3.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">Next by level</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">
+                  Next by level
+                </p>
                 <p className="mt-1.5 text-sm leading-snug text-blue-100">
                   {nextLevelAvatar?.unlockLabel ||
                     nextLevelAvatar?.requirementTag ||
-                    'All level avatars unlocked'}
+                    "All level avatars unlocked"}
                 </p>
               </div>
               <div className="rounded-2xl bg-blue-800/80 px-4 py-3.5">
@@ -336,7 +402,7 @@ const Profile = () => {
                 <p className="mt-1.5 text-sm leading-snug text-blue-100">
                   {nextAchievementAvatar?.unlockLabel ||
                     nextAchievementAvatar?.requirementTag ||
-                    'All achievement avatars unlocked'}
+                    "All achievement avatars unlocked"}
                 </p>
               </div>
             </div>
@@ -345,7 +411,9 @@ const Profile = () => {
               <div className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-blue-200">Display name</label>
+                    <label className="mb-2 block text-sm font-medium text-blue-200">
+                      Display name
+                    </label>
                     <div className={inputShell}>
                       <FaUser className="shrink-0 text-blue-300" />
                       <input
@@ -358,7 +426,9 @@ const Profile = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-blue-200">Custom image URL</label>
+                    <label className="mb-2 block text-sm font-medium text-blue-200">
+                      Custom image URL
+                    </label>
                     <div className={inputShell}>
                       <FaLink className="shrink-0 text-blue-200" />
                       <input
@@ -379,7 +449,8 @@ const Profile = () => {
                       return (
                         <div key={section.key}>
                           <h3 className="sticky top-0 z-10 mb-3 flex items-center gap-2 bg-blue-800/95 py-2 text-xs font-semibold uppercase tracking-wider text-blue-300 backdrop-blur-sm">
-                            <SectionIcon className="text-blue-100" /> {section.title}
+                            <SectionIcon className="text-blue-100" />{" "}
+                            {section.title}
                           </h3>
                           <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-6">
                             {section.list.map((av) => {
@@ -388,23 +459,29 @@ const Profile = () => {
                                 <button
                                   key={av.index}
                                   type="button"
-                                  onClick={() => av.unlocked && setAvatarUrl(av.url)}
+                                  onClick={() =>
+                                    av.unlocked && setAvatarUrl(av.url)
+                                  }
                                   disabled={!av.unlocked}
-                                  title={!av.unlocked ? av.unlockLabel : undefined}
+                                  title={
+                                    !av.unlocked ? av.unlockLabel : undefined
+                                  }
                                   className={`relative aspect-square overflow-hidden rounded-xl transition-transform focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed ${
-                                    selected ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-blue-800 scale-[1.02]' : ''
-                                  } ${av.unlocked ? 'hover:brightness-110' : ''}`}
+                                    selected
+                                      ? "ring-2 ring-cyan-400 ring-offset-2 ring-offset-blue-800 scale-[1.02]"
+                                      : ""
+                                  } ${av.unlocked ? "hover:brightness-110" : ""}`}
                                 >
                                   <img
                                     src={av.url}
                                     alt=""
-                                    className={`h-full w-full object-cover ${!av.unlocked ? 'grayscale' : ''}`}
+                                    className={`h-full w-full object-cover ${!av.unlocked ? "grayscale" : ""}`}
                                   />
                                   {!av.unlocked && (
                                     <span className="absolute inset-0 flex flex-col items-center justify-center bg-blue-950/85 p-1">
                                       <FaLock className="mb-1 h-5 w-5 text-blue-300" />
                                       <span className="line-clamp-2 px-0.5 text-center text-[8px] font-medium leading-tight text-blue-100">
-                                        {av.unlockLabel || 'Locked'}
+                                        {av.unlockLabel || "Locked"}
                                       </span>
                                     </span>
                                   )}
@@ -429,16 +506,23 @@ const Profile = () => {
                 </div>
 
                 <div className="flex justify-end pt-1">
-                  <button type="button" onClick={handleSave} disabled={saving} className={btnPrimary}>
-                    <FaSave /> {saving ? 'Saving…' : 'Save changes'}
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className={btnPrimary}
+                  >
+                    <FaSave /> {saving ? "Saving…" : "Save changes"}
                   </button>
                 </div>
               </div>
             ) : (
               <div className="rounded-2xl bg-blue-800/50 px-5 py-6 text-center text-sm text-blue-300 sm:text-left">
                 <p className="mx-auto max-w-md sm:mx-0">
-                  Tap <span className="font-semibold text-blue-100">Customize</span> to change your name, pick an
-                  avatar, or paste a custom image URL.
+                  Tap{" "}
+                  <span className="font-semibold text-blue-100">Customize</span>{" "}
+                  to change your name, pick an avatar, or paste a custom image
+                  URL.
                 </p>
               </div>
             )}
@@ -453,10 +537,14 @@ const Profile = () => {
               </span>
               Security
             </h2>
-            <p className="mt-2 text-sm text-blue-300">Update your password any time.</p>
+            <p className="mt-2 text-sm text-blue-300">
+              Update your password any time.
+            </p>
             <form onSubmit={handleChangePassword} className="mt-6 space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-blue-200">Current password</label>
+                <label className="mb-2 block text-sm font-medium text-blue-200">
+                  Current password
+                </label>
                 <input
                   type="password"
                   value={changePasswordCurrent}
@@ -467,7 +555,9 @@ const Profile = () => {
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-blue-200">New password</label>
+                <label className="mb-2 block text-sm font-medium text-blue-200">
+                  New password
+                </label>
                 <input
                   type="password"
                   value={changePasswordNew}
@@ -479,7 +569,9 @@ const Profile = () => {
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-blue-200">Confirm new password</label>
+                <label className="mb-2 block text-sm font-medium text-blue-200">
+                  Confirm new password
+                </label>
                 <input
                   type="password"
                   value={changePasswordConfirm}
@@ -500,7 +592,8 @@ const Profile = () => {
                 }
                 className={`${btnPrimary} w-full sm:w-auto`}
               >
-                <FaSave /> {changePasswordSaving ? 'Updating…' : 'Update password'}
+                <FaSave />{" "}
+                {changePasswordSaving ? "Updating…" : "Update password"}
               </button>
             </form>
           </section>
@@ -514,7 +607,10 @@ const Profile = () => {
               <FaTrophy className="text-amber-300" />
               Achievements
             </h2>
-            <p className="mt-1 text-sm text-blue-300">Unlocked achievements glow; locked ones stay dim until you earn them.</p>
+            <p className="mt-1 text-sm text-blue-300">
+              Unlocked achievements glow; locked ones stay dim until you earn
+              them.
+            </p>
           </div>
           {achievements.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
@@ -535,7 +631,9 @@ const Profile = () => {
               <FaTrophy className="text-2xl" />
             </div>
             <p className="text-blue-200">No achievements yet.</p>
-            <p className="mt-1 text-sm text-blue-400">Complete lessons to unlock your first badge.</p>
+            <p className="mt-1 text-sm text-blue-400">
+              Complete lessons to unlock your first badge.
+            </p>
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
@@ -544,8 +642,8 @@ const Profile = () => {
                 key={ach.id}
                 className={`relative flex gap-4 overflow-hidden rounded-2xl p-4 sm:p-5 ${
                   ach.earned
-                    ? 'bg-gradient-to-br from-cyan-950/50 via-blue-800/95 to-blue-950/90 shadow-lg shadow-cyan-500/15 ring-2 ring-cyan-400/50'
-                    : 'bg-blue-950/90 shadow-inner shadow-blue-950/40 ring-1 ring-amber-900/40'
+                    ? "bg-blue-800 shadow-lg shadow-black/20 ring-2 ring-blue-400/50"
+                    : "bg-blue-950/90 shadow-inner shadow-blue-950/40 ring-1 ring-amber-900/40"
                 }`}
               >
                 {!ach.earned && (
@@ -557,16 +655,16 @@ const Profile = () => {
                 <div
                   className={`w-1.5 shrink-0 self-stretch rounded-full ${
                     ach.earned
-                      ? 'bg-gradient-to-b from-cyan-300 to-teal-400 shadow-[0_0_12px_rgba(34,211,238,0.45)]'
-                      : 'bg-gradient-to-b from-amber-600/70 to-amber-900/80'
+                      ? "bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.45)]"
+                      : "bg-amber-800"
                   }`}
                   aria-hidden
                 />
                 <div
                   className={`relative z-[1] flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${
                     ach.earned
-                      ? 'bg-cyan-400/20 text-cyan-100 ring-2 ring-cyan-400/45 shadow-md shadow-cyan-500/20'
-                      : 'bg-blue-900 text-amber-200/90 ring-1 ring-amber-700/50'
+                      ? "bg-cyan-400/20 text-cyan-100 ring-2 ring-cyan-400/45 shadow-md shadow-cyan-500/20"
+                      : "bg-blue-900 text-amber-200/90 ring-1 ring-amber-700/50"
                   }`}
                 >
                   {ach.icon ? (
@@ -574,7 +672,7 @@ const Profile = () => {
                       src={ach.icon}
                       alt=""
                       className={`h-8 w-8 object-contain brightness-0 invert ${
-                        ach.earned ? '' : 'opacity-45 grayscale'
+                        ach.earned ? "" : "opacity-45 grayscale"
                       }`}
                     />
                   ) : ach.earned ? (
@@ -586,25 +684,31 @@ const Profile = () => {
                 <div className="relative z-[1] min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3
-                      className={`font-bold ${ach.earned ? 'text-blue-50' : 'text-blue-400'}`}
+                      className={`font-bold ${ach.earned ? "text-blue-50" : "text-blue-400"}`}
                     >
                       {ach.name}
                     </h3>
                     {ach.earned ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-cyan-400/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-50 ring-1 ring-cyan-300/40">
-                        <FaCheckCircle className="text-xs text-cyan-200" aria-hidden />
+                        <FaCheckCircle
+                          className="text-xs text-cyan-200"
+                          aria-hidden
+                        />
                         Done
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-950/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200/95 ring-1 ring-amber-600/35">
-                        <FaLock className="text-[9px] text-amber-400" aria-hidden />
+                        <FaLock
+                          className="text-[9px] text-amber-400"
+                          aria-hidden
+                        />
                         Locked
                       </span>
                     )}
                   </div>
                   <p
                     className={`mt-1.5 text-sm leading-relaxed ${
-                      ach.earned ? 'text-blue-100' : 'text-blue-500'
+                      ach.earned ? "text-blue-100" : "text-blue-500"
                     }`}
                   >
                     {ach.description}
@@ -612,11 +716,17 @@ const Profile = () => {
                   {ach.xpReward ? (
                     <div
                       className={`mt-2 flex items-center gap-1.5 text-sm font-semibold ${
-                        ach.earned ? 'text-cyan-100' : 'text-blue-600'
+                        ach.earned ? "text-cyan-100" : "text-blue-600"
                       }`}
                     >
-                      <FaBolt className={ach.earned ? 'text-cyan-300' : 'text-amber-600/80'} />
-                      {ach.earned ? `+${ach.xpReward} XP earned` : `+${ach.xpReward} XP when unlocked`}
+                      <FaBolt
+                        className={
+                          ach.earned ? "text-cyan-300" : "text-amber-600/80"
+                        }
+                      />
+                      {ach.earned
+                        ? `+${ach.xpReward} XP earned`
+                        : `+${ach.xpReward} XP when unlocked`}
                     </div>
                   ) : null}
                 </div>

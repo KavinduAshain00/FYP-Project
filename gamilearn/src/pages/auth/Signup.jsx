@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { useAuth } from "../../context/AuthContext";
 import {
   FaArrowLeft,
   FaArrowRight,
@@ -13,20 +13,21 @@ import {
   FaEnvelope,
   FaLock,
   FaGamepad,
-} from 'react-icons/fa';
-import { GameLayout } from '../components/layout/GameLayout';
+} from "react-icons/fa";
+import { GameLayout } from "../../components/layout/GameLayout";
+import { authAPI, getNetworkErrorMessage } from "../../api/api";
 
 const ease = [0.25, 0.1, 0.25, 1];
 
 const Signup = () => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
   const [step, setStep] = useState(1);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const { signup } = useAuth();
@@ -36,73 +37,95 @@ const Signup = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleInitialSubmit = (e) => {
+  const handleInitialSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError("Password must be at least 6 characters");
       return;
     }
-    setStep(2);
+    const email = formData.email.trim();
+    if (!email) {
+      setError("Please enter your email");
+      return;
+    }
+    setLoading(true);
+    try {
+      await authAPI.signupPrecheck({ email, password: formData.password });
+      setStep(2);
+    } catch (err) {
+      setError(
+        getNetworkErrorMessage(
+          err,
+          "Could not verify your details. Please try again.",
+        ),
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleJSAnswer = async (answer) => {
     setLoading(true);
-    setError('');
+    setError("");
     try {
-      if (!formData.name.trim() || !formData.email.trim() || !formData.password) {
-        setError('Please complete all required fields');
+      if (
+        !formData.name.trim() ||
+        !formData.email.trim() ||
+        !formData.password
+      ) {
+        setError("Please complete all required fields");
         setStep(1);
-        setLoading(false);
         return;
       }
       const user = await signup(
         formData.name.trim(),
         formData.email.trim(),
         formData.password,
-        answer
+        answer,
       );
-      if (user.learningPath === 'javascript-basics') {
-        navigate('/dashboard?message=start-basics');
+      if (user.learningPath === "javascript-basics") {
+        navigate("/dashboard?message=start-basics");
       } else {
-        navigate('/dashboard?message=start-advanced');
+        navigate("/dashboard?message=start-advanced");
       }
     } catch (err) {
-      console.error('Signup error:', err);
-      setError(err.response?.data?.message || err.message || 'Signup failed. Please try again.');
+      console.error("Signup error:", err);
+      setError(getNetworkErrorMessage(err, "Signup failed. Please try again."));
       setStep(1);
+    } finally {
       setLoading(false);
     }
   };
 
   const fieldClass =
-    'w-full rounded-2xl bg-blue-800 pl-12 pr-4 py-3.5 text-blue-50 placeholder-blue-300 outline-none focus:outline focus:outline-2 focus:outline-blue-400/60 text-sm';
+    "w-full rounded-2xl bg-blue-800 pl-12 pr-4 py-3.5 text-blue-50 placeholder-blue-300 outline-none focus:outline focus:outline-2 focus:outline-blue-400/60 text-sm";
 
   const stepIndicator = (
-    <div className="flex items-center gap-3 mb-8">
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-8">
       <div
         className={`flex items-center justify-center w-10 h-10 rounded-xl text-sm font-bold ${
           step === 1
-            ? 'bg-gradient-to-br from-blue-400 to-cyan-400 text-blue-950 shadow-md shadow-cyan-500/25'
-            : 'bg-blue-700 text-blue-300'
+            ? "bg-blue-500 text-black shadow-md shadow-black/25"
+            : "bg-blue-700 text-blue-300"
         }`}
       >
         1
       </div>
       <div className="h-1 flex-1 max-w-[48px] rounded-full bg-blue-700 overflow-hidden">
         <div
-          className={`h-full rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 transition-all ${step === 2 ? 'w-full' : 'w-0'}`}
+          className={`h-full rounded-full bg-blue-400 transition-all ${step === 2 ? "w-full" : "w-0"}`}
         />
       </div>
       <div
         className={`flex items-center justify-center w-10 h-10 rounded-xl text-sm font-bold ${
           step === 2
-            ? 'bg-gradient-to-br from-blue-400 to-cyan-400 text-blue-950 shadow-md shadow-cyan-500/25'
-            : 'bg-blue-700 text-blue-300'
+            ? "bg-blue-500 text-black shadow-md shadow-black/25"
+            : "bg-blue-700 text-blue-300"
         }`}
       >
         2
@@ -114,14 +137,13 @@ const Signup = () => {
   if (step === 2) {
     return (
       <GameLayout showNavbar={false} showParticles={false}>
-        <div className="min-h-screen flex flex-col lg:flex-row bg-neutral-900">
+        <div className="min-h-screen min-w-0 flex flex-col lg:flex-row bg-neutral-900">
           <motion.aside
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, ease }}
-            className="lg:w-[38%] flex flex-col justify-center p-8 sm:p-12 bg-gradient-to-b from-blue-900 to-neutral-900 relative overflow-hidden"
+            className="w-full shrink-0 lg:w-[38%] flex flex-col justify-center p-6 sm:p-10 lg:p-12 bg-blue-900 relative overflow-hidden"
           >
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-cyan-400/10" />
             <div className="relative z-10 flex items-center gap-3 mb-6">
               <span className="w-11 h-11 rounded-xl bg-blue-800 flex items-center justify-center text-blue-50">
                 <FaBookOpen />
@@ -129,13 +151,13 @@ const Signup = () => {
               <span className="font-bold text-blue-50">Choose your path</span>
             </div>
             <p className="relative z-10 text-blue-100 text-sm leading-relaxed max-w-xs">
-              This only sets your starting modules. You can still explore everything later from the
-              modules page.
+              This only sets your starting modules. You can still explore
+              everything later from the modules page.
             </p>
           </motion.aside>
-          <div className="flex-1 flex items-center justify-center p-6 sm:p-10 lg:p-16">
+          <div className="flex-1 flex min-w-0 items-center justify-center p-5 sm:p-10 lg:p-16">
             <motion.div
-              className="w-full max-w-lg"
+              className="w-full min-w-0 max-w-lg"
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.42, delay: 0.05, ease }}
@@ -148,9 +170,12 @@ const Signup = () => {
                 <FaArrowLeft /> Back to details
               </button>
               {stepIndicator}
-              <h1 className="text-2xl font-bold text-blue-50">How well do you know JavaScript?</h1>
+              <h1 className="text-2xl font-bold text-blue-50">
+                How well do you know JavaScript?
+              </h1>
               <p className="text-blue-300 text-sm mt-2 mb-8">
-                Pick the option that best describes you-we will line up the right first lessons.
+                Pick the option that best describes you-we will line up the
+                right first lessons.
               </p>
               <div className="space-y-4">
                 <button
@@ -160,13 +185,15 @@ const Signup = () => {
                   className="w-full text-left rounded-2xl bg-blue-900 p-5 shadow-lg shadow-black/30 hover:bg-blue-800 transition-all disabled:bg-blue-900 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-start gap-4">
-                    <span className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center shrink-0 text-blue-50 shadow-md shadow-cyan-500/20">
+                    <span className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 text-black shadow-md shadow-black/25">
                       <FaRocket className="text-lg" />
                     </span>
                     <div>
                       <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <h3 className="font-bold text-blue-50">I already code in JavaScript</h3>
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-gradient-to-r from-amber-400 to-orange-400 text-blue-950 shadow-sm">
+                        <h3 className="font-bold text-blue-50">
+                          I already code in JavaScript
+                        </h3>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-amber-500 text-blue-950 shadow-sm">
                           Fast track
                         </span>
                       </div>
@@ -183,18 +210,21 @@ const Signup = () => {
                   className="w-full text-left rounded-2xl bg-blue-900 p-5 shadow-lg shadow-black/30 hover:bg-blue-800 transition-all disabled:bg-blue-900 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-start gap-4">
-                    <span className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center shrink-0 text-white shadow-md shadow-emerald-500/25">
+                    <span className="w-12 h-12 rounded-xl bg-blue-700 flex items-center justify-center shrink-0 text-black shadow-md shadow-black/25">
                       <FaStar className="text-lg" />
                     </span>
                     <div>
                       <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <h3 className="font-bold text-blue-50">I am new or want a full review</h3>
+                        <h3 className="font-bold text-blue-50">
+                          I am new or want a full review
+                        </h3>
                         <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-emerald-400/90 text-blue-950 shadow-sm">
                           Guided
                         </span>
                       </div>
                       <p className="text-sm text-blue-200">
-                        Start from JavaScript fundamentals, then unlock the rest in order.
+                        Start from JavaScript fundamentals, then unlock the rest
+                        in order.
                       </p>
                     </div>
                   </div>
@@ -215,14 +245,13 @@ const Signup = () => {
 
   return (
     <GameLayout showNavbar={false} showParticles={false}>
-      <div className="min-h-screen flex flex-col lg:flex-row bg-neutral-900">
+      <div className="min-h-screen min-w-0 flex flex-col lg:flex-row bg-neutral-900">
         <motion.aside
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.45, ease }}
-          className="lg:w-[44%] xl:w-[40%] flex flex-col justify-between p-8 sm:p-12 lg:p-14 bg-gradient-to-b from-blue-900 via-blue-900 to-neutral-900 relative overflow-hidden"
+          className="w-full shrink-0 lg:w-[44%] xl:w-[40%] flex flex-col justify-between p-6 sm:p-10 lg:p-14 bg-blue-900 relative overflow-hidden"
         >
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-cyan-400/12 via-transparent to-fuchsia-500/10" />
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-10">
               <span className="w-12 h-12 rounded-2xl bg-blue-800 flex items-center justify-center text-blue-50 shadow-lg shadow-black/40">
@@ -230,7 +259,9 @@ const Signup = () => {
               </span>
               <div>
                 <p className="font-bold text-lg text-blue-50">GamiLearn</p>
-                <p className="text-xs text-blue-300">Create your learner profile</p>
+                <p className="text-xs text-blue-300">
+                  Create your learner profile
+                </p>
               </div>
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-blue-50 leading-tight max-w-md">
@@ -238,16 +269,19 @@ const Signup = () => {
             </h2>
           </div>
           <p className="relative z-10 text-xs text-blue-300 hidden lg:block">
-            Already registered?{' '}
-            <Link to="/login" className="text-blue-200 font-medium hover:text-blue-100">
+            Already registered?{" "}
+            <Link
+              to="/login"
+              className="text-blue-200 font-medium hover:text-blue-100"
+            >
               Sign in
             </Link>
           </p>
         </motion.aside>
 
-        <div className="flex-1 flex items-center justify-center p-6 sm:p-10 lg:p-16">
+        <div className="flex-1 flex min-w-0 items-center justify-center p-5 sm:p-10 lg:p-16">
           <motion.div
-            className="w-full max-w-md"
+            className="w-full min-w-0 max-w-md"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.06, ease }}
@@ -258,7 +292,9 @@ const Signup = () => {
               </Link>
             </div>
             {stepIndicator}
-            <h1 className="text-2xl font-bold text-blue-50">Create your account</h1>
+            <h1 className="text-2xl font-bold text-blue-50">
+              Create your account
+            </h1>
             <p className="text-blue-300 text-sm mt-2 mb-8">
               We use this to save XP, modules, and achievements across devices.
             </p>
@@ -272,7 +308,9 @@ const Signup = () => {
 
             <form onSubmit={handleInitialSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-blue-200 mb-2">Name</label>
+                <label className="block text-sm font-medium text-blue-200 mb-2">
+                  Name
+                </label>
                 <div className="relative">
                   <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                   <input
@@ -287,7 +325,9 @@ const Signup = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-blue-200 mb-2">Email</label>
+                <label className="block text-sm font-medium text-blue-200 mb-2">
+                  Email
+                </label>
                 <div className="relative">
                   <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                   <input
@@ -302,7 +342,9 @@ const Signup = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-blue-200 mb-2">Password</label>
+                <label className="block text-sm font-medium text-blue-200 mb-2">
+                  Password
+                </label>
                 <div className="relative">
                   <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                   <input
@@ -335,15 +377,28 @@ const Signup = () => {
               </div>
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 text-blue-950 font-semibold text-sm shadow-lg shadow-cyan-500/30 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-blue-500 text-black font-semibold text-sm shadow-md shadow-black/30 hover:bg-blue-400 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
-                Continue <FaArrowRight className="text-xs" />
+                {loading ? (
+                  <>
+                    <span className="w-4 h-4 rounded-full border-2 border-blue-950 border-t-transparent animate-spin" />
+                    Checking…
+                  </>
+                ) : (
+                  <>
+                    Continue <FaArrowRight className="text-xs" />
+                  </>
+                )}
               </button>
             </form>
 
             <p className="mt-8 text-center text-sm text-blue-300 hidden lg:block">
-              Already have an account?{' '}
-              <Link to="/login" className="font-semibold text-blue-200 hover:text-blue-100">
+              Already have an account?{" "}
+              <Link
+                to="/login"
+                className="font-semibold text-blue-200 hover:text-blue-100"
+              >
                 Login
               </Link>
             </p>

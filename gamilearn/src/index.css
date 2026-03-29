@@ -66,7 +66,7 @@ input:-webkit-autofill:active {
   --toastify-toast-padding: 0;
   --toastify-toast-min-height: 3.25rem;
   --toastify-toast-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
-  --toastify-font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --toastify-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
   --toastify-z-index: 10050;
   --toastify-color-dark: rgb(var(--color-blue-800-rgb));
   --toastify-text-color-dark: rgb(var(--color-blue-50-rgb));
@@ -103,19 +103,27 @@ input:-webkit-autofill:active {
 }
 
 .gamilearn-toast.Toastify__toast--success {
-  box-shadow: var(--toastify-toast-shadow), 0 0 28px rgba(var(--color-success-rgb), 0.2);
+  box-shadow:
+    var(--toastify-toast-shadow),
+    0 0 28px rgba(var(--color-success-rgb), 0.2);
 }
 
 .gamilearn-toast.Toastify__toast--error {
-  box-shadow: var(--toastify-toast-shadow), 0 0 28px rgba(var(--color-danger-rgb), 0.18);
+  box-shadow:
+    var(--toastify-toast-shadow),
+    0 0 28px rgba(var(--color-danger-rgb), 0.18);
 }
 
 .gamilearn-toast.Toastify__toast--warning {
-  box-shadow: var(--toastify-toast-shadow), 0 0 28px rgba(var(--color-warm-rgb), 0.16);
+  box-shadow:
+    var(--toastify-toast-shadow),
+    0 0 28px rgba(var(--color-warm-rgb), 0.16);
 }
 
 .gamilearn-toast.Toastify__toast--info {
-  box-shadow: var(--toastify-toast-shadow), 0 0 24px rgba(var(--color-blue-400-rgb), 0.16);
+  box-shadow:
+    var(--toastify-toast-shadow),
+    0 0 24px rgba(var(--color-blue-400-rgb), 0.16);
 }
 
 .gamilearn-toast-body {

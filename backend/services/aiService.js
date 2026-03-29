@@ -1,11 +1,17 @@
 const githubModels = require("./githubModelsService");
-const { AI_MODEL, AI_MCQ_MODEL, AI_LECTURE_MODEL } = require("../constants/ai");
+const {
+  AI_MODEL,
+  AI_MCQ_MODEL,
+  AI_LECTURE_MODEL,
+  AI_GENERAL_MODEL,
+} = require("../constants/ai");
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const STEP_VERIFY_TYPES = new Set(["code", "checkConsole", "checkComments"]);
 
 if (!GITHUB_TOKEN) {
   console.warn(
-    "Warning: GITHUB_TOKEN not set. AI calls will fail until configured.",
+    "Warning: GITHUB_TOKEN not set. GitHub Models calls will fail until configured.",
   );
 }
 
@@ -53,10 +59,6 @@ async function summarizeCodeToMarkdown(codeByFile) {
   if (codeByFile.javascript)
     parts.push(
       `JavaScript (excerpt): ${codeByFile.javascript.substring(0, 600).replace(/\n/g, " ")}`,
-    );
-  if (codeByFile.jsx)
-    parts.push(
-      `JSX/React (excerpt): ${codeByFile.jsx.substring(0, 600).replace(/\n/g, " ")}`,
     );
   if (parts.length === 0) return "No code provided.";
 
@@ -144,17 +146,28 @@ Answer (YES or NO):`;
 async function generateMCQs(stepTitle, stepConcept, moduleTitle, count = 2) {
   if (!GITHUB_TOKEN) return { questions: [] };
 
-  const prompt = `You are an educational quiz generator for programming. Generate exactly ${count} multiple-choice question(s) about the concept below. Keep questions clear and focused on what the student just learned.
+  const prompt = `You write multiple-choice quizzes for a programming lesson. Produce exactly ${count} question object(s).
 
-MODULE: ${moduleTitle || "Programming"}
-STEP/CONCEPT: ${stepTitle}
-${stepConcept ? `CONCEPT DETAIL: ${stepConcept}` : ""}
+CONTEXT
+- Module: ${moduleTitle || "Programming"}
+- Step title: ${stepTitle}
+${stepConcept ? `- Teaching focus (use this; do not invent unrelated topics): ${stepConcept}` : ""}
 
-RULES:
-1. Output ONLY a single JSON object, no other text before or after.
-2. Format: {"questions":[{"question":"...","options":["A","B","C","D"],"correctIndex":0}]}
-3. correctIndex is 0-based (0 = first option). Each question must have exactly 4 options.
-4. Options should be short (one line). One correct answer per question.`;
+NON-NEGOTIABLE (single correct answer)
+- For EACH question, exactly ONE option is correct. The other three must be incorrect for that specific question wording.
+- Before you output JSON, mentally check: "If I pick any option other than correctIndex, would a fair expert still say I'm wrong?" If another option could also be right, rewrite the question or replace distractors until only one option survives.
+- Tie the question to THIS step (e.g. "In this step…", "According to what you practiced…") when the concept could be ambiguous in the wider language.
+
+DISTRACTORS (make them good, not trick double-corrects)
+- Use three different wrong ideas: e.g. common beginner mistake, slightly wrong syntax/API name, reversed cause/effect, or a plausible but invalid statement about behavior.
+- Do NOT use two options that are both valid answers to the same question.
+- Do NOT use vague options that could match the correct one (avoid "It depends" / "Both A and B" unless the question is about that).
+- Keep each option one short line (max ~120 chars), concrete, and mutually distinct in meaning (not rephrases of the same answer).
+
+OUTPUT
+- Return ONLY one JSON object, no markdown fences, no commentary.
+- Shape: {"questions":[{"question":"...","options":["opt0","opt1","opt2","opt3"],"correctIndex":0}]}
+- correctIndex: 0-based index into options. Exactly 4 options per question.`;
 
   const parseQuestions = (raw) => {
     const trimmed = raw
@@ -165,28 +178,41 @@ RULES:
     const questions = Array.isArray(data.questions) ? data.questions : [];
     return questions
       .slice(0, count)
-      .filter(
-        (q) =>
-          q.question &&
-          Array.isArray(q.options) &&
-          q.options.length === 4 &&
-          typeof q.correctIndex === "number" &&
-          q.correctIndex >= 0 &&
-          q.correctIndex < 4,
-      );
+      .filter((q) => {
+        if (
+          !q.question ||
+          !Array.isArray(q.options) ||
+          q.options.length !== 4 ||
+          typeof q.correctIndex !== "number" ||
+          q.correctIndex < 0 ||
+          q.correctIndex > 3
+        ) {
+          return false;
+        }
+        const opts = q.options.map((o) => String(o).trim()).filter(Boolean);
+        if (opts.length !== 4) return false;
+        const keys = new Set(opts.map((o) => o.toLowerCase()));
+        if (keys.size !== 4) return false;
+        return true;
+      })
+      .map((q) => ({
+        ...q,
+        question: String(q.question).trim(),
+        options: q.options.map((o) => String(o).trim()),
+      }));
   };
 
   try {
     let raw = await generateTextWithModel(
       prompt,
-      { maxTokens: 800, temperature: 0.4 },
+      { maxTokens: 900, temperature: 0.35 },
       AI_MCQ_MODEL,
     );
     let questions = parseQuestions(raw);
     if (questions.length === 0 && raw.trim()) {
       raw = await generateTextWithModel(
         prompt,
-        { maxTokens: 800, temperature: 0.2 },
+        { maxTokens: 900, temperature: 0.15 },
         AI_MCQ_MODEL,
       );
       questions = parseQuestions(raw);
@@ -362,7 +388,6 @@ Do not provide the complete corrected code. Guide them to fix it themselves.`;
  * @param {string} [opts.difficulty] - beginner | intermediate | advanced
  * @param {string} [opts.category] - e.g. javascript-basics, react-basics
  * @param {Array<{title:string,instruction?:string,concept?:string}>} [opts.steps] - Module steps
- * @param {string[]} [opts.objectives] - Module objectives (if no steps)
  * @param {string} [opts.userLevel] - User's experience level for personalization
  * @returns {Promise<string>} Markdown lecture notes
  */
@@ -373,16 +398,7 @@ async function generateLectureNotes(opts) {
   if (!overview || !String(overview).trim())
     throw new Error("overview (string) is required");
 
-  let steps = [];
-  if (Array.isArray(opts?.steps)) {
-    steps = opts.steps;
-  } else if (Array.isArray(opts?.objectives)) {
-    steps = opts.objectives.map((o) => ({
-      title: o,
-      instruction: o,
-      concept: "",
-    }));
-  }
+  const steps = Array.isArray(opts?.steps) ? opts.steps : [];
   const difficulty = opts?.difficulty || "beginner";
   const category = opts?.category || "";
   const userLevel = opts?.userLevel || "";
@@ -432,7 +448,7 @@ RULES:
       AI_LECTURE_MODEL,
     );
     notes = (notes || "").trim();
-    // Strip wrapping code fences if AI wrapped response in ```markdown ... ```
+    // Strip wrapping ```markdown ... ``` fences from the response
     if (notes.startsWith("```")) {
       const firstNewline = notes.indexOf("\n");
       const closeFence = notes.indexOf("\n```", firstNewline + 1);
@@ -452,6 +468,341 @@ RULES:
   }
 }
 
+function normalizeAdminStep(raw) {
+  const title = String(raw?.title ?? "")
+    .trim()
+    .slice(0, 200);
+  const verifyType = STEP_VERIFY_TYPES.has(raw?.verifyType)
+    ? raw.verifyType
+    : "code";
+  let expectedConsole = raw?.expectedConsole;
+  if (verifyType !== "checkConsole") {
+    expectedConsole = null;
+  } else if (
+    expectedConsole !== null &&
+    expectedConsole !== undefined &&
+    typeof expectedConsole !== "object"
+  ) {
+    expectedConsole = { type: "any" };
+  }
+  return {
+    title: title || "Untitled step",
+    instruction: String(raw?.instruction ?? "").slice(0, 4000),
+    concept: String(raw?.concept ?? "").slice(0, 2000),
+    verifyType,
+    expectedConsole,
+  };
+}
+
+/**
+ * Generate 4–6 module steps for the admin panel (JSON), aligned with lesson content.
+ * @param {Object} opts
+ * @param {string} opts.title
+ * @param {string} [opts.description]
+ * @param {string} [opts.content] - markdown lesson body
+ * @param {string} [opts.category]
+ * @param {string} [opts.difficulty]
+ * @param {string} [opts.moduleType] - vanilla | react
+ * @param {number} [opts.stepCount] - target count (clamped 4–6)
+ * @returns {Promise<Array<object>>}
+ */
+async function generateModuleSteps(opts) {
+  if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
+  const title = String(opts?.title ?? "").trim();
+  if (!title) throw new Error("title is required");
+
+  const description = String(opts?.description ?? "").trim();
+  const content = String(opts?.content ?? "").trim();
+  const category = String(opts?.category ?? "").trim();
+  const difficulty = String(opts?.difficulty ?? "beginner").trim();
+  let n = parseInt(opts?.stepCount, 10);
+  if (!Number.isFinite(n)) n = 5;
+  n = Math.min(6, Math.max(4, n));
+
+  const prompt = `You are a curriculum designer for a learn-to-code platform (game-themed lessons).
+
+Create exactly ${n} sequential learning STEPS for one module. Each step is a small task the student completes in the code editor.
+
+MODULE TITLE: ${title}
+SHORT DESCRIPTION: ${description || "(none)"}
+DIFFICULTY: ${difficulty}
+CATEGORY: ${category || "(unspecified)"}
+RUNTIME: Vanilla HTML / CSS / JavaScript in the browser (no React).
+
+LESSON CONTENT (markdown, may be partial):
+---
+${content.slice(0, 6000) || "(no extra content — infer from title and description)"}
+---
+
+OUTPUT RULES — CRITICAL:
+1. Reply with ONLY a JSON array (no markdown fences, no commentary).
+2. Each element must be an object with these keys:
+   - "title": short step name (string)
+   - "instruction": what the student should do, plain text (string)
+   - "concept": one sentence teaching the idea for an optional MCQ (string)
+   - "verifyType": one of "code" | "checkConsole" | "checkComments"
+   - "expectedConsole": null OR an object — only when verifyType is "checkConsole"
+3. Use "checkConsole" when the step is about console.log / seeing output; set expectedConsole to {"type":"any"} for one line, {"type":"multipleLines"} when multiple logs are required.
+4. Use "checkComments" when the step only requires adding meaningful comments (no console output needed). expectedConsole must be null.
+5. Use "code" for steps verified against the student's code (variables, functions, DOM, canvas, etc.). expectedConsole must be null.
+6. Steps must build in order; later steps may assume earlier ones are done.
+7. Keep instructions concrete and appropriate for ${difficulty} level.
+8. Assume module starter code will be a minimal scaffold only (not a full solution); each step must require the student to add or change code that is not already correctly implemented in such a scaffold.`;
+
+  const raw = await generateTextWithModel(
+    prompt,
+    { maxTokens: 2500, temperature: 0.35 },
+    AI_GENERAL_MODEL,
+  );
+
+  let text = String(raw || "").trim();
+  if (text.startsWith("```")) {
+    const firstNl = text.indexOf("\n");
+    const close = text.indexOf("\n```", firstNl + 1);
+    if (close !== -1) {
+      text = text.slice(firstNl + 1, close).trim();
+    } else {
+      text = text
+        .replace(/^```\w*\n?/, "")
+        .replace(/\n?```\s*$/, "")
+        .trim();
+    }
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error("Invalid JSON in steps response");
+  }
+
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error("Steps response was not a non-empty array");
+  }
+
+  return parsed.slice(0, 8).map(normalizeAdminStep);
+}
+
+const CURRICULUM_PARTS = new Set(["hints", "starterCode"]);
+
+function stripAiJsonBlock(raw) {
+  let text = String(raw || "").trim();
+  if (text.startsWith("```")) {
+    const firstNl = text.indexOf("\n");
+    const close = text.indexOf("\n```", firstNl + 1);
+    if (close !== -1) {
+      text = text.slice(firstNl + 1, close).trim();
+    } else {
+      text = text
+        .replace(/^```\w*\n?/, "")
+        .replace(/\n?```\s*$/, "")
+        .trim();
+    }
+  }
+  return text;
+}
+
+function normalizeStarterCodeForAdmin(raw) {
+  const d = (v) => String(v ?? "");
+  const sc = raw && typeof raw === "object" ? raw : {};
+  return {
+    html: d(sc.html).slice(0, 24_000),
+    css: d(sc.css).slice(0, 16_000),
+    javascript: d(sc.javascript).slice(0, 24_000),
+    serverJs: d(sc.serverJs).slice(0, 24_000),
+  };
+}
+
+const FALLBACK_STARTER_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lesson</title>
+</head>
+<body>
+  <h1>Module starter</h1>
+  <p>Edit HTML, CSS, and JavaScript in the editor.</p>
+</body>
+</html>`;
+
+const FALLBACK_STARTER_CSS = `body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  padding: 1rem;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+h1 {
+  font-size: 1.25rem;
+  color: #38bdf8;
+}`;
+
+const FALLBACK_STARTER_JS = "// Write your JavaScript here\n";
+
+/**
+ * Admin modules use vanilla HTML/CSS/JS only. Never omit html, css, or javascript.
+ */
+function ensureVanillaStarterCode(sc, moduleTitle) {
+  const out = normalizeStarterCodeForAdmin(sc);
+  const safeTitle = String(moduleTitle || "Lesson")
+    .trim()
+    .slice(0, 80)
+    .replace(/</g, "");
+  if (!out.html.trim()) {
+    out.html = FALLBACK_STARTER_HTML.replace(
+      "Module starter",
+      safeTitle || "Module starter",
+    );
+  }
+  if (!out.css.trim()) {
+    out.css = FALLBACK_STARTER_CSS;
+  }
+  if (!out.javascript.trim()) {
+    out.javascript = FALLBACK_STARTER_JS;
+  }
+  return out;
+}
+
+/**
+ * Generate hints and/or starter code for admin module editor.
+ * @param {Object} opts
+ * @param {string} opts.title
+ * @param {string} [opts.description]
+ * @param {string} [opts.content]
+ * @param {string} [opts.category]
+ * @param {string} [opts.difficulty]
+ * @param {string} [opts.moduleType]
+ * @param {('hints'|'starterCode')[]} opts.parts
+ * @param {Array<{title?:string,instruction?:string}>} [opts.steps] - optional context
+ * @returns {Promise<{hints?: string[], starterCode?: object}>}
+ */
+async function generateModuleCurriculumParts(opts) {
+  if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
+  const title = String(opts?.title ?? "").trim();
+  if (!title) throw new Error("title is required");
+
+  let parts = Array.isArray(opts?.parts) ? opts.parts : [];
+  parts = [...new Set(parts.filter((p) => CURRICULUM_PARTS.has(p)))];
+  if (parts.length === 0) {
+    throw new Error(
+      "parts must include at least one of: hints, starterCode",
+    );
+  }
+
+  const description = String(opts?.description ?? "").trim();
+  const content = String(opts?.content ?? "").trim();
+  const category = String(opts?.category ?? "").trim();
+  const difficulty = String(opts?.difficulty ?? "beginner").trim();
+
+  const stepsLines = Array.isArray(opts?.steps)
+    ? opts.steps
+        .map((s, i) => {
+          const t = String(s?.title ?? "").trim();
+          const ins = String(s?.instruction ?? "")
+            .trim()
+            .slice(0, 600);
+          return t
+            ? `${i + 1}. ${t}${ins ? `\n   What the student must do: ${ins}` : ""}`
+            : null;
+        })
+        .filter(Boolean)
+    : [];
+  const stepsBlock =
+    stepsLines.length > 0
+      ? `\nEXISTING STEPS (starter code must NOT already accomplish these — leave work for the student):\n${stepsLines.join("\n\n")}\n`
+      : "";
+
+  const keyList = parts.map((p) => `"${p}"`).join(", ");
+  const partRules = [];
+  if (parts.includes("hints")) {
+    partRules.push(
+      `"hints": JSON array of exactly 4 to 6 short strings. Gentle nudges for stuck learners; do NOT give full solutions or complete code answers.`,
+    );
+  }
+  if (parts.includes("starterCode")) {
+    const isMultiplayerCat = category === "multiplayer";
+    const serverPart = isMultiplayerCat
+      ? `CATEGORY is multiplayer: include a non-empty "serverJs" scaffold only (Node/Socket.IO style) — listen/setup stubs without implementing full game sync or completing lesson logic in the starter.`
+      : `CATEGORY is NOT multiplayer: set "serverJs" to exactly "" (empty string).`;
+    partRules.push(
+      `"starterCode": JSON object with string fields ONLY: html, css, javascript, serverJs. RUNTIME is always vanilla browser HTML/CSS/JS — NOT React or JSX. SCAFFOLD ONLY — this is the code loaded BEFORE the student starts. You MUST NOT implement the lesson outcome, game logic, step tasks, console.log outputs required by steps, or full event handlers that complete the project. Use: empty or stub function bodies, // TODO markers, placeholder values, and wiring only (e.g. canvas element in HTML, querySelector variables set to null or unused) so the student still has meaningful edits to make. If steps are listed above, the starter must intentionally leave every step's core work undone. You MUST include all three: "html", "css", and "javascript" as NON-EMPTY strings. "html": valid HTML document with structural elements for the lesson but no inline scripts that complete tasks. "css": layout/typography/theme only — no cheating by hiding required work. "javascript": comments, empty stubs, or minimal boilerplate (e.g. const canvas = document.getElementById('gameCanvas');) WITHOUT drawing, game loop, or completing instructions. ${serverPart}`,
+    );
+  }
+
+  const prompt = `You are a curriculum assistant for a game-themed coding education app.
+
+MODULE TITLE: ${title}
+DESCRIPTION: ${description || "(none)"}
+DIFFICULTY: ${difficulty}
+CATEGORY: ${category || "(unspecified)"}
+RUNTIME: Vanilla HTML / CSS / JavaScript in the browser (no React, no JSX).
+
+LESSON CONTENT (markdown):
+---
+${content.slice(0, 8000) || "(infer from title and description only)"}
+---
+${stepsBlock}
+Generate ONLY the following JSON object keys: ${keyList}
+Do not include any other top-level keys.
+
+Rules for each key:
+${partRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}
+
+OUTPUT RULES — CRITICAL:
+1. Reply with ONLY one JSON object (no markdown fences, no commentary).
+2. Escape newlines inside strings as \\n when needed; keep strings valid JSON.
+3. Starter "html", "css", and "javascript" must all be non-empty and syntactically plausible for ${difficulty} learners.
+${
+  parts.includes("starterCode")
+    ? `4. Starter code is INCOMPLETE by design: a new learner following the steps must still write or change JavaScript (and sometimes HTML/CSS) to pass verification — do not ship a working solution. If no steps were listed, still avoid a finished mini-project; use skeleton only.
+5. Never put complete game loops, full implementations of step instructions, or final console.log outputs in the starter; those belong in the student's edits.`
+    : ""
+}`;
+
+  const raw = await generateTextWithModel(
+    prompt,
+    {
+      maxTokens: parts.includes("starterCode") ? 5000 : 1200,
+      temperature: parts.includes("starterCode") ? 0.25 : 0.35,
+    },
+    AI_GENERAL_MODEL,
+  );
+
+  let parsed;
+  try {
+    parsed = JSON.parse(stripAiJsonBlock(raw));
+  } catch {
+    throw new Error("Invalid JSON in curriculum response");
+  }
+
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("Invalid curriculum response payload");
+  }
+
+  const out = {};
+  if (parts.includes("hints")) {
+    const arr = Array.isArray(parsed.hints) ? parsed.hints : [];
+    out.hints = arr
+      .map((x) => String(x ?? "").trim())
+      .filter(Boolean)
+      .slice(0, 12);
+    if (out.hints.length === 0) {
+      throw new Error("Hints missing from response");
+    }
+  }
+  if (parts.includes("starterCode")) {
+    if (!parsed.starterCode || typeof parsed.starterCode !== "object") {
+      throw new Error("starterCode missing from response");
+    }
+    const isMultiplayerCat = category === "multiplayer";
+    out.starterCode = ensureVanillaStarterCode(parsed.starterCode, title);
+    if (!isMultiplayerCat) out.starterCode.serverJs = "";
+  }
+
+  return out;
+}
+
 module.exports = {
   generateTextWithModel,
   summarizeCodeToMarkdown,
@@ -461,4 +812,6 @@ module.exports = {
   verifyMCQAnswer,
   explain,
   generateLectureNotes,
+  generateModuleSteps,
+  generateModuleCurriculumParts,
 };

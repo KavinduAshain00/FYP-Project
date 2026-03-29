@@ -9,7 +9,7 @@
  */
 const LEARNING_PATH_TO_CATEGORIES = {
   "javascript-basics": ["javascript-basics"],
-  advanced: ["javascript-basics", "game-development", "multiplayer"],
+  advanced: [ "game-development", "multiplayer"],
 };
 
 /**

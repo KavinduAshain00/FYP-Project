@@ -1,7 +1,7 @@
 const Achievement = require("../models/Achievement");
 const User = require("../models/User");
 const Module = require("../models/Module");
-const { XP_PER_LEVEL } = require("../constants/levelRanks");
+const lessonXpService = require("./lessonXpService");
 
 /**
  * Merge client payload with user's persisted state so achievements are evaluated
@@ -197,7 +197,10 @@ async function checkProgress(userId, progressData) {
       shouldEarn = true;
     else if (reqReq === "ai_explain_code_5" && merged.aiExplainCodeUses >= 5)
       shouldEarn = true;
-    else if (reqReq === "ai_explain_error_once" && merged.aiExplainErrorUses >= 1)
+    else if (
+      reqReq === "ai_explain_error_once" &&
+      merged.aiExplainErrorUses >= 1
+    )
       shouldEarn = true;
     else if (reqReq === "ai_explain_error_5" && merged.aiExplainErrorUses >= 5)
       shouldEarn = true;
@@ -205,10 +208,7 @@ async function checkProgress(userId, progressData) {
     if (shouldEarn) {
       user.earnedAchievements.push(achievement.id);
       user.totalPoints = (user.totalPoints || 0) + (achievement.points || 0);
-      user.level = Math.max(
-        1,
-        Math.floor((user.totalPoints || 0) / XP_PER_LEVEL) + 1,
-      );
+      lessonXpService.syncStoredLevelFromPoints(user);
       newlyEarned.push(achievement);
     }
   }
@@ -233,10 +233,7 @@ async function grantSignupAchievement(userId) {
   user.earnedAchievements = user.earnedAchievements || [];
   user.earnedAchievements.push(achievement.id);
   user.totalPoints = (user.totalPoints || 0) + (achievement.points || 0);
-  user.level = Math.max(
-    1,
-    Math.floor((user.totalPoints || 0) / XP_PER_LEVEL) + 1,
-  );
+  lessonXpService.syncStoredLevelFromPoints(user);
   await user.save();
 }
 

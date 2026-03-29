@@ -1,8 +1,8 @@
-import { Navigate, Outlet } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
-import { toast } from 'react-toastify';
-import LoadingScreen from './ui/LoadingScreen';
+import { Navigate, Outlet } from "react-router-dom";
+import { motion } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
+import { toast } from "react-toastify";
+import LoadingScreen from "./ui/LoadingScreen";
 
 const ease = [0.25, 0.1, 0.25, 1];
 
@@ -31,7 +31,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   }
 
   if (requireAdmin && !user?.isAdmin) {
-    toast.error('You need admin access to view this page.');
+    toast.error("You need admin access to view this page.");
     return <Navigate to="/dashboard" replace />;
   }
 

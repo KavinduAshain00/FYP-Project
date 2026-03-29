@@ -1,7 +1,7 @@
 const User = require('../models/User');
 const Achievement = require('../models/Achievement');
 const { isAdmin } = require('../utils/admin');
-const { XP_PER_LEVEL } = require('../constants/levelRanks');
+const aiService = require('../services/aiService');
 
 const POPULATE_OPTS = [
   { path: 'completedModules.moduleId', select: 'title category' },
@@ -182,94 +182,6 @@ async function deleteUser(req, res) {
 }
 
 /**
- * POST /api/admin/users/:id/achievements - Grant an achievement to a user (admin only)
- */
-async function grantAchievement(req, res) {
-  try {
-    const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    const achievementId = Number(req.body.achievementId);
-    if (!Number.isInteger(achievementId)) {
-      return res.status(400).json({ message: 'achievementId must be a number' });
-    }
-    const achievement = await Achievement.findOne({ id: achievementId, isActive: true });
-    if (!achievement) {
-      return res.status(404).json({ message: 'Achievement not found' });
-    }
-    if (!user.earnedAchievements) user.earnedAchievements = [];
-    if (user.earnedAchievements.includes(achievementId)) {
-      return res.status(400).json({ message: 'User already has this achievement' });
-    }
-    user.earnedAchievements.push(achievementId);
-    user.totalPoints = (user.totalPoints || 0) + (achievement.points || 0);
-    user.level = Math.max(1, Math.floor((user.totalPoints || 0) / XP_PER_LEVEL) + 1);
-    await user.save();
-    return res.json({ message: 'Achievement granted', user: toAdminUserView(user) });
-  } catch (error) {
-    console.error('Admin grant achievement error:', error);
-    return res.status(500).json({ message: 'Server error' });
-  }
-}
-
-/**
- * DELETE /api/admin/users/:id/achievements/:achievementId - Revoke an achievement (admin only)
- */
-async function revokeAchievement(req, res) {
-  try {
-    const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    const achievementId = Number(req.params.achievementId);
-    if (!Number.isInteger(achievementId)) {
-      return res.status(400).json({ message: 'achievementId must be a number' });
-    }
-    const achievement = await Achievement.findOne({ id: achievementId });
-    const points = achievement ? achievement.points || 0 : 0;
-    if (!user.earnedAchievements) user.earnedAchievements = [];
-    user.earnedAchievements = user.earnedAchievements.filter((id) => id !== achievementId);
-    user.totalPoints = Math.max(0, (user.totalPoints || 0) - points);
-    user.level = Math.max(1, Math.floor((user.totalPoints || 0) / XP_PER_LEVEL) + 1);
-    await user.save();
-    return res.json({ message: 'Achievement revoked', user: toAdminUserView(user) });
-  } catch (error) {
-    console.error('Admin revoke achievement error:', error);
-    return res.status(500).json({ message: 'Server error' });
-  }
-}
-
-/**
- * POST /api/admin/bootstrap - Set first admin by email (no auth). Only works when there are 0 admins.
- * Body: { email }. User must exist. If BOOTSTRAP_SECRET is set, body must include { secret }.
- */
-async function bootstrap(req, res) {
-  try {
-    const count = await User.countDocuments({ role: 'admin' });
-    if (count > 0) {
-      return res.status(403).json({ message: 'Bootstrap only allowed when no admins exist' });
-    }
-    const secret = process.env.BOOTSTRAP_SECRET;
-    if (secret && req.body.secret !== secret) {
-      return res.status(401).json({ message: 'Invalid or missing bootstrap secret' });
-    }
-    const email = (req.body.email || '').trim().toLowerCase();
-    if (!email || !email.includes('@')) {
-      return res.status(400).json({ message: 'Valid email required' });
-    }
-    const user = await User.findOneAndUpdate({ email }, { role: 'admin' }, { new: true });
-    if (!user) {
-      return res.status(404).json({ message: 'No user found with this email' });
-    }
-    return res.status(201).json({ message: 'First admin set', email });
-  } catch (error) {
-    console.error('Admin bootstrap error:', error);
-    return res.status(500).json({ message: 'Server error' });
-  }
-}
-
-/**
  * GET /api/admin/admins - List admin emails (admin only)
  */
 async function listAdmins(req, res) {
@@ -431,18 +343,92 @@ async function getStats(req, res) {
   }
 }
 
+/**
+ * POST /api/admin/modules/generate-steps
+ * Body: { title, description?, content?, category?, difficulty?, moduleType?, stepCount? }
+ */
+async function generateModuleSteps(req, res) {
+  try {
+    const { title, description, content, category, difficulty, moduleType, stepCount } = req.body || {};
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ message: 'Title is required to generate steps' });
+    }
+    const steps = await aiService.generateModuleSteps({
+      title: String(title).trim(),
+      description: description !==null ? String(description) : '',
+      content: content !== null ? String(content) : '',
+      category: category !== null ? String(category) : '',
+      difficulty: difficulty !== null ? String(difficulty) : 'beginner',
+      moduleType: moduleType !== null ? String(moduleType) : 'vanilla',
+      stepCount,
+    });
+    return res.json({ steps });
+  } catch (error) {
+    console.error('Admin generateModuleSteps error:', error);
+    const message =
+      error?.message && String(error.message).includes('GITHUB_TOKEN')
+        ? 'Tutor backend is not configured (missing GITHUB_TOKEN)'
+        : error?.message || 'Failed to generate steps';
+    return res.status(500).json({ message });
+  }
+}
+
+/**
+ * POST /api/admin/modules/generate-curriculum
+ * Body: { title, description?, content?, category?, difficulty?, moduleType?, parts: ('hints'|'starterCode')[], steps? }
+ */
+async function generateModuleCurriculum(req, res) {
+  try {
+    const {
+      title,
+      description,
+      content,
+      category,
+      difficulty,
+      moduleType,
+      parts,
+      steps,
+    } = req.body || {};
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ message: 'Title is required' });
+    }
+    if (!Array.isArray(parts) || parts.length === 0) {
+      return res.status(400).json({
+        message: 'parts must be a non-empty array (hints, starterCode)',
+      });
+    }
+    const result = await aiService.generateModuleCurriculumParts({
+      title: String(title).trim(),
+      description: description !== null ? String(description) : '',
+      content: content !== null ? String(content) : '',
+      category: category !== null ? String(category) : '',
+      difficulty: difficulty !== null ? String(difficulty) : 'beginner',
+      moduleType: moduleType !== null ? String(moduleType) : 'vanilla',
+      parts,
+      steps: Array.isArray(steps) ? steps : undefined,
+    });
+    return res.json(result);
+  } catch (error) {
+    console.error('Admin generateModuleCurriculum error:', error);
+    const message =
+      error?.message && String(error.message).includes('GITHUB_TOKEN')
+        ? 'Tutor backend is not configured (missing GITHUB_TOKEN)'
+        : error?.message || 'Failed to generate curriculum content';
+    return res.status(500).json({ message });
+  }
+}
+
 module.exports = {
   listUsers,
   getUserById,
   updateUser,
   deleteUser,
-  grantAchievement,
-  revokeAchievement,
-  bootstrap,
   listAdmins,
   addAdmin,
   removeAdmin,
   grantAdminToUser,
   revokeAdminFromUser,
   getStats,
+  generateModuleSteps,
+  generateModuleCurriculum,
 };

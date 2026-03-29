@@ -5,23 +5,24 @@ import {
   Navigate,
   useLocation,
   Outlet,
-} from 'react-router-dom';
-import { useEffect } from 'react';
-import { toast } from 'react-toastify';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { AnimatePresence } from 'framer-motion';
-import ProtectedRoute from './components/ProtectedRoute';
-import PageTransition from './components/PageTransition';
-import AppShellLayout from './components/layout/AppShellLayout';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import Dashboard from './pages/Dashboard';
-import Modules from './pages/Modules';
-import CodeEditor from './pages/CodeEditor';
-import Profile from './pages/Profile';
-import Admin from './pages/Admin';
+} from "react-router-dom";
+import { useEffect } from "react";
+import { toast } from "react-toastify";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AnimatePresence } from "framer-motion";
+import ProtectedRoute from "./components/ProtectedRoute";
+import PageTransition from "./components/PageTransition";
+import AppShellLayout from "./components/layout/AppShellLayout";
+import Login from "./pages/auth/Login";
+import Signup from "./pages/auth/Signup";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
+import Dashboard from "./pages/Dashboard";
+import Modules from "./pages/Modules";
+import CodeEditor from "./pages/CodeEditor";
+import Profile from "./pages/Profile";
+import Admin from "./pages/admin/Admin";
+import AdminModuleEditor from "./pages/admin/AdminModuleEditor";
 
 function PublicLayout() {
   const location = useLocation();
@@ -45,34 +46,34 @@ function EditorShell() {
   );
 }
 
-function AdminPageGate() {
+function AdminGateLayout() {
   const { user } = useAuth();
   if (!user?.isAdmin) {
-    toast.error('You need admin access to view this page.');
+    toast.error("You need admin access to view this page.");
     return <Navigate to="/dashboard" replace />;
   }
-  return <Admin />;
+  return <Outlet />;
 }
 
 function AppRoutes() {
   const location = useLocation();
-  const isEditorRoute = location.pathname.startsWith('/editor/');
+  const isEditorRoute = location.pathname.startsWith("/editor/");
 
   useEffect(() => {
-    document.body.classList.toggle('prevent-text-copy', !isEditorRoute);
+    document.body.classList.toggle("prevent-text-copy", !isEditorRoute);
     return () => {
-      document.body.classList.remove('prevent-text-copy');
+      document.body.classList.remove("prevent-text-copy");
     };
   }, [isEditorRoute]);
 
   return (
     <div
       style={{
-        position: 'relative',
-        overflowX: 'hidden',
-        overflowY: 'auto',
-        minHeight: '100vh',
-        width: '100%',
+        position: "relative",
+        overflowX: "hidden",
+        overflowY: "auto",
+        minHeight: "100vh",
+        width: "100%",
       }}
     >
       <Routes location={location}>
@@ -88,7 +89,13 @@ function AppRoutes() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/modules" element={<Modules />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/admin" element={<AdminPageGate />} />
+            <Route element={<AdminGateLayout />}>
+              <Route path="/admin" element={<Admin />} />
+              <Route
+                path="/admin/modules/:moduleId"
+                element={<AdminModuleEditor />}
+              />
+            </Route>
           </Route>
         </Route>
 

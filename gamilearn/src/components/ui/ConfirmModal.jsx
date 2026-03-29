@@ -1,8 +1,16 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from "framer-motion";
 
 const ease = [0.25, 0.1, 0.25, 1];
 
-const ConfirmModal = ({ open, title = 'Confirm', message = '', onConfirm, onCancel }) => {
+const ConfirmModal = ({
+  open,
+  title = "Confirm",
+  message = "",
+  onConfirm,
+  onCancel,
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+}) => {
   return (
     <AnimatePresence>
       {open && (
@@ -34,28 +42,33 @@ const ConfirmModal = ({ open, title = 'Confirm', message = '', onConfirm, onCanc
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.28, ease }}
           >
-            <h3 id="confirm-modal-title" className="mb-2 text-lg font-bold text-blue-50">
+            <h3
+              id="confirm-modal-title"
+              className="mb-2 text-lg font-bold text-blue-50"
+            >
               {title}
             </h3>
-            <p className="mb-6 text-sm text-blue-200 leading-relaxed">{message}</p>
+            <p className="mb-6 text-sm text-blue-200 leading-relaxed">
+              {message}
+            </p>
             <div className="flex justify-end gap-3">
               <motion.button
                 type="button"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-blue-50 hover:bg-blue-600 transition-colors"
+                className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-black hover:bg-blue-600 transition-colors"
                 onClick={onCancel}
               >
-                Cancel
+                {cancelLabel}
               </motion.button>
               <motion.button
                 type="button"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="rounded-xl bg-blue-400 px-4 py-2.5 text-sm font-semibold text-blue-950 hover:bg-blue-300 transition-colors"
+                className="rounded-xl bg-blue-400 px-4 py-2.5 text-sm font-semibold text-black hover:bg-blue-300 transition-colors"
                 onClick={onConfirm}
               >
-                Confirm
+                {confirmLabel}
               </motion.button>
             </div>
           </motion.div>

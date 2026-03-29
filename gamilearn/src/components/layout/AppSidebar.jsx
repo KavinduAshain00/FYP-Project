@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import ConfirmModal from '../ui/ConfirmModal';
-import { useAuth } from '../../context/AuthContext';
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import ConfirmModal from "../ui/ConfirmModal";
+import { useAuth } from "../../context/AuthContext";
 import {
   FaBars,
   FaBolt,
@@ -14,30 +14,39 @@ import {
   FaShieldAlt,
   FaTimes,
   FaUser,
-} from 'react-icons/fa';
+  FaUserCircle,
+} from "react-icons/fa";
 
-const ROUTE_ORDER = ['/dashboard', '/modules', '/profile', '/admin', '/editor'];
+const ROUTE_ORDER = ["/dashboard", "/modules", "/profile", "/admin", "/editor"];
 
 const getRouteDepth = (pathname) => {
-  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) return 0;
-  if (pathname === '/modules' || pathname === '/profile' || pathname === '/admin') return 1;
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return 0;
+  if (
+    pathname === "/modules" ||
+    pathname === "/profile" ||
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/")
+  )
+    return 1;
   return 2;
 };
 
 const getRouteOrderIndex = (pathname) => {
-  const base = pathname.split('/').slice(0, 2).join('/') || pathname;
-  const idx = ROUTE_ORDER.findIndex((p2) => base === p2 || pathname.startsWith(p2 + '/'));
+  const base = pathname.split("/").slice(0, 2).join("/") || pathname;
+  const idx = ROUTE_ORDER.findIndex(
+    (p2) => base === p2 || pathname.startsWith(p2 + "/"),
+  );
   return idx >= 0 ? idx : ROUTE_ORDER.length;
 };
 
 const getNavigationDirection = (currentPath, targetPath) => {
   const currentDepth = getRouteDepth(currentPath);
   const targetDepth = getRouteDepth(targetPath);
-  if (targetDepth < currentDepth) return 'back';
-  if (targetDepth > currentDepth) return 'forward';
+  if (targetDepth < currentDepth) return "back";
+  if (targetDepth > currentDepth) return "forward";
   const currentOrder = getRouteOrderIndex(currentPath);
   const targetOrder = getRouteOrderIndex(targetPath);
-  return targetOrder < currentOrder ? 'back' : 'forward';
+  return targetOrder < currentOrder ? "back" : "forward";
 };
 
 const sidebarEase = [0.25, 0.1, 0.25, 1];
@@ -60,7 +69,7 @@ function LogoutControl({ onNavigate, compact = false }) {
     setShowLogoutConfirm(false);
     logout();
     onNavigate?.();
-    navigate('/login');
+    navigate("/login");
   };
 
   return (
@@ -72,8 +81,8 @@ function LogoutControl({ onNavigate, compact = false }) {
         onClick={() => setShowLogoutConfirm(true)}
         className={`w-full rounded-2xl text-sm font-semibold transition-colors shadow-md shadow-blue-950/25 ${
           compact
-            ? 'px-3 py-2.5 bg-blue-700/95 text-blue-50 hover:bg-sky-600'
-            : 'px-4 py-3 bg-blue-700/95 text-blue-50 hover:bg-sky-600'
+            ? "px-3 py-2.5 bg-blue-700/95 text-black hover:bg-blue-600"
+            : "px-4 py-3 bg-blue-700/95 text-black hover:bg-blue-600"
         }`}
       >
         <span className="inline-flex items-center gap-2">
@@ -97,11 +106,28 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
   const { user } = useAuth();
 
   const navLinks = [
-    { path: '/dashboard', label: 'Home', caption: 'Overview', icon: FaHome },
-    { path: '/modules', label: 'Learn', caption: 'All modules', icon: FaLayerGroup },
-    { path: '/profile', label: 'Profile', caption: 'Account settings', icon: FaUser },
+    { path: "/dashboard", label: "Dashboard", caption: "Overview", icon: FaHome },
+    {
+      path: "/modules",
+      label: "Modules",
+      caption: "All modules",
+      icon: FaLayerGroup,
+    },
+    {
+      path: "/profile",
+      label: "Profile",
+      caption: "Account and achievements",
+      icon: FaUser,
+    },
     ...(user?.isAdmin
-      ? [{ path: '/admin', label: 'Admin', caption: 'Manage platform', icon: FaShieldAlt }]
+      ? [
+          {
+            path: "/admin",
+            label: "Admin",
+            caption: "Manage GamiLearn",
+            icon: FaShieldAlt,
+          },
+        ]
       : []),
   ];
 
@@ -113,7 +139,9 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className={`shrink-0 ${mobile ? 'px-3 pt-3 pb-2' : 'px-3 pt-4 pb-3'}`}>
+      <div
+        className={`shrink-0 ${mobile ? "px-3 pt-3 pb-2" : "px-3 pt-4 pb-3"}`}
+      >
         <Link
           to="/dashboard"
           onClick={() => onNavigate?.()}
@@ -123,7 +151,9 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
             <FaGamepad className="text-[17px]" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-lg leading-tight font-extrabold tracking-tight text-blue-50">GamiLearn</p>
+            <p className="truncate text-lg leading-tight font-extrabold tracking-tight text-blue-50">
+              GamiLearn
+            </p>
             <p className="text-[11px] text-blue-200 leading-snug mt-1">
               AI-Guided Game Development Learning Platform
             </p>
@@ -132,7 +162,9 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
       </div>
 
       <div className="px-4 pb-2 shrink-0">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300">Workspace</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300">
+          Workspace
+        </p>
       </div>
 
       <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-1.5 space-y-2">
@@ -149,21 +181,23 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
               onClick={() => handleClick(link.path)}
               className={`w-full rounded-2xl px-3 py-3 text-left transition-colors ${
                 active
-                  ? 'bg-blue-400 text-blue-950 shadow-md shadow-blue-400/30'
-                  : 'bg-blue-900 text-blue-200 hover:bg-blue-700 hover:text-blue-50'
+                  ? "bg-blue-400 text-black shadow-md shadow-blue-400/30"
+                  : "bg-blue-900 text-blue-200 hover:bg-blue-700 hover:text-blue-50"
               }`}
             >
               <div className="flex items-center gap-3">
                 <span
                   className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                    active ? 'bg-neutral-900/40' : 'bg-blue-700 text-blue-300'
+                    active ? "bg-neutral-900/40" : "bg-blue-700 text-blue-300"
                   }`}
                 >
                   <link.icon className="text-sm" />
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{link.label}</p>
-                  <p className={`truncate text-[11px] ${active ? 'text-blue-950' : 'text-blue-300'}`}>
+                  <p
+                    className={`truncate text-[11px] ${active ? "text-blue-950" : "text-blue-300"}`}
+                  >
                     {link.caption}
                   </p>
                 </div>
@@ -177,17 +211,33 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
         {user && (
           <div className="mb-3 rounded-2xl bg-blue-900 p-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-700 text-blue-50 text-sm font-bold shrink-0">
-                {(user.name || '?').charAt(0).toUpperCase()}
-              </div>
+              {user.avatarUrl?.trim() ? (
+                <img
+                  src={user.avatarUrl.trim()}
+                  alt={
+                    user.name
+                      ? `${user.name} profile photo`
+                      : "Your profile photo"
+                  }
+                  className="h-14 w-14 shrink-0 rounded-xl object-cover object-center"
+                />
+              ) : (
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-blue-100">
+                  <FaUserCircle className="text-[2.35rem] -mb-0.5" aria-hidden />
+                </div>
+              )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-blue-50">{user.name}</p>
-                <div className="mt-1 flex items-center gap-2 text-[11px]">
+                <p className="truncate text-sm font-semibold text-blue-50">
+                  {user.name}
+                </p>
+                <div className="mt-1 flex items-center gap-2 text-[12px]">
                   <span className="inline-flex items-center gap-1 rounded-lg bg-blue-900 px-2 py-0.5 text-blue-50 font-semibold">
-                    <FaBolt className="text-[9px]" /> {user.totalPoints ?? 0}
+                    <FaBolt className="text-[9px]" />{" "}
+                    {user.levelInfo?.totalPoints ?? user.totalPoints ?? 0}
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-lg bg-blue-700 px-2 py-0.5 text-blue-200 font-semibold">
-                    <FaCrown className="text-[9px]" /> Lv.{user.level ?? 1}
+                    <FaCrown className="text-[9px]" /> Lv.
+                    {user.levelInfo?.level ?? user.level ?? 1}
                   </span>
                 </div>
               </div>
@@ -208,24 +258,28 @@ export default function AppSidebar() {
   useEffect(() => {
     if (mobileOpen) {
       const prev = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
       return () => {
         document.body.style.overflow = prev;
       };
     }
   }, [mobileOpen]);
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) =>
+    path === "/admin"
+      ? location.pathname === "/admin" ||
+        location.pathname.startsWith("/admin/")
+      : location.pathname === path;
   const closeMobile = () => setMobileOpen(false);
 
   const drawerVariants = {
-    closed: { x: '-100%', transition: { duration: 0.3, ease: sidebarEase } },
+    closed: { x: "-100%", transition: { duration: 0.3, ease: sidebarEase } },
     open: { x: 0, transition: { duration: 0.34, ease: sidebarEase } },
   };
 
   const backdropVariants = {
-    closed: { opacity: 0, pointerEvents: 'none' },
-    open: { opacity: 1, pointerEvents: 'auto' },
+    closed: { opacity: 0, pointerEvents: "none" },
+    open: { opacity: 1, pointerEvents: "auto" },
   };
 
   return (
@@ -236,7 +290,9 @@ export default function AppSidebar() {
             <FaGamepad className="text-sm" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-blue-50 leading-tight">GamiLearn</p>
+            <p className="truncate text-sm font-semibold text-blue-50 leading-tight">
+              GamiLearn
+            </p>
             <p className="truncate text-[10px] text-blue-200 leading-tight">
               AI-Guided Game Development
             </p>
@@ -283,7 +339,9 @@ export default function AppSidebar() {
                     <FaGamepad className="text-sm" />
                   </span>
                   <div>
-                    <p className="text-sm font-semibold text-blue-50 leading-tight">GamiLearn</p>
+                    <p className="text-sm font-semibold text-blue-50 leading-tight">
+                      GamiLearn
+                    </p>
                     <p className="text-[10px] text-blue-200 leading-tight">
                       AI-Guided Game Development
                     </p>
@@ -300,7 +358,11 @@ export default function AppSidebar() {
                 </motion.button>
               </div>
               <div className="flex flex-1 min-h-0 flex-col">
-                <SidebarContent onNavigate={closeMobile} isActive={isActive} mobile />
+                <SidebarContent
+                  onNavigate={closeMobile}
+                  isActive={isActive}
+                  mobile
+                />
               </div>
             </motion.aside>
           </>

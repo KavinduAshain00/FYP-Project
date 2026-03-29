@@ -3,12 +3,46 @@ const Module = require('../models/Module');
 const { generateToken, signPasswordResetToken, verifyPasswordResetToken } = require('../utils/jwt');
 const { isAdmin } = require('../utils/admin');
 const { grantSignupAchievement } = require('../services/achievementService');
+const lessonXpService = require('../services/lessonXpService');
 
-// AI presets by learning path: applied at signup (Profile no longer exposes AI settings)
+/** Default tutor/companion preferences by learning path (applied at signup). */
 const AI_PRESET_BY_PATH = {
   'javascript-basics': { tone: 'friendly', hintDetail: 'detailed', assistanceFrequency: 'high' },
   advanced: { tone: 'friendly', hintDetail: 'moderate', assistanceFrequency: 'normal' },
 };
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * POST /api/auth/signup-precheck — validate email/password before path selection (no user created).
+ */
+async function signupPrecheck(req, res) {
+  try {
+    const email = (req.body.email || '').trim();
+    const password = req.body.password;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Please provide all required fields' });
+    }
+    if (!EMAIL_RE.test(email)) {
+      return res.status(400).json({ message: 'Please enter a valid email address' });
+    }
+    if (typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const normalized = email.toLowerCase();
+    const existingUser = await User.findOne({ email: normalized });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists with this email' });
+    }
+
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('[Auth] signupPrecheck error', error.message);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
 
 /**
  * POST /api/auth/signup - Register new user
@@ -20,12 +54,16 @@ async function signup(req, res) {
     if (!name || !email || !password || knowsJavaScript === undefined) {
       return res.status(400).json({ message: 'Please provide all required fields' });
     }
+    const emailTrimmed = String(email).trim();
+    if (!EMAIL_RE.test(emailTrimmed)) {
+      return res.status(400).json({ message: 'Please enter a valid email address' });
+    }
     if (typeof password !== 'string' || password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
-    console.log('[Auth] signup', { email });
+    console.log('[Auth] signup', { email: emailTrimmed });
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: emailTrimmed.toLowerCase() });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
@@ -34,7 +72,7 @@ async function signup(req, res) {
     const aiPreset = AI_PRESET_BY_PATH[learningPath] || AI_PRESET_BY_PATH['javascript-basics'];
     const user = new User({
       name,
-      email,
+      email: emailTrimmed,
       password,
       knowsJavaScript,
       learningPath,
@@ -65,6 +103,7 @@ async function signup(req, res) {
 
     const userPayload = savedUser.toObject();
     userPayload.isAdmin = isAdmin(savedUser);
+    userPayload.levelInfo = lessonXpService.getLevelInfo(savedUser.totalPoints || 0);
 
     return res.status(201).json({
       message: 'User created successfully',
@@ -108,6 +147,7 @@ async function login(req, res) {
 
     const userPayload = fullUser.toObject();
     userPayload.isAdmin = isAdmin(fullUser);
+    userPayload.levelInfo = lessonXpService.getLevelInfo(fullUser.totalPoints || 0);
 
     return res.json({
       message: 'Login successful',
@@ -182,6 +222,7 @@ async function resetPassword(req, res) {
 }
 
 module.exports = {
+  signupPrecheck,
   signup,
   login,
   forgotPassword,

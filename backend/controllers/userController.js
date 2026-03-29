@@ -2,8 +2,7 @@ const User = require('../models/User');
 const Module = require('../models/Module');
 const Achievement = require('../models/Achievement');
 const crypto = require('crypto');
-const { buildLevelInfo } = require('../utils/levelSystem');
-const { XP_PER_LEVEL } = require('../constants/levelRanks');
+const lessonXpService = require('../services/lessonXpService');
 const achievementService = require('../services/achievementService');
 const { AVATAR_LIST, AVATAR_PRESETS } = require('../constants/avatars');
 const { getPathCategories } = require('../constants/learningPath');
@@ -34,6 +33,35 @@ const POPULATE_OPTS = [
   { path: 'completedModules.moduleId', select: 'title category' },
   { path: 'currentModule', select: 'title description' },
 ];
+
+const MAX_STEP_PROGRESS_LEN = 48;
+
+function upsertModuleStepProgress(user, moduleId, stepsVerified, currentStepIndex) {
+  if (!user.moduleStepProgress) user.moduleStepProgress = [];
+  const idStr = moduleId.toString();
+  const idx = user.moduleStepProgress.findIndex(
+    (p) => p.moduleId && p.moduleId.toString() === idStr,
+  );
+  const clean = (Array.isArray(stepsVerified) ? stepsVerified : [])
+    .slice(0, MAX_STEP_PROGRESS_LEN)
+    .map((x) => !!x);
+  const ci = Math.max(0, Math.floor(Number(currentStepIndex)) || 0);
+  const doc = {
+    moduleId,
+    stepsVerified: clean,
+    currentStepIndex: ci,
+    updatedAt: new Date(),
+  };
+  if (idx >= 0) user.moduleStepProgress[idx] = doc;
+  else user.moduleStepProgress.push(doc);
+}
+
+function pullModuleStepProgress(user, moduleId) {
+  const idStr = String(moduleId);
+  user.moduleStepProgress = (user.moduleStepProgress || []).filter(
+    (p) => !p.moduleId || p.moduleId.toString() !== idStr,
+  );
+}
 
 const AI_PREFERENCE_KEYS = {
   tone: ['friendly', 'formal', 'concise'],
@@ -77,10 +105,10 @@ function toProfileUser(user) {
  */
 async function getAvatars(req, res) {
   try {
-    const user = await User.findById(req.user._id).select('level earnedAchievements');
+    const user = await User.findById(req.user._id).select('earnedAchievements totalPoints');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const level = user.level || 1;
+    const level = lessonXpService.computeLevelFromTotalPoints(user.totalPoints || 0);
     const earnedSet = new Set((user.earnedAchievements || []).map((id) => Number(id)));
 
     const etagBase = `${level}|${[...earnedSet].sort((a, b) => a - b).join(',')}`;
@@ -145,7 +173,7 @@ async function getProfile(req, res) {
       .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
       .populate(POPULATE_OPTS[1].path, POPULATE_OPTS[1].select);
 
-    const levelInfo = buildLevelInfo(user.totalPoints || 0, user.level || 1);
+    const levelInfo = lessonXpService.getLevelInfo(user.totalPoints || 0);
     const userPayload = toProfileUser(user);
     userPayload.levelInfo = levelInfo;
     userPayload.pathCategories = await getEffectivePathCategories(user);
@@ -174,7 +202,7 @@ async function getDashboard(req, res) {
       .populate('currentModule', '_id title')
       .lean();
 
-    const levelInfo = buildLevelInfo(user.totalPoints || 0, user.level || 1);
+    const levelInfo = lessonXpService.getLevelInfo(user.totalPoints || 0);
     const pathCategories = await getEffectivePathCategories(user);
 
     const query = pathCategories.length ? { category: { $in: pathCategories } } : {};
@@ -199,14 +227,16 @@ async function getDashboard(req, res) {
       isActive: true,
       category: { $in: ['learning', 'general'] },
     })
-      .select('id name icon')
+      .select('id name icon description points')
       .sort({ id: 1 })
       .lean();
     const earnedSet = new Set((user.earnedAchievements || []).map(String));
     const achievements = learningAchievements.map((a) => ({
       id: a.id,
       name: a.name,
+      description: a.description,
       icon: a.icon,
+      points: a.points,
       earned: earnedSet.has(String(a.id)),
     }));
 
@@ -241,6 +271,35 @@ async function getDashboard(req, res) {
   }
 }
 
+/** GET /api/user/module/step-progress/:moduleId */
+async function getModuleStepProgress(req, res) {
+  const userId = req.user?._id?.toString();
+  const { moduleId } = req.params;
+  try {
+    if (!moduleId || !String(moduleId).trim()) {
+      return res.status(400).json({ message: 'moduleId is required' });
+    }
+    const user = await User.findById(req.user._id).select('moduleStepProgress').lean();
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const mid = String(moduleId).trim();
+    const entry = (user.moduleStepProgress || []).find(
+      (p) => p.moduleId && p.moduleId.toString() === mid,
+    );
+    if (!entry) {
+      return res.json({ progress: null });
+    }
+    return res.json({
+      progress: {
+        stepsVerified: Array.isArray(entry.stepsVerified) ? entry.stepsVerified.map((x) => !!x) : [],
+        currentStepIndex: Math.max(0, Math.floor(Number(entry.currentStepIndex)) || 0),
+      },
+    });
+  } catch (error) {
+    console.error('[User] getModuleStepProgress error', { userId, moduleId, error: error.message });
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
 async function completeModule(req, res) {
   const userId = req.user?._id?.toString();
   const { moduleId, sessionStats = {} } = req.body;
@@ -262,21 +321,23 @@ async function completeModule(req, res) {
 
     const alreadyCompleted = user.completedModules.some((m) => m.moduleId.toString() === moduleId);
 
+    let moduleXpGrant = null;
     if (!alreadyCompleted) {
       user.completedModules.push({ moduleId });
-      const pointsAward = 100;
-      user.totalPoints = (user.totalPoints || 0) + pointsAward;
-      user.level = Math.max(1, Math.floor((user.totalPoints || 0) / XP_PER_LEVEL) + 1);
+      pullModuleStepProgress(user, moduleId);
       if (user.currentModule && user.currentModule.toString() === moduleId) {
         user.currentModule = undefined;
       }
       await user.save();
+      moduleXpGrant = await lessonXpService.grantModuleCompletionXp(user._id, moduleId);
     }
 
     const completedCount = user.completedModules.length;
+    const progressTotalPoints =
+      moduleXpGrant?.totalPoints ?? user.totalPoints ?? 0;
     const progressData = {
       ...sessionStats,
-      totalPoints: user.totalPoints || 0,
+      totalPoints: progressTotalPoints,
       completedModules: completedCount,
     };
     const { newlyEarned } = await achievementService.checkProgress(req.user._id, progressData);
@@ -310,7 +371,7 @@ async function completeModule(req, res) {
       if (added.length > 0) delta.earnedAchievementsAdd = added;
     }
     if (Object.keys(delta).length > 0) {
-      delta.levelInfo = buildLevelInfo(after.totalPoints || 0, after.level || 1);
+      delta.levelInfo = lessonXpService.getLevelInfo(after.totalPoints || 0);
     }
 
     console.log('[User] completeModule success', {
@@ -322,6 +383,7 @@ async function completeModule(req, res) {
       message: 'Module marked as completed',
       delta,
       newlyEarned: newlyEarned || [],
+      xpAwarded: moduleXpGrant?.xpAwarded ?? 0,
     });
   } catch (error) {
     console.error('[User] completeModule error', { userId, moduleId, error: error.message });
@@ -333,7 +395,7 @@ async function setCurrentModule(req, res) {
   const userId = req.user?._id?.toString();
   try {
     console.log('[User] setCurrentModule', { userId, moduleId: req.body?.moduleId });
-    const { moduleId } = req.body;
+    const { moduleId, currentStepIndex, stepsVerified } = req.body;
     if (!moduleId) return res.status(400).json({ message: 'moduleId is required' });
     const [user, module] = await Promise.all([
       User.findById(req.user._id),
@@ -383,6 +445,9 @@ async function setCurrentModule(req, res) {
     }
 
     user.currentModule = moduleId;
+    if (Array.isArray(stepsVerified) && typeof currentStepIndex === 'number') {
+      upsertModuleStepProgress(user, moduleId, stepsVerified, currentStepIndex);
+    }
     await user.save();
 
     const afterCurrent = moduleId?.toString?.() || String(moduleId);
@@ -427,7 +492,7 @@ async function updateProfile(req, res) {
         user.avatarUrl = AVATAR_PRESETS[idx];
       }
     }
-    // UC8: AI Companion preferences (tone, hint detail, assistance frequency)
+    // Tutor/companion preferences (tone, hint detail, assistance frequency)
     if (aiPreferences && typeof aiPreferences === 'object') {
       if (!user.aiPreferences) user.aiPreferences = {};
       if (AI_PREFERENCE_KEYS.tone.includes(aiPreferences.tone)) {
@@ -490,6 +555,7 @@ async function changePassword(req, res) {
 module.exports = {
   getProfile,
   getDashboard,
+  getModuleStepProgress,
   completeModule,
   setCurrentModule,
   updateProfile,

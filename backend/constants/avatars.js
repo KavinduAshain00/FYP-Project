@@ -196,7 +196,6 @@ const AVATAR_LIST = [
   },
 ];
 
-/** Flat array of URLs for backward compatibility (updateProfile by index). */
 const AVATAR_PRESETS = AVATAR_LIST.map((a) => a.url);
 
 module.exports = {
