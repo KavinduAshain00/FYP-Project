@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
-import { useShellPagesCache } from "../context/shellPagesCacheContext";
+import { useShellPagesCache } from "../utils/shellPagesCacheContext";
 import { userAPI } from "../api/api";
 import { toast } from "react-toastify";
 import {
@@ -22,6 +22,7 @@ import {
 import LoadingScreen from "../components/ui/LoadingScreen";
 import { toModuleId } from "../utils/ids";
 import { getLastWorkedEditorModuleId } from "../utils/draftStorage";
+import { getXpBarProps } from "../utils/levelFromApi";
 
 const ease = [0.25, 0.1, 0.25, 1];
 
@@ -83,16 +84,17 @@ const Dashboard = () => {
   }, [searchParams]);
 
   useEffect(() => {
+    const uid = String(user?.id || user?._id || "").trim();
+    if (!uid) return;
     let active = true;
-    const loadLastWorkedModule = async () => {
-      const moduleId = await getLastWorkedEditorModuleId();
+    (async () => {
+      const moduleId = await getLastWorkedEditorModuleId(uid);
       if (active) setLastWorkedModuleId(moduleId);
-    };
-    loadLastWorkedModule();
+    })();
     return () => {
       active = false;
     };
-  }, []);
+  }, [user?.id, user?._id]);
 
   const handleStartModule = async (moduleId) => {
     try {
@@ -122,6 +124,7 @@ const Dashboard = () => {
   );
 
   const levelInfo = profile?.levelInfo ?? user?.levelInfo ?? null;
+  const xpBar = getXpBarProps(levelInfo);
   const completionPercentage =
     dashboardData?.completionPercentage ??
     (modules.length > 0
@@ -131,7 +134,7 @@ const Dashboard = () => {
   const totalPoints =
     levelInfo?.totalPoints ?? profile?.totalPoints ?? user?.totalPoints ?? 0;
   const level = levelInfo?.level ?? profile?.level ?? user?.level ?? 1;
-  const xpToNextLevel = levelInfo?.xpProgress?.xpToNext ?? 200;
+  const xpToNextLevel = xpBar.xpToNext;
   const currentModuleFromCatalog = useMemo(() => {
     const id = toModuleId(profile?.currentModule?._id);
     if (!id) return null;
@@ -164,6 +167,14 @@ const Dashboard = () => {
     (hasCurrentModule ? currentModuleFromCatalog : null);
   const continueModuleId = toModuleId(continueModule?._id);
   const earnedAchievements = achievements.filter((a) => a.earned).length;
+  const sortedAchievements = useMemo(() => {
+    const list = [...achievements];
+    list.sort((a, b) => {
+      if (a.earned === b.earned) return 0;
+      return a.earned ? -1 : 1;
+    });
+    return list;
+  }, [achievements]);
 
   const nextModule = modulePath.find(
     (m) => !completedModuleIds.includes(toModuleId(m._id)),
@@ -180,7 +191,7 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 lg:min-h-0 lg:max-h-[100dvh] lg:overflow-hidden lg:h-[100dvh] lg:flex lg:items-center lg:justify-center lg:py-6">
+      <div className="max-w-6xl mx-auto min-w-0 px-4 sm:px-6 py-8 lg:min-h-0 lg:max-h-[100dvh] lg:overflow-hidden lg:h-[100dvh] lg:flex lg:items-center lg:justify-center lg:py-6">
         <LoadingScreen
           message="Loading your home"
           subMessage="Pulling up your progress, path, and next steps"
@@ -190,7 +201,7 @@ const Dashboard = () => {
   }
 
   const btnPrimary =
-    "inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-blue-500 text-black text-sm font-semibold shadow-md shadow-black/30 hover:bg-blue-400 active:scale-[0.99] transition-all w-full sm:w-auto";
+    "inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-blue-500 text-black text-sm font-semibold hover:bg-blue-400 active:scale-[0.99] transition-all w-full sm:w-auto";
 
   const pathLabel = profile?.learningPath?.replace("-", " ") || "All topics";
 
@@ -208,7 +219,7 @@ const Dashboard = () => {
   return (
     <div
       className={
-        "max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-20 text-blue-50 " +
+        "max-w-6xl mx-auto min-w-0 px-4 sm:px-6 py-8 pb-20 text-blue-50 " +
         "lg:py-4 lg:pb-4 lg:h-[100dvh] lg:max-h-[100dvh] lg:min-h-0 lg:overflow-hidden lg:flex lg:flex-col"
       }
     >
@@ -223,25 +234,25 @@ const Dashboard = () => {
 
         <div className="relative p-6 sm:p-8 lg:p-5">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-3 items-stretch">
-            <div className="lg:col-span-8 rounded-2xl bg-blue-900/70 p-5 lg:p-5 shadow-lg shadow-black/30">
+            <div className="lg:col-span-8 rounded-2xl bg-blue-900/70 p-5 lg:p-5">
               <div className="flex gap-4 sm:gap-5 items-start">
                 <div className="relative shrink-0">
                   {profile?.avatarUrl || user?.avatarUrl ? (
                     <img
                       src={profile?.avatarUrl || user?.avatarUrl}
                       alt={`${profile?.name ?? user?.name ?? "Your"} profile photo`}
-                      className="w-[4.25rem] h-[4.25rem] sm:w-[4.75rem] sm:h-[4.75rem] rounded-full object-cover object-center shadow-xl shadow-black/45"
+                      className="w-[4.25rem] h-[4.25rem] sm:w-[4.75rem] sm:h-[4.75rem] rounded-full object-cover object-center"
                     />
                   ) : (
                     <div
-                      className="w-[4.25rem] h-[4.25rem] sm:w-[4.75rem] sm:h-[4.75rem] rounded-full flex items-center justify-center bg-blue-600 shadow-xl shadow-black/40"
+                      className="w-[4.25rem] h-[4.25rem] sm:w-[4.75rem] sm:h-[4.75rem] rounded-full flex items-center justify-center bg-blue-600"
                       aria-hidden
                     >
                       <FaUserCircle className="text-[2.85rem] sm:text-[3.1rem] text-blue-100/90 -mb-0.5" />
                     </div>
                   )}
                   <span
-                    className="absolute -bottom-0.5 -right-0.5 min-w-[1.625rem] h-7 px-1.5 rounded-full bg-blue-300 text-blue-950 text-[11px] font-bold font-display flex items-center justify-center shadow-md tabular-nums"
+                    className="absolute -bottom-0.5 -right-0.5 min-w-[1.625rem] h-7 px-1.5 rounded-full bg-blue-300 text-blue-950 text-[11px] font-bold font-display flex items-center justify-center tabular-nums"
                     title={`Level ${level}`}
                   >
                     {level}
@@ -278,14 +289,16 @@ const Dashboard = () => {
                   <motion.div
                     className="h-full rounded-full bg-blue-400"
                     initial={{ width: 0 }}
-                    animate={{ width: `${((totalPoints % 200) / 200) * 100}%` }}
+                    animate={{
+                      width: `${xpBar.percentage}%`,
+                    }}
                     transition={{ duration: 0.8, ease }}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="lg:col-span-4 rounded-2xl bg-blue-900/75 p-5 lg:p-4 shadow-lg shadow-black/30 flex flex-col">
+            <div className="lg:col-span-4 rounded-2xl bg-blue-900/75 p-5 lg:p-4 flex flex-col">
               <div className="flex items-start gap-3 mb-3">
                 <div className="min-w-0">
                   <p className="text-[11px] text-blue-300 uppercase tracking-wider">
@@ -312,7 +325,7 @@ const Dashboard = () => {
                     onClick={() => handleStartModule(nextModule._id)}
                     className={btnPrimary}
                   >
-                    <FaRocket className="text-xs" /> Start next lesson
+                    <FaRocket className="text-xs" /> Start the lesson
                   </button>
                 ) : (
                   <button
@@ -331,7 +344,7 @@ const Dashboard = () => {
 
       {/* -- Metrics ribbon -- */}
       <motion.div
-        className="shrink-0 flex flex-wrap gap-3 sm:gap-4 mb-12 lg:mb-3 lg:gap-2"
+        className="shrink-0 grid grid-cols-2 gap-3 sm:gap-4 mb-12 lg:mb-3 lg:flex lg:flex-wrap lg:gap-2"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.12, duration: 0.4, ease }}
@@ -364,7 +377,7 @@ const Dashboard = () => {
         ].map((item) => (
           <div
             key={item.label}
-            className="flex items-center gap-3 min-w-[140px] flex-1 sm:flex-none sm:min-w-[160px] lg:min-w-0 lg:flex-1 rounded-2xl bg-blue-900 px-4 py-3 lg:px-3 lg:py-2 shadow-lg shadow-black/25"
+            className="flex items-center gap-2 sm:gap-3 min-w-0 lg:flex-1 rounded-2xl bg-blue-900 px-3 py-3 sm:px-4 lg:px-3 lg:py-2"
           >
             <span className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-blue-800/90 flex items-center justify-center shrink-0">
               <item.icon className={`text-sm ${item.accent}`} />
@@ -405,12 +418,12 @@ const Dashboard = () => {
                 Your path
               </h2>
               <p className="text-sm lg:text-xs text-blue-300 mt-1 line-clamp-2 xl:line-clamp-1">
-                Clear stages in order—each victory unlocks the next checkpoint
+                Clear stages in order to unlock the next checkpoint
                 on your run.
               </p>
             </div>
           </div>
-          <div className="rounded-3xl bg-blue-950 border border-blue-800/60 shadow-xl shadow-black/35 overflow-hidden flex-1 min-h-0 flex flex-col relative">
+          <div className="rounded-3xl bg-blue-950 overflow-hidden flex-1 min-h-0 flex flex-col relative">
             {modulePath.length === 0 ? (
               <p className="text-sm text-blue-300 p-8 text-center relative z-[1]">
                 Nothing listed on this path yet.{" "}
@@ -482,18 +495,18 @@ const Dashboard = () => {
 
                       const nodeClass = (() => {
                         if (isCompleted) {
-                          return "bg-blue-400 text-blue-950 shadow-lg shadow-blue-400/35";
+                          return "bg-blue-400 text-blue-950";
                         }
                         if (isCurrent) {
-                          return "bg-blue-500 text-black shadow-lg shadow-blue-400/45 animate-pulse";
+                          return "bg-blue-500 text-black animate-pulse";
                         }
                         if (isNext && !isLocked) {
-                          return "bg-blue-200 text-blue-950 shadow-lg shadow-blue-300/50";
+                          return "bg-blue-200 text-blue-950";
                         }
                         if (isLocked) {
                           return "bg-neutral-900 text-blue-500 opacity-75";
                         }
-                        return "bg-blue-800 text-blue-100 shadow-md shadow-black/20";
+                        return "bg-blue-800 text-blue-100";
                       })();
 
                       return (
@@ -550,9 +563,9 @@ const Dashboard = () => {
                                 isLocked
                                   ? "bg-neutral-900/60 cursor-not-allowed opacity-80"
                                   : isCurrent
-                                    ? "bg-blue-800/50 shadow-lg shadow-blue-950/40 hover:bg-blue-800/70"
+                                    ? "bg-blue-800/50 hover:bg-blue-800/70"
                                     : isNext
-                                      ? "bg-blue-900/70 hover:bg-blue-800/60 shadow-md shadow-blue-950/30"
+                                      ? "bg-blue-900/70 hover:bg-blue-800/60"
                                       : isCompleted
                                         ? "bg-blue-900/35 hover:bg-blue-900/55"
                                         : "bg-blue-900/50 hover:bg-blue-800/55"
@@ -580,7 +593,7 @@ const Dashboard = () => {
                                 {!isLocked && (
                                   <span className="shrink-0 flex flex-col items-end gap-1.5">
                                     {isNext && !isCompleted && (
-                                      <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg bg-blue-50 text-blue-950 shadow-sm">
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg bg-blue-50 text-blue-950">
                                         <FaStar className="text-[10px]" /> Next
                                       </span>
                                     )}
@@ -619,70 +632,150 @@ const Dashboard = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.4, ease }}
           >
-            <div className="flex items-end justify-between gap-3 mb-2">
-              <div>
-                <h2 className="text-xl lg:text-lg font-bold text-blue-50">
+            <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <h2 className="flex items-center gap-1.5 text-lg font-bold text-blue-50 lg:text-base">
+                  <FaTrophy className="shrink-0 text-amber-300" aria-hidden />
                   Achievements
                 </h2>
-                <p className="text-sm lg:text-xs text-blue-300 mt-1">
-                  Recent achievements badges.
+                <p className="mt-0.5 text-[11px] leading-snug text-blue-400 lg:text-[10px]">
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => navigate("/profile")}
-                className="text-xs sm:text-sm font-semibold text-blue-200 hover:text-blue-100 shrink-0"
-              >
-                Open profile →
-              </button>
-            </div>
-
-            <div className="rounded-3xl p-4 lg:p-3 bg-blue-900 shadow-xl shadow-black/30">
-              <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4 gap-2.5">
-                {[...achievements]
-                  .sort((a, b) =>
-                    a.earned === b.earned ? 0 : a.earned ? -1 : 1,
-                  )
-                  .slice(0, 8)
-                  .map((ach) => (
-                    <div
-                      key={ach.id}
-                      title={ach.name}
-                      className={`rounded-2xl p-3 transition-colors ${
-                        ach.earned ? "bg-blue-800" : "bg-blue-900"
-                      }`}
-                    >
-                      <div
-                        className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center mb-2 ${
-                          ach.earned ? "bg-blue-700" : "bg-blue-800"
-                        }`}
-                      >
-                        {ach.icon ? (
-                          <img
-                            src={ach.icon}
-                            alt=""
-                            className="w-6 h-6 object-contain brightness-0 invert"
-                          />
-                        ) : ach.earned ? (
-                          <FaTrophy className="text-blue-50" />
-                        ) : (
-                          <FaLock className="text-blue-50 text-sm" />
-                        )}
-                      </div>
-                      <p className="text-[10px] font-semibold text-blue-50 text-center line-clamp-2 leading-tight">
-                        {ach.name}
-                      </p>
-                      <p
-                        className={`mt-1 text-[10px] font-semibold text-center uppercase tracking-wide ${
-                          ach.earned ? "text-blue-200" : "text-blue-300"
-                        }`}
-                      >
-                        {ach.earned ? "Unlocked" : "Locked"}
-                      </p>
-                    </div>
-                  ))}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {achievements.length > 0 && (
+                  <>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-semibold text-cyan-200 ring-1 ring-cyan-400/35">
+                      <FaCheckCircle className="text-[9px] text-cyan-400" aria-hidden />
+                      {earnedAchievements}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-200/90 ring-1 ring-amber-400/25">
+                      <FaLock className="text-[9px] text-amber-400/90" aria-hidden />
+                      {achievements.length - earnedAchievements}
+                    </span>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => navigate("/profile")}
+                  className="text-[10px] font-semibold text-blue-300 hover:text-blue-100 sm:text-xs"
+                >
+                  Profile →
+                </button>
               </div>
             </div>
+
+            {achievements.length === 0 ? (
+              <div className="rounded-2xl bg-blue-900/70 px-4 py-6 text-center shadow-md shadow-blue-950/20">
+                <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-800/80 text-blue-300">
+                  <FaTrophy className="text-lg" aria-hidden />
+                </div>
+                <p className="text-xs font-medium text-blue-200">No achievements yet</p>
+                <p className="mt-0.5 text-[11px] text-blue-400">
+                  Finish a lesson to unlock your first badge.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-blue-900/40 p-2">
+                <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-1.5">
+                  {sortedAchievements.slice(0, 8).map((ach) => {
+                    const xpReward =
+                      ach.points != null ? ach.points : ach.xpReward;
+                    return (
+                      <article
+                        key={ach.id}
+                        title={ach.name}
+                        className={`relative flex min-h-0 gap-1.5 overflow-hidden rounded-xl p-1.5 ${
+                          ach.earned
+                            ? "bg-blue-800/90 ring-1 ring-blue-400/45 shadow-sm shadow-black/15"
+                            : "bg-blue-950/80 ring-1 ring-amber-900/35"
+                        }`}
+                      >
+                        <div
+                          className={`w-0.5 shrink-0 self-stretch rounded-full ${
+                            ach.earned
+                              ? "bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.4)]"
+                              : "bg-amber-800/90"
+                          }`}
+                          aria-hidden
+                        />
+                        <div
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                            ach.earned
+                              ? "bg-cyan-400/20 ring-1 ring-cyan-400/40"
+                              : "bg-blue-900/90 ring-1 ring-amber-700/40"
+                          }`}
+                        >
+                          {ach.icon ? (
+                            <img
+                              src={ach.icon}
+                              alt=""
+                              className={`h-4 w-4 object-contain brightness-0 invert ${
+                                ach.earned ? "" : "opacity-40 grayscale"
+                              }`}
+                            />
+                          ) : ach.earned ? (
+                            <FaTrophy className="text-sm text-amber-200" />
+                          ) : (
+                            <FaLock className="text-xs text-amber-400/90" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-1">
+                            <h3
+                              className={`line-clamp-2 text-left text-[10px] font-bold leading-tight ${
+                                ach.earned ? "text-blue-50" : "text-blue-400"
+                              }`}
+                            >
+                              {ach.name}
+                            </h3>
+                            {ach.earned ? (
+                              <FaCheckCircle
+                                className="shrink-0 text-[10px] text-cyan-300"
+                                aria-label="Unlocked"
+                              />
+                            ) : (
+                              <FaLock
+                                className="shrink-0 text-[9px] text-amber-500/80"
+                                aria-label="Locked"
+                              />
+                            )}
+                          </div>
+                          {xpReward ? (
+                            <p
+                              className={`mt-0.5 flex items-center gap-0.5 text-[9px] font-semibold tabular-nums ${
+                                ach.earned ? "text-cyan-200/90" : "text-blue-500"
+                              }`}
+                            >
+                              <FaBolt
+                                className={
+                                  ach.earned
+                                    ? "text-cyan-400/90"
+                                    : "text-amber-600/70"
+                                }
+                                aria-hidden
+                              />
+                              +{xpReward} XP
+                            </p>
+                          ) : null}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+                {achievements.length > 8 && (
+                  <p className="mt-2 text-center text-[10px] text-blue-400">
+                    +{achievements.length - 8} more on{" "}
+                    <button
+                      type="button"
+                      onClick={() => navigate("/profile")}
+                      className="font-semibold text-blue-200 hover:text-blue-100"
+                    >
+                      profile
+                    </button>
+                  </p>
+                )}
+              </div>
+            )}
           </motion.section>
 
           <motion.section
@@ -701,7 +794,7 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-            <div className="rounded-3xl bg-blue-900 p-4 shadow-lg shadow-black/25 space-y-3">
+            <div className="rounded-3xl bg-blue-900 p-4 space-y-3">
               <button
                 type="button"
                 onClick={() =>
@@ -716,7 +809,7 @@ const Dashboard = () => {
                 <p className="text-[11px] uppercase tracking-wider text-blue-300">
                   Continue learning
                 </p>
-                <p className="text-sm text-black mt-1">
+                <p className="text-sm text-white mt-1">
                   {continueModule
                     ? `Resume "${continueModule.title}" from where you stopped.`
                     : "Open the next lesson on your path."}
@@ -731,7 +824,7 @@ const Dashboard = () => {
                 <p className="text-[11px] uppercase tracking-wider text-blue-300">
                   Review progress
                 </p>
-                <p className="text-sm text-black mt-1">
+                <p className="text-sm text-white mt-1">
                   See badges, level updates, and account settings.
                 </p>
               </button>
@@ -744,9 +837,9 @@ const Dashboard = () => {
                 <p className="text-[11px] uppercase tracking-wider text-blue-300">
                   Explore modules
                 </p>
-                <p className="text-sm text-black mt-1 flex items-center gap-1">
+                <p className="text-sm text-white mt-1 flex items-center gap-1">
                   Browse by topic and difficulty{" "}
-                  <FaArrowRight className="text-xs text-black/70" />
+                  <FaArrowRight className="text-xs text-white" />
                 </p>
               </button>
             </div>

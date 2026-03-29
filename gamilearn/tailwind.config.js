@@ -17,12 +17,6 @@ export default {
           900: 'rgb(var(--color-blue-900-rgb) / <alpha-value>)',
           950: 'rgb(var(--color-blue-950-rgb) / <alpha-value>)',
         },
-        /* Legacy game HUD names → same blue system (CodeEditor / GameUI) */
-        'game-void': 'rgb(0 0 0 / <alpha-value>)',
-        'game-abyss': 'rgb(var(--color-blue-900-rgb) / <alpha-value>)',
-        'game-night': 'rgb(var(--color-blue-900-rgb) / <alpha-value>)',
-        'game-dusk': 'rgb(var(--color-blue-800-rgb) / <alpha-value>)',
-        'game-steel': 'rgb(var(--color-blue-700-rgb) / <alpha-value>)',
 
         'neon-cyan': 'rgb(var(--color-blue-400-rgb) / <alpha-value>)',
         'neon-purple': 'rgb(var(--color-blue-500-rgb) / <alpha-value>)',

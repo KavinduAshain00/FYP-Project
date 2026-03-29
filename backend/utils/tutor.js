@@ -1,4 +1,7 @@
-const { FALLBACK_HINTS, DEFAULT_FALLBACK_HINTS } = require('../constants/tutor');
+const {
+  FALLBACK_HINTS,
+  DEFAULT_FALLBACK_HINTS,
+} = require("../constants/tutor");
 
 /**
  * Assess confidence level based on question clarity and context
@@ -7,7 +10,8 @@ function assessQuestionConfidence(message, context) {
   let confidence = 0.5;
 
   if (context?.code) {
-    const codeLen = typeof context.code === 'string' ? context.code.length : 100;
+    const codeLen =
+      typeof context.code === "string" ? context.code.length : 100;
     if (codeLen > 20) confidence += 0.2;
   }
   if (context?.errorMessage) confidence += 0.15;
@@ -19,10 +23,21 @@ function assessQuestionConfidence(message, context) {
     confidence += 0.15;
   if (context?.currentFile) confidence += 0.1;
 
-  const vaguePatterns = [/^why$/i, /doesn't work/i, /not working/i, /help me/i, /^how$/i];
+  const vaguePatterns = [
+    /^why$/i,
+    /doesn't work/i,
+    /not working/i,
+    /help me/i,
+    /^how$/i,
+  ];
   if (vaguePatterns.some((p) => p.test(message))) confidence -= 0.2;
 
-  const specificPatterns = [/line \d+/i, /error:/i, /function \w+/i, /variable \w+/i];
+  const specificPatterns = [
+    /line \d+/i,
+    /error:/i,
+    /function \w+/i,
+    /variable \w+/i,
+  ];
   if (specificPatterns.some((p) => p.test(message))) confidence += 0.15;
 
   return Math.max(0.1, Math.min(1.0, confidence));
@@ -52,12 +67,18 @@ function getFallbackHints(message) {
  * @param {number} confidence - assessed confidence
  * @param {object} [aiPreferences] - user's tone, hintDetail, assistanceFrequency
  */
-function buildPedagogicalPrompt(message, context, hintStyle, confidence, aiPreferences = {}) {
+function buildPedagogicalPrompt(
+  message,
+  context,
+  hintStyle,
+  confidence,
+  aiPreferences = {},
+) {
   const promptParts = [];
 
-  const tone = aiPreferences.tone || 'friendly';
-  const hintDetail = aiPreferences.hintDetail || 'moderate';
-  const assistanceFrequency = aiPreferences.assistanceFrequency || 'normal';
+  const tone = aiPreferences.tone || "friendly";
+  const hintDetail = aiPreferences.hintDetail || "moderate";
+  const assistanceFrequency = aiPreferences.assistanceFrequency || "normal";
 
   const baseInstruction = `You are a PEDAGOGICAL coding tutor and COMPANION for beginner game developers. Your role is to TUTOR (teach and explain) as well as give hints. Your PRIMARY GOAL is to help students LEARN, not just solve problems.
 
@@ -92,39 +113,40 @@ INSTEAD:
     friendly:
       'Use a warm, encouraging tone. Use casual language and occasional light encouragement (e.g. "You\'re on the right track!").',
     formal:
-      'Use a clear, professional tone. Be precise and avoid casual language. Stay instructive and neutral.',
+      "Use a clear, professional tone. Be precise and avoid casual language. Stay instructive and neutral.",
     concise:
-      'Be brief and to the point. Use short sentences. Avoid filler; give only essential guidance.',
+      "Be brief and to the point. Use short sentences. Avoid filler; give only essential guidance.",
   };
   promptParts.push(
-    `\nTONE (user preference): ${toneInstructions[tone] || toneInstructions.friendly}`
+    `\nTONE (user preference): ${toneInstructions[tone] || toneInstructions.friendly}`,
   );
 
   // UC8: Apply user's preferred HINT DETAIL level
   const detailInstructions = {
     minimal:
-      'Give very short hints (1-2 sentences). Point to the area only; avoid long explanations.',
+      "Give very short hints (1-2 sentences). Point to the area only; avoid long explanations.",
     moderate:
-      'Give focused hints with one short explanation. Balance brevity with one key concept.',
+      "Give focused hints with one short explanation. Balance brevity with one key concept.",
     detailed:
-      'You may explain a bit more: why something works, one small example, and a follow-up suggestion.',
+      "You may explain a bit more: why something works, one small example, and a follow-up suggestion.",
   };
   promptParts.push(
-    `\nHINT DETAIL (user preference): ${detailInstructions[hintDetail] || detailInstructions.moderate}`
+    `\nHINT DETAIL (user preference): ${detailInstructions[hintDetail] || detailInstructions.moderate}`,
   );
 
   // UC8: Apply user's ASSISTANCE FREQUENCY (how much extra guidance to offer)
   const frequencyInstructions = {
     low: 'Give only the direct answer to what was asked. Do not suggest follow-up steps or "you might also..." unless the student asks.',
-    normal: 'Answer the question and optionally suggest one natural next step if relevant.',
-    high: 'After answering, briefly suggest 1-2 follow-up things to try or check, and offer to help with the next step.',
+    normal:
+      "Answer the question and optionally suggest one natural next step if relevant.",
+    high: "After answering, briefly suggest 1-2 follow-up things to try or check, and offer to help with the next step.",
   };
   promptParts.push(
-    `\nASSISTANCE FREQUENCY (user preference): ${frequencyInstructions[assistanceFrequency] || frequencyInstructions.normal}`
+    `\nASSISTANCE FREQUENCY (user preference): ${frequencyInstructions[assistanceFrequency] || frequencyInstructions.normal}`,
   );
 
   switch (hintStyle) {
-    case 'error-explanation':
+    case "error-explanation":
       promptParts.push(`\nHINT STYLE: Error Explanation (DIRECTIVE)
 - Explain what the error message means in simple terms and what to fix
 - Explain WHY this type of error occurs (underlying cause)
@@ -132,7 +154,7 @@ INSTEAD:
 - Suggest what part of the code to examine; do NOT write the full fix
 - Keep the response focused and under the word limit`);
       break;
-    case 'logic-guidance':
+    case "logic-guidance":
       promptParts.push(`\nHINT STYLE: Logic Guidance
 - Help the student trace through their code logic step-by-step
 - Ask "What do you expect to happen at this point?"
@@ -140,7 +162,7 @@ INSTEAD:
 - Guide them to identify where actual behavior differs from expected
 - Focus on the flow of data and control`);
       break;
-    case 'concept-reminder':
+    case "concept-reminder":
       promptParts.push(`\nHINT STYLE: Concept Reminder
 - Explain the relevant programming concept clearly
 - Use a simple analogy or real-world comparison
@@ -148,7 +170,7 @@ INSTEAD:
 - Connect the concept back to their specific situation
 - Keep it focused on ONE concept at a time`);
       break;
-    case 'visual-gameloop':
+    case "visual-gameloop":
       promptParts.push(`\nHINT STYLE: Visual/Game Loop Explanation
 - Explain how game loops and animations work
 - Describe the frame-by-frame update cycle
@@ -166,11 +188,11 @@ INSTEAD:
 
   if (confidence < 0.4) {
     promptParts.push(
-      `\nNOTE: The question is vague. Start by asking clarifying questions or provide general conceptual guidance related to the topic.`
+      `\nNOTE: The question is vague. Start by asking clarifying questions or provide general conceptual guidance related to the topic.`,
     );
   } else if (confidence < 0.6) {
     promptParts.push(
-      `\nNOTE: Moderate context available. Provide focused hints but verify assumptions with the student.`
+      `\nNOTE: Moderate context available. Provide focused hints but verify assumptions with the student.`,
     );
   }
 
@@ -182,14 +204,15 @@ INSTEAD:
   }
   if (context?.codeSummary) {
     promptParts.push(
-      `\nSTUDENT'S CODE (summary for context only - do not invent code):\n${context.codeSummary}`
+      `\nSTUDENT'S CODE (summary for context only - do not invent code):\n${context.codeSummary}`,
     );
   }
   const hasErrorContext =
-    context?.errorMessage || (context?.recentErrors && context.recentErrors.length > 0);
+    context?.errorMessage ||
+    (context?.recentErrors && context.recentErrors.length > 0);
   if (hasErrorContext) {
     promptParts.push(
-      `\nPRIORITY: The student has an error. Explain this error in simple terms and what to check or fix. Do NOT give the full solution; guide them.`
+      `\nPRIORITY: The student has an error. Explain this error in simple terms and what to check or fix. Do NOT give the full solution; guide them.`,
     );
     if (context.errorMessage) {
       promptParts.push(`\nERROR MESSAGE (primary): ${context.errorMessage}`);
@@ -198,24 +221,34 @@ INSTEAD:
       const errList = context.recentErrors
         .slice(0, 5)
         .map((e) => `- ${e}`)
-        .join('\n');
+        .join("\n");
       promptParts.push(`\nRECENT CONSOLE ERRORS:\n${errList}`);
     }
   }
   if (context?.moduleTitle) {
     promptParts.push(`\nMODULE: ${context.moduleTitle}`);
   }
-  if (context?.objectives && Array.isArray(context.objectives)) {
-    promptParts.push(`\nLEARNING OBJECTIVES: ${context.objectives.join(', ')}`);
+  if (context?.moduleStepTitles && Array.isArray(context.moduleStepTitles)) {
+    const titles = context.moduleStepTitles
+      .map((t) => String(t ?? "").trim())
+      .filter(Boolean);
+    if (titles.length) {
+      promptParts.push(`\nMODULE STEPS (titles): ${titles.join(", ")}`);
+    }
   }
   const hasCurrentStep =
-    (context?.currentStepDescription !== undefined && context?.currentStepDescription !== '') ||
-    (context?.currentStepIndex !== undefined && context?.currentStepIndex !== null);
+    (context?.currentStepDescription !== undefined &&
+      context?.currentStepDescription !== "") ||
+    (context?.currentStepIndex !== undefined &&
+      context?.currentStepIndex !== null);
   if (hasCurrentStep) {
-    const stepIdx = typeof context.currentStepIndex === 'number' ? context.currentStepIndex : '?';
-    const stepDesc = context.currentStepDescription || 'current step';
+    const stepIdx =
+      typeof context.currentStepIndex === "number"
+        ? context.currentStepIndex
+        : "?";
+    const stepDesc = context.currentStepDescription || "current step";
     promptParts.push(
-      `\nCURRENT STEP THE STUDENT IS ON (index ${stepIdx}): "${stepDesc}". Use this to tutor them toward this step.`
+      `\nCURRENT STEP THE STUDENT IS ON (index ${stepIdx}): "${stepDesc}". Use this to tutor them toward this step.`,
     );
   }
 
@@ -223,10 +256,10 @@ INSTEAD:
   const wordLimits = { minimal: 80, moderate: 200, detailed: 280 };
   const wordLimit = wordLimits[hintDetail] ?? 200;
   promptParts.push(
-    `\nProvide a helpful, pedagogical response (max ${wordLimit} words). Remember: GUIDE, don't solve!`
+    `\nProvide a helpful, pedagogical response (max ${wordLimit} words). Remember: GUIDE, don't solve!`,
   );
 
-  return promptParts.join('\n');
+  return promptParts.join("\n");
 }
 
 module.exports = {

@@ -1,13 +1,13 @@
 import { toast } from "react-toastify";
 import { FaMagic, FaChevronUp, FaChevronDown, FaTrash } from "react-icons/fa";
 import {
+  MODULE_CATEGORIES,
   MODULE_FORM_TABS,
   VERIFY_TYPES,
   isMultiplayerCategory,
-  moduleCategorySelectOptions,
   emptyModuleStep,
   DIFFICULTIES,
-} from "./moduleEditorUtils";
+} from "../../utils/moduleEditorUtils";
 
 /**
  * Shared module create/edit fields (used on full-page editor).
@@ -36,7 +36,7 @@ export default function AdminModuleFormSections({
   orderDuplicatesAnother,
 }) {
   return (
-    <div className="pl-4 md:pl-5 lg:pl-6 min-w-0">
+    <div className="pl-0 sm:pl-3 md:pl-5 lg:pl-6 min-w-0">
       <div
         className="lg:hidden flex flex-wrap gap-1.5 mb-4 p-1 bg-blue-950/60 rounded-xl border border-blue-800/80"
         role="tablist"
@@ -99,7 +99,6 @@ export default function AdminModuleFormSections({
                     const category = e.target.value;
                     setForm((p) => {
                       const sc = { ...(p.starterCode || {}) };
-                      sc.jsx = "";
                       if (!isMultiplayerCategory(category)) sc.serverJs = "";
                       return {
                         ...p,
@@ -111,7 +110,7 @@ export default function AdminModuleFormSections({
                   }}
                   className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                 >
-                  {moduleCategorySelectOptions(form.category).map((cat) => (
+                  {MODULE_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
                     </option>
@@ -490,7 +489,7 @@ export default function AdminModuleFormSections({
           </div>
         )}
 
-        {sectionTab === "objectives" && (
+        {sectionTab === "hints" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 p-4 rounded-xl bg-blue-950/50 border border-blue-700/60">
               <span className="text-[13px] font-semibold text-blue-100 flex items-center gap-2 shrink-0">
@@ -498,20 +497,6 @@ export default function AdminModuleFormSections({
                 AI generate
               </span>
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleGenerateCurriculumParts(["objectives"])}
-                  disabled={
-                    !!generatingCurriculum ||
-                    generatingSteps ||
-                    !form.title?.trim()
-                  }
-                  className="px-3 py-2 rounded-lg text-[12px] font-semibold bg-blue-700 text-black hover:bg-blue-600 disabled:opacity-45 disabled:cursor-not-allowed"
-                >
-                  {generatingCurriculum === curriculumPartsKey(["objectives"])
-                    ? "…"
-                    : "Objectives"}
-                </button>
                 <button
                   type="button"
                   onClick={() => handleGenerateCurriculumParts(["hints"])}
@@ -526,86 +511,11 @@ export default function AdminModuleFormSections({
                     ? "…"
                     : "Hints"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleGenerateCurriculumParts(["objectives", "hints"])
-                  }
-                  disabled={
-                    !!generatingCurriculum ||
-                    generatingSteps ||
-                    !form.title?.trim()
-                  }
-                  className="px-3 py-2 rounded-lg text-[12px] font-semibold bg-blue-600 text-black hover:bg-blue-500 disabled:opacity-45 disabled:cursor-not-allowed"
-                >
-                  {generatingCurriculum ===
-                  curriculumPartsKey(["objectives", "hints"])
-                    ? "…"
-                    : "Objectives + hints"}
-                </button>
               </div>
               <p className="text-[11px] text-blue-400 sm:w-full basis-full">
                 Uses title, description, lesson content, and step titles (if
-                any). Replaces the matching lists when generation succeeds.
+                any). Replaces the hint list when generation succeeds.
               </p>
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-[11px] font-medium text-blue-300">
-                  Objectives
-                </label>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setForm((p) => ({
-                      ...p,
-                      objectives: [...(p.objectives || []), ""],
-                    }))
-                  }
-                  className="text-[12px] font-semibold text-cyan-300 hover:text-cyan-100"
-                >
-                  + Add
-                </button>
-              </div>
-              <ul className="space-y-2 list-none p-0 m-0">
-                {(form.objectives || []).map((obj, i) => (
-                  <li key={`obj-${i}`} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={obj}
-                      onChange={(e) =>
-                        setForm((p) => {
-                          const objectives = [...(p.objectives || [])];
-                          objectives[i] = e.target.value;
-                          return { ...p, objectives };
-                        })
-                      }
-                      className="flex-1 px-3 py-2 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
-                      placeholder={`Objective ${i + 1}`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setForm((p) => ({
-                          ...p,
-                          objectives: (p.objectives || []).filter(
-                            (_, j) => j !== i,
-                          ),
-                        }))
-                      }
-                      className="p-2 text-red-300 hover:bg-blue-800 rounded-xl"
-                      title="Remove"
-                    >
-                      <FaTrash className="text-xs" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {(form.objectives || []).length === 0 && (
-                <p className="text-[12px] text-blue-500 py-2">
-                  No objectives listed.
-                </p>
-              )}
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">

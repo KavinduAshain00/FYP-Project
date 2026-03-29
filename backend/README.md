@@ -7,7 +7,7 @@ This backend includes a simple server-side proxy to call a Gemini/Vertex AI mode
 - `MONGODB_URI` - your MongoDB connection string
 - `PORT` - server port (defaults to 5000)
 - `JWT_SECRET` - secret used to sign auth tokens
-- **Admin** is determined by `User.role === 'admin'` in the User collection. First admin: set `ADMIN_BOOTSTRAP_EMAIL` in .env and restart, or call `POST /api/admin/bootstrap` with body `{ email }` (user must exist). Optional: `BOOTSTRAP_SECRET` for bootstrap. Admins can grant/revoke admin via the admin API or the Users table (grant/revoke by user id).
+- **Admin** is determined by `User.role === 'admin'` in the User collection. First admin: call `POST /api/admin/bootstrap` with body `{ email }` (user must exist). Optional: `BOOTSTRAP_SECRET` for bootstrap. Admins can grant/revoke admin via the admin API or the Users table (grant/revoke by user id).
 - `GEMINI_API_KEY` - API key for the Generative Language / Vertex AI API (or use service account credentials via `GOOGLE_APPLICATION_CREDENTIALS`)
 - `GEMINI_MODEL` - optional model id (defaults to `gemini-1.5`)
 

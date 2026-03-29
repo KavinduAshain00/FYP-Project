@@ -2,11 +2,11 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { FaArrowLeft } from "react-icons/fa";
-import { adminAPI, modulesAPI } from "../api/api";
-import { PageHeader } from "../components/layout/GameLayout";
-import ConfirmModal from "../components/ui/ConfirmModal";
-import LoadingScreen from "../components/ui/LoadingScreen";
-import AdminModuleFormSections from "./admin/AdminModuleFormSections";
+import { adminAPI, modulesAPI } from "../../api/api";
+import { PageHeader } from "../../components/layout/GameLayout";
+import ConfirmModal from "../../components/ui/ConfirmModal";
+import LoadingScreen from "../../components/ui/LoadingScreen";
+import AdminModuleFormSections from "./AdminModuleFormSections";
 import {
   MODULE_FORM_TABS,
   suggestNextOrder,
@@ -14,11 +14,12 @@ import {
   normalizeStepForForm,
   moduleFormComparable,
   isMultiplayerCategory,
-} from "./admin/moduleEditorUtils";
+  normalizeModuleCategory,
+} from "../../utils/moduleEditorUtils";
 
 function buildFormFromApi(full) {
   const sc = full.starterCode || {};
-  const category = full.category;
+  const category = normalizeModuleCategory(full.category);
   return {
     id: full._id,
     title: full.title ?? "",
@@ -32,10 +33,8 @@ function buildFormFromApi(full) {
       html: sc.html ?? "",
       css: sc.css ?? "",
       javascript: sc.javascript ?? "",
-      jsx: "",
       serverJs: isMultiplayerCategory(category) ? (sc.serverJs ?? "") : "",
     },
-    objectives: Array.isArray(full.objectives) ? [...full.objectives] : [],
     hints: Array.isArray(full.hints) ? [...full.hints] : [],
     steps: Array.isArray(full.steps)
       ? full.steps.map((s) => normalizeStepForForm(s))
@@ -99,10 +98,8 @@ export default function AdminModuleEditor() {
             html: "",
             css: "",
             javascript: "",
-            jsx: "",
             serverJs: "",
           },
-          objectives: [],
           hints: [],
           steps: [],
         };
@@ -175,7 +172,6 @@ export default function AdminModuleEditor() {
     const category = form.category;
     const moduleType = "vanilla";
     const sc = { ...(form.starterCode || {}) };
-    sc.jsx = "";
     if (!isMultiplayerCategory(category)) sc.serverJs = "";
     const wantedOrder = Math.max(0, Math.floor(Number(form.order)) || 0);
     const order = resolveUniqueOrder(wantedOrder, form.id, modulesList);
@@ -216,12 +212,8 @@ export default function AdminModuleEditor() {
         html: sc.html ?? "",
         css: sc.css ?? "",
         javascript: sc.javascript ?? "",
-        jsx: sc.jsx ?? "",
         serverJs: sc.serverJs ?? "",
       },
-      objectives: (Array.isArray(form.objectives) ? form.objectives : [])
-        .map((o) => String(o).trim())
-        .filter(Boolean),
       hints: (Array.isArray(form.hints) ? form.hints : [])
         .map((h) => String(h).trim())
         .filter(Boolean),
@@ -314,20 +306,18 @@ export default function AdminModuleEditor() {
           .filter((s) => s.title?.trim())
           .map((s) => ({ title: s.title, instruction: s.instruction || "" })),
       });
-      const { objectives, hints, starterCode } = res.data || {};
+      const { hints, starterCode } = res.data || {};
       setForm((p) => {
         const next = { ...p };
-        if (objectives?.length) next.objectives = objectives;
         if (hints?.length) next.hints = hints;
         if (starterCode && typeof starterCode === "object") {
-          const merged = { ...(p.starterCode || {}), ...starterCode, jsx: "" };
+          const merged = { ...(p.starterCode || {}), ...starterCode };
           if (!isMultiplayerCategory(p.category)) merged.serverJs = "";
           next.starterCode = merged;
         }
         return next;
       });
       const done = [];
-      if (objectives?.length) done.push("objectives");
       if (hints?.length) done.push("hints");
       if (starterCode && typeof starterCode === "object")
         done.push("starter code");
@@ -337,7 +327,7 @@ export default function AdminModuleEditor() {
           : "Nothing new was applied",
       );
     } catch (err) {
-      toast.error(err.response?.data?.message || "AI generation failed");
+      toast.error(err.response?.data?.message || "Generation failed");
     } finally {
       setGeneratingCurriculum(null);
     }
@@ -350,10 +340,10 @@ export default function AdminModuleEditor() {
   const pageTitle = isNew ? "New module" : "Edit module";
 
   return (
-    <div className="min-h-screen bg-neutral-900 text-blue-100 pb-24">
+    <div className="min-h-screen min-w-0 bg-neutral-900 text-blue-100 pb-24">
       <PageHeader title={pageTitle} subtitle="Admin · Modules" />
 
-      <div className="max-w-[1600px] mx-auto px-4 md:px-6 flex flex-col lg:flex-row gap-0 lg:gap-0 min-h-[calc(100vh-8rem)]">
+      <div className="max-w-[1600px] mx-auto min-w-0 px-3 sm:px-4 md:px-6 flex flex-col lg:flex-row gap-0 lg:gap-0 min-h-[calc(100vh-8rem)]">
         <aside className="hidden lg:flex w-52 shrink-0 flex-col border-r border-blue-800/80 bg-blue-950/40 pl-5 pr-4 mr-4">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400 pl-1 pr-2 mb-2">
             Sections
@@ -392,8 +382,7 @@ export default function AdminModuleEditor() {
               </h2>
               <p className="text-[12px] text-blue-400">
                 {(form.steps || []).length} step
-                {(form.steps || []).length === 1 ? "" : "s"} ·{" "}
-                {(form.objectives || []).length} objectives
+                {(form.steps || []).length === 1 ? "" : "s"}
                 {form.id ? ` · id: ${form.id}` : ""}
               </p>
             </div>
@@ -414,11 +403,11 @@ export default function AdminModuleEditor() {
             />
           </div>
 
-          <footer className="shrink-0 sticky bottom-0 left-0 right-0 flex flex-wrap justify-end gap-2 py-4 mt-4 border-t border-blue-800/80 bg-neutral-900/95 backdrop-blur-sm z-10">
+          <footer className="shrink-0 sticky bottom-0 left-0 right-0 flex flex-col-reverse gap-2 py-4 mt-4 border-t border-blue-800/80 bg-neutral-900/95 backdrop-blur-sm z-10 sm:flex-row sm:flex-wrap sm:justify-end">
             <button
               type="button"
               onClick={() => goBack()}
-              className="px-4 py-2 text-[13px] font-semibold text-blue-300 hover:text-blue-50 hover:bg-blue-800 rounded-xl transition-colors"
+              className="w-full px-4 py-2.5 text-[13px] font-semibold text-blue-300 hover:text-blue-50 hover:bg-blue-800 rounded-xl transition-colors sm:w-auto"
             >
               Cancel
             </button>
@@ -426,7 +415,7 @@ export default function AdminModuleEditor() {
               type="button"
               onClick={handleSave}
               disabled={saving || !form.title?.trim()}
-              className="px-5 py-2 bg-blue-500 text-black text-[13px] font-semibold rounded-xl shadow-md shadow-black/25 hover:bg-blue-400 transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
+              className="w-full px-5 py-2.5 bg-blue-500 text-black text-[13px] font-semibold rounded-xl shadow-md shadow-black/25 hover:bg-blue-400 transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none sm:w-auto"
             >
               {saving ? "Saving…" : "Save module"}
             </button>

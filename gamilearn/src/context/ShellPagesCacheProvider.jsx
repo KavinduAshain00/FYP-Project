@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { ShellPagesCacheContext } from "./shellPagesCacheContext";
+import { ShellPagesCacheContext } from "../utils/shellPagesCacheContext";
 
 const SHELL_PATHS = ["/dashboard", "/modules", "/profile", "/admin"];
 

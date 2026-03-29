@@ -22,8 +22,6 @@ const moduleSchema = new mongoose.Schema(
         "game-development",
         "multiplayer",
         "advanced-concepts",
-        "react-fundamentals",
-        "react-game-dev",
       ],
       required: true,
     },
@@ -51,11 +49,6 @@ const moduleSchema = new mongoose.Schema(
         default:
           '// Start coding your game here!\nconsole.log("Game started");',
       },
-      // Support for React-based modules
-      jsx: {
-        type: String,
-        default: "",
-      },
       // Support for multiplayer server code (Node.js / Socket.IO)
       serverJs: {
         type: String,
@@ -68,12 +61,7 @@ const moduleSchema = new mongoose.Schema(
       enum: ["vanilla", "react"],
       default: "vanilla",
     },
-    objectives: [
-      {
-        type: String,
-      },
-    ],
-    // Optional: 4-5 small granular steps per module (title, instruction, concept for MCQ)
+    // 4–6 granular steps per module (title, instruction, concept for MCQ)
     // verifyType: 'code' (default) | 'checkConsole' | 'checkComments' for non-coding steps
     steps: [
       {

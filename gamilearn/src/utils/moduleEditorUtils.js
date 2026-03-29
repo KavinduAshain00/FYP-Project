@@ -10,7 +10,7 @@ export const DIFFICULTIES = ["beginner", "intermediate", "advanced"];
 export const MODULE_FORM_TABS = [
   { id: "details", label: "Details" },
   { id: "steps", label: "Steps" },
-  { id: "objectives", label: "Objectives & hints" },
+  { id: "hints", label: "Hints" },
   { id: "code", label: "Starter code" },
 ];
 
@@ -24,13 +24,11 @@ export function isMultiplayerCategory(category) {
   return category === "multiplayer";
 }
 
-/** Legacy DB categories still appear in the dropdown once. */
-export function moduleCategorySelectOptions(currentCategory) {
-  const cur = currentCategory && String(currentCategory).trim();
-  if (cur && !MODULE_CATEGORIES.includes(cur)) {
-    return [cur, ...MODULE_CATEGORIES];
-  }
-  return [...MODULE_CATEGORIES];
+/** Coerce stored category to a known value when loading from the API. */
+export function normalizeModuleCategory(category) {
+  const c = category && String(category).trim();
+  if (c && MODULE_CATEGORIES.includes(c)) return c;
+  return MODULE_CATEGORIES[0];
 }
 
 export function suggestNextOrder(modulesList, excludeModuleId = null) {
@@ -98,14 +96,12 @@ export function moduleFormComparable(m) {
     order: String(m.order ?? ""),
     content: m.content ?? "",
     moduleType: "vanilla",
-    objectives: m.objectives || [],
     hints: m.hints || [],
     steps: m.steps || [],
     starterCode: {
       html: sc.html ?? "",
       css: sc.css ?? "",
       javascript: sc.javascript ?? "",
-      jsx: "",
       serverJs: sc.serverJs ?? "",
     },
   };

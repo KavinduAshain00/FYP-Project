@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { FaTrophy } from "react-icons/fa";
+import { getXpBarProps } from "../../utils/levelFromApi";
 import { ParticleBackground, XPBar, GameAvatar } from "../ui/GameUI";
 const contentEase = [0.25, 0.1, 0.25, 1];
 
@@ -8,13 +9,16 @@ const contentEase = [0.25, 0.1, 0.25, 1];
  */
 export const GameSidebar = ({
   user,
+  levelInfo: levelInfoProp,
   stats = {},
   showXPBar = true,
   showAchievements = false,
   achievements = [],
 }) => {
-  const totalPoints = user?.totalPoints || 0;
-  const level = user?.level || 1;
+  const levelInfo = levelInfoProp ?? user?.levelInfo;
+  const xpBar = getXpBarProps(levelInfo);
+  const totalPoints = levelInfo?.totalPoints ?? user?.totalPoints ?? 0;
+  const level = levelInfo?.level ?? user?.level ?? 1;
 
   return (
     <motion.aside
@@ -42,8 +46,8 @@ export const GameSidebar = ({
         {showXPBar && (
           <div className="mt-4">
             <XPBar
-              current={totalPoints % 200}
-              max={200}
+              current={xpBar.current}
+              max={xpBar.max}
               label={`XP to Lv.${level + 1}`}
               variant="xp"
               size="sm"

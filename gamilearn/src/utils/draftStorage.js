@@ -1,13 +1,24 @@
 /**
- * IndexedDB draft storage: auto-save module steps before user saves to system storage.
- * Used by Code Editor (module steps, code).
+ * IndexedDB draft storage: auto-save module steps + code per signed-in user.
  */
 
 const DB_NAME = "GamiLearnDrafts";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_EDITOR = "code-editor";
 
 let dbPromise = null;
+
+export function editorDraftKey(userId, moduleId) {
+  const u =
+    userId != null && String(userId).trim()
+      ? String(userId).trim()
+      : "anonymous";
+  const m =
+    moduleId != null && String(moduleId).trim()
+      ? String(moduleId).trim()
+      : "";
+  return `${u}::${m}`;
+}
 
 function openDB() {
   if (dbPromise) return dbPromise;
@@ -17,8 +28,12 @@ function openDB() {
     req.onsuccess = () => resolve(req.result);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
+      const { oldVersion } = e;
+      if (oldVersion < 2 && db.objectStoreNames.contains(STORE_EDITOR)) {
+        db.deleteObjectStore(STORE_EDITOR);
+      }
       if (!db.objectStoreNames.contains(STORE_EDITOR)) {
-        db.createObjectStore(STORE_EDITOR, { keyPath: "moduleId" });
+        db.createObjectStore(STORE_EDITOR, { keyPath: "draftKey" });
       }
     };
   });
@@ -27,24 +42,28 @@ function openDB() {
 
 /**
  * Save code editor draft (module steps, code).
+ * @param {string} userId - account id (required for per-user isolation)
  * @param {string} moduleId
- * @param {object} data - { stepsVerified, currentStepIndex, code: { html, css, javascript, jsx } }
+ * @param {object} data - { stepsVerified, currentStepIndex, code: { html, css, javascript, serverJs } }
  */
-export async function saveEditorDraft(moduleId, data) {
+export async function saveEditorDraft(userId, moduleId, data) {
   if (!moduleId) return;
+  const draftKey = editorDraftKey(userId, moduleId);
   try {
     const db = await openDB();
-    const tx = db.transaction(STORE_EDITOR, "readwrite");
-    const store = tx.objectStore(STORE_EDITOR);
     const payload = {
-      moduleId,
+      draftKey,
+      moduleId: String(moduleId).trim(),
+      userId: userId != null ? String(userId).trim() : "",
       ...data,
       timestamp: Date.now(),
     };
-    store.put(payload);
-    return new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_EDITOR, "readwrite");
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error("aborted"));
+      tx.objectStore(STORE_EDITOR).put(payload);
     });
   } catch (e) {
     console.warn("Editor draft save failed:", e);
@@ -53,17 +72,19 @@ export async function saveEditorDraft(moduleId, data) {
 
 /**
  * Load code editor draft.
+ * @param {string} userId
  * @param {string} moduleId
  * @returns {Promise<object|null>}
  */
-export async function loadEditorDraft(moduleId) {
+export async function loadEditorDraft(userId, moduleId) {
   if (!moduleId) return null;
+  const draftKey = editorDraftKey(userId, moduleId);
   try {
     const db = await openDB();
     const tx = db.transaction(STORE_EDITOR, "readonly");
     const store = tx.objectStore(STORE_EDITOR);
     return new Promise((resolve, reject) => {
-      const req = store.get(moduleId);
+      const req = store.get(draftKey);
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
     });
@@ -73,15 +94,17 @@ export async function loadEditorDraft(moduleId) {
   }
 }
 
-export async function clearEditorDraft(moduleId) {
+export async function clearEditorDraft(userId, moduleId) {
   if (!moduleId) return;
+  const draftKey = editorDraftKey(userId, moduleId);
   try {
     const db = await openDB();
-    const tx = db.transaction(STORE_EDITOR, "readwrite");
-    tx.objectStore(STORE_EDITOR).delete(moduleId);
-    return new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_EDITOR, "readwrite");
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error("aborted"));
+      tx.objectStore(STORE_EDITOR).delete(draftKey);
     });
   } catch (e) {
     console.warn("Editor draft clear failed:", e);
@@ -89,10 +112,14 @@ export async function clearEditorDraft(moduleId) {
 }
 
 /**
- * Returns the most recently saved module id from editor drafts.
+ * Most recently saved module id for this user (from editor drafts).
+ * @param {string} userId
  * @returns {Promise<string|null>}
  */
-export async function getLastWorkedEditorModuleId() {
+export async function getLastWorkedEditorModuleId(userId) {
+  const uid = userId != null && String(userId).trim() ? String(userId).trim() : "";
+  if (!uid) return null;
+  const prefix = `${uid}::`;
   try {
     const db = await openDB();
     const tx = db.transaction(STORE_EDITOR, "readonly");
@@ -101,9 +128,11 @@ export async function getLastWorkedEditorModuleId() {
       const req = store.getAll();
       req.onsuccess = () => {
         const rows = Array.isArray(req.result) ? req.result : [];
-        if (!rows.length) return resolve(null);
-        const latest = rows.reduce((acc, row) => {
-          if (!row || !row.moduleId) return acc;
+        const mine = rows.filter(
+          (row) => row && row.draftKey && String(row.draftKey).startsWith(prefix),
+        );
+        if (!mine.length) return resolve(null);
+        const latest = mine.reduce((acc, row) => {
           if (!acc) return row;
           return (row.timestamp || 0) > (acc.timestamp || 0) ? row : acc;
         }, null);

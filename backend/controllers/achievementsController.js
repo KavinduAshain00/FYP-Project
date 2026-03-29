@@ -1,7 +1,7 @@
 const Achievement = require('../models/Achievement');
 const User = require('../models/User');
 const achievementService = require('../services/achievementService');
-const { XP_PER_LEVEL } = require('../constants/levelRanks');
+const lessonXpService = require('../services/lessonXpService');
 const crypto = require('crypto');
 
 async function getAll(req, res) {
@@ -58,7 +58,7 @@ async function earn(req, res) {
     if (!user.earnedAchievements.includes(achievementId)) {
       user.earnedAchievements.push(achievementId);
       user.totalPoints = (user.totalPoints || 0) + achievement.points;
-      user.level = Math.max(1, Math.floor((user.totalPoints || 0) / XP_PER_LEVEL) + 1);
+      lessonXpService.syncStoredLevelFromPoints(user);
       await user.save();
       console.log('[Achievements] earn success', {
         userId,
@@ -67,6 +67,7 @@ async function earn(req, res) {
       });
       const delta = {
         earnedAchievementsAdd: [achievementId],
+        levelInfo: lessonXpService.getLevelInfo(user.totalPoints || 0),
       };
       if ((user.totalPoints || 0) !== before.totalPoints) delta.totalPoints = user.totalPoints || 0;
       if ((user.level || 1) !== before.level) delta.level = user.level || 1;
@@ -124,9 +125,12 @@ async function check(req, res) {
         ids: newlyEarned.map((a) => a?.id),
       });
     }
+    const tp = user.totalPoints || 0;
     return res.json({
       newlyEarned,
-      totalPoints: user.totalPoints || 0,
+      totalPoints: tp,
+      level: user.level || lessonXpService.computeLevelFromTotalPoints(tp),
+      levelInfo: lessonXpService.getLevelInfo(tp),
       earnedCount: user.earnedAchievements.length,
     });
   } catch (error) {

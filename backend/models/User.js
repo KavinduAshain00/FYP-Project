@@ -48,11 +48,37 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Module",
     },
+    /** Per-module step progress in the code editor (scoped to this user in DB). */
+    moduleStepProgress: [
+      {
+        moduleId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Module",
+        },
+        stepsVerified: {
+          type: [Boolean],
+          default: [],
+        },
+        currentStepIndex: {
+          type: Number,
+          default: 0,
+        },
+        updatedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     earnedAchievements: [
       {
         type: Number,
       },
     ],
+    /** Dedup keys for lesson XP: ":step:n" / ":mcq:step:q" per moduleId prefix */
+    lessonXpKeys: {
+      type: [String],
+      default: [],
+    },
     totalPoints: {
       type: Number,
       default: 0,
@@ -78,7 +104,7 @@ const userSchema = new mongoose.Schema(
       aiExplainCodeUses: { type: Number, default: 0 },
       aiExplainErrorUses: { type: Number, default: 0 },
     },
-    // UC8: Personalize AI Guide – tone, hint detail, assistance frequency
+    // Tutor/companion preferences: tone, hint detail, assistance frequency
     aiPreferences: {
       tone: {
         type: String,
@@ -101,6 +127,23 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+userSchema.set('toJSON', {
+  transform(_doc, ret) {
+    delete ret.password;
+    delete ret.lessonXpKeys;
+    delete ret.moduleStepProgress;
+    return ret;
+  },
+});
+userSchema.set('toObject', {
+  transform(_doc, ret) {
+    delete ret.password;
+    delete ret.lessonXpKeys;
+    delete ret.moduleStepProgress;
+    return ret;
+  },
+});
 
 // Hash password before saving
 // Use async pre-save middleware without next() when returning a promise

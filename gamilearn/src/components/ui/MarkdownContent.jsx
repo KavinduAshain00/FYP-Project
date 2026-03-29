@@ -3,15 +3,15 @@ import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 
 /**
- * Preprocess markdown to fix common AI output issues:
- * - Strip wrapping ```markdown or ``` (AI often wraps output in code fences)
- * - Stray backticks/quotes on their own lines
- * - Single-word fenced code blocks → convert to inline
+ * Preprocess markdown before render:
+ * - Strip outer ```markdown / ``` fences when present
+ * - Remove stray single-line backtick/quote-only lines
+ * - Turn single-line fenced blocks into inline code
  */
 function preprocessMarkdown(text) {
   if (!text || typeof text !== "string") return text;
   let out = text.trim();
-  // Strip wrapping code fences (AI often returns ```markdown\n...\n```)
+  // Strip wrapping ```markdown ... ``` or ``` ... ``` wrapper
   if (out.startsWith("```")) {
     const end = out.indexOf("\n```", 3);
     if (end !== -1) out = out.slice(out.indexOf("\n") + 1, end).trim();

@@ -1,10 +1,9 @@
 /**
- * AI (GitHub Models) configuration constants.
- * Defaults are in code; override via env if needed:
- *   GITHUB_MODELS_MODEL, GITHUB_MCQ_MODEL, GITHUB_GENERAL_MODEL
+ * GitHub Models configuration (model IDs).
+ * Override via env: GITHUB_MODELS_MODEL, GITHUB_MCQ_MODEL, GITHUB_GENERAL_MODEL
  */
 
-/** Main model for hints, tutor, code summary, code/error explanation */
+/** Primary model: hints, tutor, summaries, code/error explanation */
 const AI_MODEL = "openai/gpt-4.1";
 /** Model used for MCQ generation and verification */
 const AI_MCQ_MODEL = "meta/Llama-4-Maverick-17B-128E-Instruct-FP8";

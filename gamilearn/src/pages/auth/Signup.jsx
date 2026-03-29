@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import {
   FaArrowLeft,
   FaArrowRight,
@@ -14,8 +14,8 @@ import {
   FaLock,
   FaGamepad,
 } from "react-icons/fa";
-import { GameLayout } from "../components/layout/GameLayout";
-import { getNetworkErrorMessage } from "../api/api";
+import { GameLayout } from "../../components/layout/GameLayout";
+import { authAPI, getNetworkErrorMessage } from "../../api/api";
 
 const ease = [0.25, 0.1, 0.25, 1];
 
@@ -37,7 +37,7 @@ const Signup = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleInitialSubmit = (e) => {
+  const handleInitialSubmit = async (e) => {
     e.preventDefault();
     setError("");
     if (formData.password !== formData.confirmPassword) {
@@ -48,7 +48,25 @@ const Signup = () => {
       setError("Password must be at least 6 characters");
       return;
     }
-    setStep(2);
+    const email = formData.email.trim();
+    if (!email) {
+      setError("Please enter your email");
+      return;
+    }
+    setLoading(true);
+    try {
+      await authAPI.signupPrecheck({ email, password: formData.password });
+      setStep(2);
+    } catch (err) {
+      setError(
+        getNetworkErrorMessage(
+          err,
+          "Could not verify your details. Please try again.",
+        ),
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleJSAnswer = async (answer) => {
@@ -88,7 +106,7 @@ const Signup = () => {
     "w-full rounded-2xl bg-blue-800 pl-12 pr-4 py-3.5 text-blue-50 placeholder-blue-300 outline-none focus:outline focus:outline-2 focus:outline-blue-400/60 text-sm";
 
   const stepIndicator = (
-    <div className="flex items-center gap-3 mb-8">
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-8">
       <div
         className={`flex items-center justify-center w-10 h-10 rounded-xl text-sm font-bold ${
           step === 1
@@ -119,12 +137,12 @@ const Signup = () => {
   if (step === 2) {
     return (
       <GameLayout showNavbar={false} showParticles={false}>
-        <div className="min-h-screen flex flex-col lg:flex-row bg-neutral-900">
+        <div className="min-h-screen min-w-0 flex flex-col lg:flex-row bg-neutral-900">
           <motion.aside
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, ease }}
-            className="lg:w-[38%] flex flex-col justify-center p-8 sm:p-12 bg-blue-900 relative overflow-hidden"
+            className="w-full shrink-0 lg:w-[38%] flex flex-col justify-center p-6 sm:p-10 lg:p-12 bg-blue-900 relative overflow-hidden"
           >
             <div className="relative z-10 flex items-center gap-3 mb-6">
               <span className="w-11 h-11 rounded-xl bg-blue-800 flex items-center justify-center text-blue-50">
@@ -137,9 +155,9 @@ const Signup = () => {
               everything later from the modules page.
             </p>
           </motion.aside>
-          <div className="flex-1 flex items-center justify-center p-6 sm:p-10 lg:p-16">
+          <div className="flex-1 flex min-w-0 items-center justify-center p-5 sm:p-10 lg:p-16">
             <motion.div
-              className="w-full max-w-lg"
+              className="w-full min-w-0 max-w-lg"
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.42, delay: 0.05, ease }}
@@ -227,12 +245,12 @@ const Signup = () => {
 
   return (
     <GameLayout showNavbar={false} showParticles={false}>
-      <div className="min-h-screen flex flex-col lg:flex-row bg-neutral-900">
+      <div className="min-h-screen min-w-0 flex flex-col lg:flex-row bg-neutral-900">
         <motion.aside
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.45, ease }}
-          className="lg:w-[44%] xl:w-[40%] flex flex-col justify-between p-8 sm:p-12 lg:p-14 bg-blue-900 relative overflow-hidden"
+          className="w-full shrink-0 lg:w-[44%] xl:w-[40%] flex flex-col justify-between p-6 sm:p-10 lg:p-14 bg-blue-900 relative overflow-hidden"
         >
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-10">
@@ -261,9 +279,9 @@ const Signup = () => {
           </p>
         </motion.aside>
 
-        <div className="flex-1 flex items-center justify-center p-6 sm:p-10 lg:p-16">
+        <div className="flex-1 flex min-w-0 items-center justify-center p-5 sm:p-10 lg:p-16">
           <motion.div
-            className="w-full max-w-md"
+            className="w-full min-w-0 max-w-md"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.06, ease }}
@@ -359,9 +377,19 @@ const Signup = () => {
               </div>
               <button
                 type="submit"
+                disabled={loading}
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-blue-500 text-black font-semibold text-sm shadow-md shadow-black/30 hover:bg-blue-400 active:scale-[0.99] transition-all disabled:opacity-45 disabled:saturate-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
-                Continue <FaArrowRight className="text-xs" />
+                {loading ? (
+                  <>
+                    <span className="w-4 h-4 rounded-full border-2 border-blue-950 border-t-transparent animate-spin" />
+                    Checking…
+                  </>
+                ) : (
+                  <>
+                    Continue <FaArrowRight className="text-xs" />
+                  </>
+                )}
               </button>
             </form>
 

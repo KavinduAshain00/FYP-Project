@@ -3,8 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FaEnvelope, FaGamepad, FaArrowLeft } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { GameLayout } from "../components/layout/GameLayout";
-import { authAPI } from "../api/api";
+import { GameLayout } from "../../components/layout/GameLayout";
+import { authAPI } from "../../api/api";
 
 const ease = [0.25, 0.1, 0.25, 1];
 
@@ -48,12 +48,12 @@ const ForgotPassword = () => {
 
   return (
     <GameLayout showNavbar={false} showParticles={false}>
-      <div className="min-h-screen flex flex-col lg:flex-row bg-neutral-900">
+      <div className="min-h-screen min-w-0 flex flex-col lg:flex-row bg-neutral-900">
         <motion.aside
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.42, ease }}
-          className="lg:w-[40%] flex flex-col justify-center p-8 sm:p-12 bg-blue-900 relative overflow-hidden"
+          className="w-full shrink-0 lg:w-[40%] flex flex-col justify-center p-6 sm:p-10 lg:p-12 bg-blue-900 relative overflow-hidden"
         >
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-6">
@@ -71,9 +71,9 @@ const ForgotPassword = () => {
           </div>
         </motion.aside>
 
-        <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
+        <div className="flex-1 flex min-w-0 items-center justify-center p-5 sm:p-10">
           <motion.div
-            className="w-full max-w-md rounded-3xl bg-blue-900 p-8 shadow-2xl shadow-black/40"
+            className="w-full min-w-0 max-w-md rounded-3xl bg-blue-900 p-6 sm:p-8 shadow-2xl shadow-black/40"
             initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.06, ease }}

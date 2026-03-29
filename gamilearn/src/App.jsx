@@ -13,16 +13,16 @@ import { AnimatePresence } from "framer-motion";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PageTransition from "./components/PageTransition";
 import AppShellLayout from "./components/layout/AppShellLayout";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
+import Login from "./pages/auth/Login";
+import Signup from "./pages/auth/Signup";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Modules from "./pages/Modules";
 import CodeEditor from "./pages/CodeEditor";
 import Profile from "./pages/Profile";
-import Admin from "./pages/Admin";
-import AdminModuleEditor from "./pages/AdminModuleEditor";
+import Admin from "./pages/admin/Admin";
+import AdminModuleEditor from "./pages/admin/AdminModuleEditor";
 
 function PublicLayout() {
   const location = useLocation();

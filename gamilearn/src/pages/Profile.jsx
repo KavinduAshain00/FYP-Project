@@ -14,16 +14,13 @@ import {
   FaLink,
   FaTrophy,
   FaUser,
+  FaUserCircle,
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
-import { useShellPagesCache } from "../context/shellPagesCacheContext";
+import { useShellPagesCache } from "../utils/shellPagesCacheContext";
 import { achievementsAPI, userAPI } from "../api/api";
 import LoadingScreen from "../components/ui/LoadingScreen";
-
-const buildPromptUrl = (prompt) =>
-  `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=768&height=768&seed=42&nologo=true`;
-
-const defaultAvatarPrompt = "Stylized hero portrait, simple avatar";
+import { getXpBarProps } from "../utils/levelFromApi";
 
 const groupAvatarsByUnlock = (avatars) => {
   const default_ = avatars.filter((a) => a.unlockType === "default");
@@ -148,10 +145,11 @@ const Profile = () => {
   };
 
   const levelInfo = profile?.levelInfo || user?.levelInfo || null;
+  const xpBar = getXpBarProps(levelInfo);
   const totalPoints =
     levelInfo?.totalPoints ?? profile?.totalPoints ?? user?.totalPoints ?? 0;
   const level = levelInfo?.level ?? profile?.level ?? user?.level ?? 1;
-  const xpToNext = levelInfo?.xpProgress?.xpToNext ?? 200;
+  const xpToNext = xpBar.xpToNext;
   const earnedAchievements = achievements.filter((item) => item.earned).length;
   const completedModules = profile?.completedModules?.length || 0;
   const avatarGroups = groupAvatarsByUnlock(avatars);
@@ -169,7 +167,7 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+      <div className="mx-auto max-w-5xl min-w-0 px-4 py-10 sm:px-6">
         <LoadingScreen
           message="Loading your profile"
           subMessage="Getting your account, badges, and avatar options"
@@ -231,11 +229,10 @@ const Profile = () => {
     },
   ];
 
-  const xpPct =
-    levelInfo?.xpProgress?.percentage ?? ((totalPoints % 200) / 200) * 100;
+  const xpPct = xpBar.percentage;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 pb-20 text-blue-50 sm:px-6 sm:py-10">
+    <div className="mx-auto max-w-5xl min-w-0 px-4 py-8 pb-20 text-blue-50 sm:px-6 sm:py-10">
       <header className="mb-8">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-400">
           Account
@@ -254,15 +251,20 @@ const Profile = () => {
           <div className="flex flex-col gap-8 md:flex-row md:items-start md:gap-10">
             <div className="relative mx-auto shrink-0 md:mx-0">
               <div className="rounded-3xl bg-blue-950/40 p-1.5 shadow-inner shadow-blue-950/50">
-                <img
-                  src={
-                    avatarUrl.trim()
-                      ? avatarUrl
-                      : buildPromptUrl(defaultAvatarPrompt)
-                  }
-                  alt=""
-                  className="h-32 w-32 rounded-2xl object-cover shadow-lg shadow-blue-950/40 sm:h-36 sm:w-36"
-                />
+                {avatarUrl.trim() ? (
+                  <img
+                    src={avatarUrl.trim()}
+                    alt={`${name || user?.name || "Your"} profile photo`}
+                    className="h-32 w-32 rounded-2xl object-cover object-center shadow-lg shadow-blue-950/40 sm:h-36 sm:w-36"
+                  />
+                ) : (
+                  <div
+                    className="flex h-32 w-32 items-center justify-center rounded-full bg-blue-600 shadow-lg shadow-blue-950/40 sm:h-36 sm:w-36"
+                    aria-hidden
+                  >
+                    <FaUserCircle className="-mb-1 text-[4.75rem] text-blue-100/90 sm:text-[5.5rem]" />
+                  </div>
+                )}
               </div>
               <span className="absolute -bottom-1 -right-1 rounded-xl bg-amber-500 px-2.5 py-1 text-xs font-bold text-blue-950 shadow-md shadow-black/20">
                 Lv {level}
@@ -281,7 +283,7 @@ const Profile = () => {
               <h2 className="text-2xl font-bold text-blue-50 sm:text-3xl">
                 {name || user?.name}
               </h2>
-              <p className="mt-1 truncate text-sm text-blue-300">
+              <p className="mt-1 break-all text-sm text-blue-300 sm:break-words md:truncate">
                 {user?.email}
               </p>
               <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-2 rounded-2xl bg-blue-950/35 px-4 py-2.5 text-sm md:justify-start">
@@ -323,13 +325,13 @@ const Profile = () => {
             </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-8 grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
             {statTiles.map((s) => {
               const Icon = s.icon;
               return (
                 <div
                   key={s.label}
-                  className="rounded-2xl bg-blue-950/40 px-4 py-3 shadow-md shadow-blue-950/25"
+                  className="rounded-2xl bg-blue-950/40 px-3 py-2.5 shadow-md shadow-blue-950/25 sm:px-4 sm:py-3"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">
@@ -340,7 +342,7 @@ const Profile = () => {
                       aria-hidden
                     />
                   </div>
-                  <p className="mt-1 text-xl font-bold tabular-nums text-blue-50 sm:text-2xl">
+                  <p className="mt-1 text-lg font-bold tabular-nums text-blue-50 sm:text-xl md:text-2xl">
                     {s.value}
                   </p>
                 </div>
@@ -350,7 +352,7 @@ const Profile = () => {
         </div>
       </section>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+      <div className="mt-8 grid gap-6 min-w-0 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <section className="rounded-3xl bg-blue-900/80 p-6 shadow-xl shadow-blue-950/25 sm:p-7">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

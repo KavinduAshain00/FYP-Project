@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import { FaEnvelope, FaLock, FaGamepad, FaArrowRight } from "react-icons/fa";
-import { GameLayout } from "../components/layout/GameLayout";
-import { getNetworkErrorMessage } from "../api/api";
+import { GameLayout } from "../../components/layout/GameLayout";
+import { getNetworkErrorMessage } from "../../api/api";
 
 const ease = [0.25, 0.1, 0.25, 1];
 
@@ -56,12 +56,12 @@ const Login = () => {
 
   return (
     <GameLayout showNavbar={false} showParticles={true}>
-      <div className="min-h-screen flex flex-col lg:flex-row bg-neutral-900">
+      <div className="min-h-screen min-w-0 flex flex-col lg:flex-row bg-neutral-900">
         <motion.aside
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.45, ease }}
-          className="lg:w-[44%] xl:w-[40%] flex flex-col justify-between p-8 sm:p-12 lg:p-14 bg-blue-900 relative overflow-hidden"
+          className="w-full shrink-0 lg:w-[44%] xl:w-[40%] flex flex-col justify-between p-6 sm:p-10 lg:p-14 bg-blue-900 relative overflow-hidden"
         >
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.12]"
@@ -109,9 +109,9 @@ const Login = () => {
           </p>
         </motion.aside>
 
-        <div className="flex-1 flex items-center justify-center p-6 sm:p-10 lg:p-16">
+        <div className="flex-1 flex min-w-0 items-center justify-center p-5 sm:p-10 lg:p-16">
           <motion.div
-            className="w-full max-w-md"
+            className="w-full min-w-0 max-w-md"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.06, ease }}

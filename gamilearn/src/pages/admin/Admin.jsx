@@ -21,13 +21,13 @@ import {
   FaUserMinus,
   FaAward,
 } from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
-import { useShellPagesCache } from "../context/shellPagesCacheContext";
-import { adminAPI, modulesAPI, achievementsAPI } from "../api/api";
-import { PageHeader } from "../components/layout/GameLayout";
-import ConfirmModal from "../components/ui/ConfirmModal";
-import LoadingScreen from "../components/ui/LoadingScreen";
-import { MODULE_CATEGORIES, DIFFICULTIES } from "./admin/moduleEditorUtils";
+import { useAuth } from "../../context/AuthContext";
+import { useShellPagesCache } from "../../utils/shellPagesCacheContext";
+import { adminAPI, modulesAPI, achievementsAPI } from "../../api/api";
+import { PageHeader } from "../../components/layout/GameLayout";
+import ConfirmModal from "../../components/ui/ConfirmModal";
+import LoadingScreen from "../../components/ui/LoadingScreen";
+import { MODULE_CATEGORIES, DIFFICULTIES } from "../../utils/moduleEditorUtils";
 
 const LEARNING_PATHS = ["none", "javascript-basics", "advanced"];
 
@@ -212,8 +212,7 @@ const Admin = () => {
     load();
   }, []);
 
-  // loadUsers intentionally depends on multiple pieces of component state, so it is not stable.
-  // We keep the effect dependency list focused on those inputs and suppress the lint warning here.
+  // loadUsers is recreated when its inputs change; deps intentionally exclude it (see eslint-disable below).
   useEffect(() => {
     if (skipUsersFetchOnce.current) {
       skipUsersFetchOnce.current = false;
@@ -529,12 +528,12 @@ const Admin = () => {
         badge="Admin"
       />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 text-blue-50">
+      <div className="max-w-6xl mx-auto min-w-0 px-4 sm:px-6 py-6 text-blue-50">
         <p className="text-sm text-blue-300 mb-3">
           Pick a tab to work in. Search and filters stay where you left them
           while you move between these pages.
         </p>
-        <div className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-blue-900 shadow-lg shadow-black/30 mb-8 max-w-3xl">
+        <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-blue-900 shadow-lg shadow-black/30 mb-8 sm:flex sm:flex-wrap sm:max-w-3xl">
           {[
             { id: "overview", label: "Overview", icon: FaChartBar },
             { id: "users", label: "Users", icon: FaUsers },
@@ -545,7 +544,7 @@ const Admin = () => {
               key={id}
               type="button"
               onClick={() => setTab(id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
+              className={`flex w-full items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-colors sm:w-auto sm:justify-start sm:px-4 ${
                 tab === id
                   ? "bg-blue-500 text-black shadow-md shadow-black/25"
                   : "text-blue-200 hover:text-blue-50 hover:bg-blue-800"
@@ -565,7 +564,7 @@ const Admin = () => {
           />
         ) : tab === "overview" ? (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <div className="bg-blue-900 rounded-2xl p-6 shadow-lg shadow-black/30">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="p-2 rounded-xl bg-blue-700 text-blue-200">
@@ -658,11 +657,13 @@ const Admin = () => {
                     {overviewStats.recentSignups.map((u) => (
                       <li
                         key={u._id || u.id || u.email}
-                        className="flex items-center justify-between text-[13px]"
+                        className="flex flex-col gap-1 border-b border-blue-800/50 pb-2 text-[13px] last:border-0 last:pb-0 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:border-0 sm:pb-0"
                       >
-                        <span className="text-blue-50">{u.name}</span>
-                        <span className="text-blue-300">{u.email}</span>
-                        <span className="text-blue-300 text-[12px]">
+                        <span className="font-medium text-blue-50">{u.name}</span>
+                        <span className="min-w-0 break-all text-blue-300 sm:max-w-[12rem] sm:truncate md:max-w-none">
+                          {u.email}
+                        </span>
+                        <span className="shrink-0 text-blue-300 text-[12px] tabular-nums">
                           {u.createdAt
                             ? new Date(u.createdAt).toLocaleDateString()
                             : ""}
@@ -676,9 +677,9 @@ const Admin = () => {
           </div>
         ) : tab === "users" ? (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative flex-1 min-w-[200px] max-w-xs">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-1 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="relative w-full min-w-0 sm:max-w-xs sm:flex-1">
                   <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                   <input
                     type="text"
@@ -697,7 +698,7 @@ const Admin = () => {
                     setUserFilterPath(e.target.value);
                     setUserPage(1);
                   }}
-                  className="px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
+                  className="w-full min-w-0 px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50 sm:w-auto"
                 >
                   <option value="">All paths</option>
                   {LEARNING_PATHS.map((path) => (
@@ -712,7 +713,7 @@ const Admin = () => {
                     setUserPageSize(Number(e.target.value));
                     setUserPage(1);
                   }}
-                  className="px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
+                  className="w-full min-w-0 px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50 sm:w-auto"
                 >
                   <option value={10}>10 per page</option>
                   <option value={25}>25 per page</option>
@@ -721,14 +722,14 @@ const Admin = () => {
               </div>
               <button
                 onClick={exportUsersCSV}
-                className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors"
+                className="flex w-full items-center justify-center gap-2 px-4 py-2.5 bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors sm:w-auto"
               >
                 <FaFileExport /> Export CSV
               </button>
             </div>
             <div className="bg-blue-900 overflow-hidden rounded-2xl shadow-xl shadow-black/35">
-              <div className="overflow-x-auto">
-                <table className="w-full text-[13px]">
+              <div className="overflow-x-auto -mx-px">
+                <table className="w-full min-w-[52rem] text-[13px]">
                   <thead>
                     <tr className="bg-blue-900">
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
@@ -906,21 +907,21 @@ const Admin = () => {
               </div>
             </div>
             {totalUserPages > 1 && (
-              <div className="flex items-center justify-between">
-                <p className="text-blue-300 text-[13px]">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-center text-blue-300 text-[13px] sm:text-left">
                   Showing {(userPage - 1) * userPageSize + 1}–
                   {Math.min(userPage * userPageSize, userPagination.total)} of{" "}
                   {userPagination.total}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center justify-center gap-2">
                   <button
                     onClick={() => setUserPage((p) => Math.max(1, p - 1))}
                     disabled={userPage <= 1}
-                    className="px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
+                    className="min-h-[2.75rem] min-w-[6.5rem] px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                   >
                     Previous
                   </button>
-                  <span className="px-3 py-1.5 text-blue-300 text-[13px]">
+                  <span className="px-2 py-1.5 text-blue-300 text-[13px] tabular-nums">
                     Page {userPage} of {totalUserPages}
                   </span>
                   <button
@@ -928,7 +929,7 @@ const Admin = () => {
                       setUserPage((p) => Math.min(totalUserPages, p + 1))
                     }
                     disabled={userPage >= totalUserPages}
-                    className="px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
+                    className="min-h-[2.75rem] min-w-[6.5rem] px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                   >
                     Next
                   </button>
@@ -938,8 +939,8 @@ const Admin = () => {
           </div>
         ) : tab === "achievements" ? (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative flex-1 min-w-[200px] max-w-xs">
+            <div className="w-full min-w-0">
+              <div className="relative w-full">
                 <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                 <input
                   type="text"
@@ -951,8 +952,8 @@ const Admin = () => {
               </div>
             </div>
             <div className="bg-blue-900 overflow-hidden rounded-2xl shadow-xl shadow-black/35">
-              <div className="overflow-x-auto">
-                <table className="w-full text-[13px]">
+              <div className="overflow-x-auto -mx-px">
+                <table className="w-full min-w-[36rem] text-[13px]">
                   <thead>
                     <tr className="bg-blue-900">
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
@@ -1007,9 +1008,9 @@ const Admin = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative flex-1 min-w-[200px] max-w-xs">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-1 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="relative w-full min-w-0 sm:max-w-xs sm:flex-1">
                   <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
                   <input
                     type="text"
@@ -1028,7 +1029,7 @@ const Admin = () => {
                     setModuleFilterCategory(e.target.value);
                     setModulePage(1);
                   }}
-                  className="px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
+                  className="w-full min-w-0 px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50 sm:w-auto"
                 >
                   <option value="">All categories</option>
                   {MODULE_CATEGORIES.map((cat) => (
@@ -1043,7 +1044,7 @@ const Admin = () => {
                     setModuleFilterDifficulty(e.target.value);
                     setModulePage(1);
                   }}
-                  className="px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
+                  className="w-full min-w-0 px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50 sm:w-auto"
                 >
                   <option value="">All difficulties</option>
                   {DIFFICULTIES.map((d) => (
@@ -1056,15 +1057,15 @@ const Admin = () => {
               <button
                 type="button"
                 onClick={() => navigate("/admin/modules/new")}
-                className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors"
+                className="flex w-full items-center justify-center gap-2 px-4 py-2.5 bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors sm:w-auto"
               >
                 <FaPlus />
                 Add module
               </button>
             </div>
             <div className="bg-blue-900 overflow-hidden rounded-2xl shadow-xl shadow-black/35">
-              <div className="overflow-x-auto">
-                <table className="w-full text-[13px]">
+              <div className="overflow-x-auto -mx-px">
+                <table className="w-full min-w-[48rem] text-[13px]">
                   <thead>
                     <tr className="bg-blue-900">
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
@@ -1194,8 +1195,8 @@ const Admin = () => {
                 </table>
               </div>
               {totalModulePages > 1 && (
-                <div className="mt-4 flex items-center justify-between px-4">
-                  <p className="text-blue-300 text-[13px]">
+                <div className="mt-4 flex flex-col gap-3 px-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-center text-blue-300 text-[13px] sm:text-left">
                     Showing {(modulePage - 1) * MODULE_PAGE_SIZE + 1}–
                     {Math.min(
                       modulePage * MODULE_PAGE_SIZE,
@@ -1203,16 +1204,16 @@ const Admin = () => {
                     )}{" "}
                     of {filteredModules.length}
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap items-center justify-center gap-2">
                     <button
                       type="button"
                       onClick={() => setModulePage((p) => Math.max(1, p - 1))}
                       disabled={modulePage <= 1}
-                      className="px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
+                      className="min-h-[2.75rem] min-w-[6.5rem] px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                     >
                       Previous
                     </button>
-                    <span className="px-3 py-1.5 text-blue-300 text-[13px]">
+                    <span className="px-2 py-1.5 text-blue-300 text-[13px] tabular-nums">
                       Page {modulePage} of {totalModulePages}
                     </span>
                     <button
@@ -1221,7 +1222,7 @@ const Admin = () => {
                         setModulePage((p) => Math.min(totalModulePages, p + 1))
                       }
                       disabled={modulePage >= totalModulePages}
-                      className="px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
+                      className="min-h-[2.75rem] min-w-[6.5rem] px-4 py-2 rounded-xl bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 disabled:bg-blue-900 disabled:text-blue-400 disabled:cursor-not-allowed disabled:hover:bg-blue-900"
                     >
                       Next
                     </button>
@@ -1241,7 +1242,7 @@ const Admin = () => {
           role="presentation"
         >
           <div
-            className="bg-blue-900 rounded-3xl w-full max-w-md p-6 shadow-2xl shadow-black/60"
+            className="bg-blue-900 rounded-3xl w-full max-w-md max-h-[min(90dvh,36rem)] overflow-y-auto p-6 shadow-2xl shadow-black/60"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"

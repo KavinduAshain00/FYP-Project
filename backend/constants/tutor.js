@@ -1,5 +1,5 @@
 /**
- * Tutor (AI hints) constants
+ * Tutor / hint fallback strings
  */
 const FALLBACK_HINTS = {
   button: [
@@ -58,7 +58,7 @@ const FALLBACK_HINTS = {
 
 const DEFAULT_FALLBACK_HINTS = [
   "🤔 Try breaking down your problem into smaller steps.",
-  "📖 Re-read the module objectives and hints.",
+  "📖 Re-read the module steps and hints.",
   "🔍 Use console.log() to debug and see what's happening.",
 ];
 

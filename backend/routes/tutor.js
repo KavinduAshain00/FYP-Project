@@ -1,25 +1,20 @@
 const express = require("express");
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
-const { ipKeyGenerator } = require("express-rate-limit");
 const auth = require("../middleware/auth");
 const tutorController = require("../controllers/tutorController");
 const { TUTOR_LIMIT } = require("../constants/rateLimit");
 
-// Rate limit tutor requests
 const tutorLimiter = rateLimit({
-  windowMs: TUTOR_LIMIT.windowMs,
-  max: TUTOR_LIMIT.max,
-  keyGenerator: (req) => req.user?.id || ipKeyGenerator(req),
+  ...TUTOR_LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
-  message: TUTOR_LIMIT.message,
 });
 
 // Post a tutor request
 router.post("/", auth, tutorLimiter, tutorController.postTutor);
 
-// Verify code against current step (AI)
+// Verify code against current step (tutor)
 router.post("/verify", auth, tutorLimiter, tutorController.verifyStep);
 
 // MCQ: generate (qwen3-coder:480b) and verify with explanation if wrong

@@ -8,6 +8,8 @@ const ConfirmModal = ({
   message = "",
   onConfirm,
   onCancel,
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
 }) => {
   return (
     <AnimatePresence>
@@ -57,7 +59,7 @@ const ConfirmModal = ({
                 className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-black hover:bg-blue-600 transition-colors"
                 onClick={onCancel}
               >
-                Cancel
+                {cancelLabel}
               </motion.button>
               <motion.button
                 type="button"
@@ -66,7 +68,7 @@ const ConfirmModal = ({
                 className="rounded-xl bg-blue-400 px-4 py-2.5 text-sm font-semibold text-black hover:bg-blue-300 transition-colors"
                 onClick={onConfirm}
               >
-                Confirm
+                {confirmLabel}
               </motion.button>
             </div>
           </motion.div>

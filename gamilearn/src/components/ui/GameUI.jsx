@@ -326,7 +326,7 @@ export const QuestCard = ({
   progress,
   maxProgress,
   xpReward,
-  objectives,
+  stepCount = 0,
   status = "available", // available, active, completed, locked
   onClick,
   className = "",
@@ -415,7 +415,7 @@ export const QuestCard = ({
       {/* Footer */}
       <div className="flex items-center justify-between mt-4 pt-3">
         <div className="flex items-center gap-3 text-xs text-blue-400">
-          {objectives > 0 && <span>{objectives} tasks</span>}
+          {stepCount > 0 && <span>{stepCount} steps</span>}
         </div>
         {xpReward && (
           <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-neon-gold/10">
@@ -498,7 +498,6 @@ export const GameButton = ({
     danger: "game-btn-danger",
     outline: "game-btn-outline",
     ghost: "game-btn-ghost",
-    orange: "game-btn-gold", // alias
   };
 
   const sizeClasses = {
@@ -582,13 +581,13 @@ export const GameAvatar = ({
             className="w-full h-full object-cover rounded-xl"
           />
         ) : (
-          <div className="w-full h-full rounded-xl bg-game-dusk flex items-center justify-center">
+          <div className="w-full h-full rounded-xl bg-blue-800 flex items-center justify-center">
             <FaShieldAlt className="text-neon-cyan text-2xl" />
           </div>
         )}
       </div>
       {level && (
-        <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-neon-gold flex items-center justify-center text-game-void font-bold text-xs shadow-lg shadow-black/40">
+        <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-neon-gold flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-black/40">
           {level}
         </div>
       )}

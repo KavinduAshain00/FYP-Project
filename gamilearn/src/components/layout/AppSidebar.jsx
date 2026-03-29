@@ -14,6 +14,7 @@ import {
   FaShieldAlt,
   FaTimes,
   FaUser,
+  FaUserCircle,
 } from "react-icons/fa";
 
 const ROUTE_ORDER = ["/dashboard", "/modules", "/profile", "/admin", "/editor"];
@@ -105,17 +106,17 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
   const { user } = useAuth();
 
   const navLinks = [
-    { path: "/dashboard", label: "Home", caption: "Overview", icon: FaHome },
+    { path: "/dashboard", label: "Dashboard", caption: "Overview", icon: FaHome },
     {
       path: "/modules",
-      label: "Learn",
+      label: "Modules",
       caption: "All modules",
       icon: FaLayerGroup,
     },
     {
       path: "/profile",
       label: "Profile",
-      caption: "Account settings",
+      caption: "Account and achievements",
       icon: FaUser,
     },
     ...(user?.isAdmin
@@ -123,7 +124,7 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
           {
             path: "/admin",
             label: "Admin",
-            caption: "Manage platform",
+            caption: "Manage GamiLearn",
             icon: FaShieldAlt,
           },
         ]
@@ -210,19 +211,33 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
         {user && (
           <div className="mb-3 rounded-2xl bg-blue-900 p-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-700 text-black text-sm font-bold shrink-0">
-                {(user.name || "?").charAt(0).toUpperCase()}
-              </div>
+              {user.avatarUrl?.trim() ? (
+                <img
+                  src={user.avatarUrl.trim()}
+                  alt={
+                    user.name
+                      ? `${user.name} profile photo`
+                      : "Your profile photo"
+                  }
+                  className="h-14 w-14 shrink-0 rounded-xl object-cover object-center"
+                />
+              ) : (
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-blue-100">
+                  <FaUserCircle className="text-[2.35rem] -mb-0.5" aria-hidden />
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-blue-50">
                   {user.name}
                 </p>
-                <div className="mt-1 flex items-center gap-2 text-[11px]">
+                <div className="mt-1 flex items-center gap-2 text-[12px]">
                   <span className="inline-flex items-center gap-1 rounded-lg bg-blue-900 px-2 py-0.5 text-blue-50 font-semibold">
-                    <FaBolt className="text-[9px]" /> {user.totalPoints ?? 0}
+                    <FaBolt className="text-[9px]" />{" "}
+                    {user.levelInfo?.totalPoints ?? user.totalPoints ?? 0}
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-lg bg-blue-700 px-2 py-0.5 text-blue-200 font-semibold">
-                    <FaCrown className="text-[9px]" /> Lv.{user.level ?? 1}
+                    <FaCrown className="text-[9px]" /> Lv.
+                    {user.levelInfo?.level ?? user.level ?? 1}
                   </span>
                 </div>
               </div>
