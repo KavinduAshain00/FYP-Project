@@ -5,29 +5,8 @@ const crypto = require('crypto');
 const lessonXpService = require('../services/lessonXpService');
 const achievementService = require('../services/achievementService');
 const { AVATAR_LIST, AVATAR_PRESETS } = require('../constants/avatars');
-const { getPathCategories } = require('../constants/learningPath');
 const { isAdmin } = require('../utils/admin');
-
-/** Beginner: only javascript-basics until all completed, then game-development + multiplayer. Advanced: all three from start. */
-async function getEffectivePathCategories(user) {
-  let pathCategories = getPathCategories(user.learningPath);
-  if (user.learningPath === 'javascript-basics' && pathCategories.length > 0) {
-    const basicsModules = await Module.find({ category: 'javascript-basics' }).select('_id');
-    const basicsIds = new Set(basicsModules.map((m) => m._id.toString()));
-    const completedIds = (user.completedModules || [])
-      .map((m) => {
-        const id = m.moduleId && (m.moduleId._id || m.moduleId);
-        return id ? id.toString() : null;
-      })
-      .filter(Boolean);
-    const allBasicsDone =
-      basicsIds.size > 0 && [...basicsIds].every((id) => completedIds.includes(id));
-    if (allBasicsDone) {
-      pathCategories = ['javascript-basics', 'game-development', 'multiplayer'];
-    }
-  }
-  return pathCategories;
-}
+const { getEffectivePathCategories } = require('../utils/learningPathModules');
 
 const POPULATE_OPTS = [
   { path: 'completedModules.moduleId', select: 'title category' },
@@ -68,6 +47,112 @@ const AI_PREFERENCE_KEYS = {
   hintDetail: ['minimal', 'moderate', 'detailed'],
   assistanceFrequency: ['low', 'normal', 'high'],
 };
+
+function completedModuleIdStrings(user) {
+  return (user.completedModules || [])
+    .map((m) => {
+      const id = m.moduleId && (m.moduleId._id || m.moduleId);
+      return id ? id.toString() : null;
+    })
+    .filter(Boolean);
+}
+
+/** Server-side javascript-basics path rules for setCurrentModule; null if allowed. */
+async function getJavascriptBasicsSetCurrentGate(user, module) {
+  if (user.learningPath !== 'javascript-basics') return null;
+  const completedIds = completedModuleIdStrings(user);
+  const basicsModules = await Module.find({ category: 'javascript-basics' })
+    .select('_id order')
+    .sort({ order: 1, createdAt: 1 })
+    .lean();
+  const basicsIds = basicsModules.map((m) => m._id.toString());
+  const allBasicsDone =
+    basicsIds.length > 0 && basicsIds.every((id) => completedIds.includes(id));
+
+  if (module.category !== 'javascript-basics' && !allBasicsDone) {
+    return {
+      status: 403,
+      message: 'Complete all JavaScript basics modules to unlock other modules',
+    };
+  }
+
+  if (module.category === 'javascript-basics') {
+    const idx = basicsIds.indexOf(module._id.toString());
+    if (idx > 0) {
+      const prevId = basicsIds[idx - 1];
+      if (!completedIds.includes(prevId)) {
+        return {
+          status: 403,
+          message: 'Complete the previous JavaScript basics module first',
+        };
+      }
+    }
+  }
+  return null;
+}
+
+function buildCompleteModuleDelta({
+  alreadyCompleted,
+  moduleId,
+  before,
+  after,
+  newlyEarned,
+}) {
+  const delta = {};
+  if (!alreadyCompleted) {
+    delta.completedModulesAdd = [moduleId];
+    delta.completedModulesCount = after.completedCount;
+  }
+  if (after.totalPoints !== before.totalPoints) delta.totalPoints = after.totalPoints;
+  if (after.level !== before.level) delta.level = after.level;
+  if (before.currentModule !== after.currentModule) delta.currentModule = after.currentModule;
+  if ((newlyEarned || []).length > 0) {
+    const beforeSet = new Set(before.earnedAchievements.map(Number));
+    const added = (newlyEarned || [])
+      .map((a) => a?.id)
+      .filter((id) => typeof id === 'number' && !beforeSet.has(id));
+    if (added.length > 0) delta.earnedAchievementsAdd = added;
+  }
+  if (Object.keys(delta).length > 0) {
+    delta.levelInfo = lessonXpService.getLevelInfo(after.totalPoints || 0);
+  }
+  return delta;
+}
+
+function applyProfileAvatar(user, avatarUrl, avatarPresetId) {
+  if (typeof avatarUrl === 'string' && avatarUrl.trim()) {
+    user.avatarUrl = avatarUrl.trim();
+    return;
+  }
+  if (
+    typeof avatarPresetId === 'number' &&
+    avatarPresetId >= 0 &&
+    avatarPresetId < AVATAR_PRESETS.length
+  ) {
+    user.avatarUrl = AVATAR_PRESETS[avatarPresetId];
+    return;
+  }
+  if (avatarPresetId !== undefined && typeof avatarPresetId === 'string') {
+    const idx = parseInt(avatarPresetId, 10);
+    if (!Number.isNaN(idx) && idx >= 0 && idx < AVATAR_PRESETS.length) {
+      user.avatarUrl = AVATAR_PRESETS[idx];
+    }
+  }
+}
+
+function mergeAiPreferencesOnUser(user, aiPreferences) {
+  if (!aiPreferences || typeof aiPreferences !== 'object') return;
+  if (!user.aiPreferences) user.aiPreferences = {};
+  if (AI_PREFERENCE_KEYS.tone.includes(aiPreferences.tone)) {
+    user.aiPreferences.tone = aiPreferences.tone;
+  }
+  if (AI_PREFERENCE_KEYS.hintDetail.includes(aiPreferences.hintDetail)) {
+    user.aiPreferences.hintDetail = aiPreferences.hintDetail;
+  }
+  if (AI_PREFERENCE_KEYS.assistanceFrequency.includes(aiPreferences.assistanceFrequency)) {
+    user.aiPreferences.assistanceFrequency = aiPreferences.assistanceFrequency;
+  }
+}
 
 function toProfileUser(user) {
   const aiPrefs = user.aiPreferences || {};
@@ -355,24 +440,13 @@ async function completeModule(req, res) {
         : [],
     };
 
-    const delta = {};
-    if (!alreadyCompleted) {
-      delta.completedModulesAdd = [moduleId];
-      delta.completedModulesCount = after.completedCount;
-    }
-    if (after.totalPoints !== before.totalPoints) delta.totalPoints = after.totalPoints;
-    if (after.level !== before.level) delta.level = after.level;
-    if (before.currentModule !== after.currentModule) delta.currentModule = after.currentModule;
-    if ((newlyEarned || []).length > 0) {
-      const beforeSet = new Set(before.earnedAchievements.map(Number));
-      const added = (newlyEarned || [])
-        .map((a) => a?.id)
-        .filter((id) => typeof id === 'number' && !beforeSet.has(id));
-      if (added.length > 0) delta.earnedAchievementsAdd = added;
-    }
-    if (Object.keys(delta).length > 0) {
-      delta.levelInfo = lessonXpService.getLevelInfo(after.totalPoints || 0);
-    }
+    const delta = buildCompleteModuleDelta({
+      alreadyCompleted,
+      moduleId,
+      before,
+      after,
+      newlyEarned,
+    });
 
     console.log('[User] completeModule success', {
       userId,
@@ -406,42 +480,9 @@ async function setCurrentModule(req, res) {
 
     const beforeCurrent = user.currentModule ? user.currentModule.toString() : null;
 
-    // Enforce beginner path gating server-side (prevents URL / API bypass)
-    if (user.learningPath === 'javascript-basics') {
-      const completedIds = (user.completedModules || [])
-        .map((m) => {
-          const id = m.moduleId && (m.moduleId._id || m.moduleId);
-          return id ? id.toString() : null;
-        })
-        .filter(Boolean);
-
-      const basicsModules = await Module.find({ category: 'javascript-basics' })
-        .select('_id order')
-        .sort({ order: 1, createdAt: 1 })
-        .lean();
-      const basicsIds = basicsModules.map((m) => m._id.toString());
-      const allBasicsDone =
-        basicsIds.length > 0 && basicsIds.every((id) => completedIds.includes(id));
-
-      // Lock all non-JS modules until all JS basics are completed
-      if (module.category !== 'javascript-basics' && !allBasicsDone) {
-        return res
-          .status(403)
-          .json({ message: 'Complete all JavaScript basics modules to unlock other modules' });
-      }
-
-      // Within JS basics, prevent skipping ahead (must complete previous module first)
-      if (module.category === 'javascript-basics') {
-        const idx = basicsIds.indexOf(module._id.toString());
-        if (idx > 0) {
-          const prevId = basicsIds[idx - 1];
-          if (!completedIds.includes(prevId)) {
-            return res
-              .status(403)
-              .json({ message: 'Complete the previous JavaScript basics module first' });
-          }
-        }
-      }
+    const pathGate = await getJavascriptBasicsSetCurrentGate(user, module);
+    if (pathGate) {
+      return res.status(pathGate.status).json({ message: pathGate.message });
     }
 
     user.currentModule = moduleId;
@@ -477,34 +518,8 @@ async function updateProfile(req, res) {
     if (typeof name === 'string' && name.trim()) {
       user.name = name.trim();
     }
-    // Avatar: custom URL takes precedence, then preset by index
-    if (typeof avatarUrl === 'string' && avatarUrl.trim()) {
-      user.avatarUrl = avatarUrl.trim();
-    } else if (
-      typeof avatarPresetId === 'number' &&
-      avatarPresetId >= 0 &&
-      avatarPresetId < AVATAR_PRESETS.length
-    ) {
-      user.avatarUrl = AVATAR_PRESETS[avatarPresetId];
-    } else if (avatarPresetId !== undefined && typeof avatarPresetId === 'string') {
-      const idx = parseInt(avatarPresetId, 10);
-      if (!Number.isNaN(idx) && idx >= 0 && idx < AVATAR_PRESETS.length) {
-        user.avatarUrl = AVATAR_PRESETS[idx];
-      }
-    }
-    // Tutor/companion preferences (tone, hint detail, assistance frequency)
-    if (aiPreferences && typeof aiPreferences === 'object') {
-      if (!user.aiPreferences) user.aiPreferences = {};
-      if (AI_PREFERENCE_KEYS.tone.includes(aiPreferences.tone)) {
-        user.aiPreferences.tone = aiPreferences.tone;
-      }
-      if (AI_PREFERENCE_KEYS.hintDetail.includes(aiPreferences.hintDetail)) {
-        user.aiPreferences.hintDetail = aiPreferences.hintDetail;
-      }
-      if (AI_PREFERENCE_KEYS.assistanceFrequency.includes(aiPreferences.assistanceFrequency)) {
-        user.aiPreferences.assistanceFrequency = aiPreferences.assistanceFrequency;
-      }
-    }
+    applyProfileAvatar(user, avatarUrl, avatarPresetId);
+    mergeAiPreferencesOnUser(user, aiPreferences);
     await user.save();
 
     const after = {

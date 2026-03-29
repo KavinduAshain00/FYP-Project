@@ -1,86 +1,87 @@
 const Module = require('../models/Module');
-const { getPathCategories } = require('../constants/learningPath');
+const { getEffectivePathCategories } = require('../utils/learningPathModules');
 
 const SLIM_FIELDS = '_id title description difficulty category order';
 
+async function buildModuleListQuery(req) {
+  const query = {};
+  const { category, difficulty } = req.query;
+  if (category && category !== 'all') {
+    query.category = category;
+  } else if (
+    !category &&
+    req.user &&
+    req.user.learningPath &&
+    req.user.learningPath !== 'none'
+  ) {
+    const pathCategories = await getEffectivePathCategories(req.user);
+    if (pathCategories.length) {
+      query.category = { $in: pathCategories };
+    }
+  }
+  if (difficulty && difficulty !== 'all') {
+    query.difficulty = difficulty;
+  }
+  return query;
+}
+
+function parsePaginationParams(req) {
+  const page =
+    req.query.page !== undefined && req.query.page !== null ? parseInt(req.query.page, 10) : null;
+  const limit =
+    req.query.limit !== undefined && req.query.limit !== null
+      ? parseInt(req.query.limit, 10)
+      : null;
+  const usePagination =
+    Number.isInteger(page) && Number.isInteger(limit) && page >= 1 && limit >= 1;
+  return { page, limit, usePagination };
+}
+
+function baseModulesListQuery(query) {
+  return Module.find(query).select(SLIM_FIELDS).sort({ order: 1, createdAt: 1 });
+}
+
+async function sendModuleMetaResponse(res, query) {
+  const [categories, difficulties] = await Promise.all([
+    Module.find(query).distinct('category'),
+    Module.find(query).distinct('difficulty'),
+  ]);
+  return res.json({
+    categories: categories.filter(Boolean).sort(),
+    difficulties: difficulties.filter(Boolean).sort(),
+  });
+}
+
+async function sendPaginatedModulesResponse(res, query, page, limit) {
+  const safeLimit = Math.min(100, Math.max(1, limit));
+  const skip = (page - 1) * safeLimit;
+  const [modules, total] = await Promise.all([
+    baseModulesListQuery(query).skip(skip).limit(safeLimit).lean(),
+    Module.countDocuments(query),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+  return res.json({
+    modules,
+    pagination: { total, page, limit: safeLimit, totalPages },
+  });
+}
+
+async function sendFullModulesListResponse(res, query) {
+  const modules = await baseModulesListQuery(query).lean();
+  return res.json({ modules });
+}
+
 async function getAll(req, res) {
   try {
-    const { category, difficulty, meta } = req.query;
-    const query = {};
-    if (category && category !== 'all') {
-      query.category = category;
-    } else if (!category && req.user && req.user.learningPath && req.user.learningPath !== 'none') {
-      let pathCategories = getPathCategories(req.user.learningPath);
-
-      // Beginner: only show game-development and multiplayer after all javascript-basics are completed
-      if (req.user.learningPath === 'javascript-basics' && pathCategories.length > 0) {
-        const basicsModules = await Module.find({ category: 'javascript-basics' }).select('_id');
-        const basicsIds = new Set(basicsModules.map((m) => m._id.toString()));
-        const completedIds = (req.user.completedModules || [])
-          .map((m) => {
-            const id = m.moduleId && (m.moduleId._id || m.moduleId);
-            return id ? id.toString() : null;
-          })
-          .filter(Boolean);
-        const allBasicsDone =
-          basicsIds.size > 0 && [...basicsIds].every((id) => completedIds.includes(id));
-        if (allBasicsDone) {
-          pathCategories = ['javascript-basics', 'game-development', 'multiplayer'];
-        }
-      }
-
-      if (pathCategories.length) {
-        query.category = { $in: pathCategories };
-      }
+    const query = await buildModuleListQuery(req);
+    if (req.query.meta === '1') {
+      return sendModuleMetaResponse(res, query);
     }
-    if (difficulty && difficulty !== 'all') {
-      query.difficulty = difficulty;
-    }
-
-    if (meta === '1') {
-      const [categories, difficulties] = await Promise.all([
-        Module.find(query).distinct('category'),
-        Module.find(query).distinct('difficulty'),
-      ]);
-      return res.json({
-        categories: categories.filter(Boolean).sort(),
-        difficulties: difficulties.filter(Boolean).sort(),
-      });
-    }
-
-    const page =
-      req.query.page !== undefined && req.query.page !== null ? parseInt(req.query.page, 10) : null;
-    const limit =
-      req.query.limit !== undefined && req.query.limit !== null
-        ? parseInt(req.query.limit, 10)
-        : null;
-    const usePagination =
-      Number.isInteger(page) && Number.isInteger(limit) && page >= 1 && limit >= 1;
-
+    const { page, limit, usePagination } = parsePaginationParams(req);
     if (usePagination) {
-      const safeLimit = Math.min(100, Math.max(1, limit));
-      const skip = (page - 1) * safeLimit;
-      const [modules, total] = await Promise.all([
-        Module.find(query)
-          .select(SLIM_FIELDS)
-          .sort({ order: 1, createdAt: 1 })
-          .skip(skip)
-          .limit(safeLimit)
-          .lean(),
-        Module.countDocuments(query),
-      ]);
-      const totalPages = Math.max(1, Math.ceil(total / safeLimit));
-      return res.json({
-        modules,
-        pagination: { total, page, limit: safeLimit, totalPages },
-      });
+      return sendPaginatedModulesResponse(res, query, page, limit);
     }
-
-    const modules = await Module.find(query)
-      .select(SLIM_FIELDS)
-      .sort({ order: 1, createdAt: 1 })
-      .lean();
-    return res.json({ modules });
+    return sendFullModulesListResponse(res, query);
   } catch (error) {
     console.error('Get modules error:', error);
     return res.status(500).json({ message: 'Server error' });
