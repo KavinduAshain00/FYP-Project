@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const { isAdmin } = require('../utils/admin');
 const aiService = require('../services/aiService');
@@ -40,6 +41,52 @@ function queryString(value, maxLen) {
   return value.trim().substring(0, maxLen ?? value.length);
 }
 
+const ADMIN_USER_SORT_FIELDS = [
+  'createdAt',
+  'name',
+  'email',
+  'learningPath',
+  'level',
+  'totalPoints',
+  'updatedAt',
+];
+
+/**
+ * Mongo match for admin user list — only primitive strings in; no req object.
+ */
+function buildAdminUserListFilter(search, learningPathRaw) {
+  const query = {};
+  if (search) {
+    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    query.$or = [
+      { name: { $regex: escaped, $options: 'i' } },
+      { email: { $regex: escaped, $options: 'i' } },
+    ];
+  }
+  if (learningPathRaw && learningPathRaw !== 'all') {
+    if (learningPathRaw === 'none') {
+      query.learningPath = { $in: [null, '', 'none'] };
+    } else if (USER_LEARNING_PATH_ENUM.has(learningPathRaw)) {
+      query.learningPath = learningPathRaw;
+    }
+  }
+  return query;
+}
+
+function buildAdminUserListSort(sortByField, ascending) {
+  const sortOpt = { [sortByField]: ascending ? 1 : -1 };
+  if (sortByField !== 'createdAt') sortOpt.createdAt = -1;
+  return sortOpt;
+}
+
+/** @returns {object | null} Express response if invalid, else null */
+function invalidUserIdResponse(id, res) {
+  if (!id || typeof id !== 'string' || !mongoose.isValidObjectId(id)) {
+    return res.status(400).json({ message: 'Invalid user id' });
+  }
+  return null;
+}
+
 /**
  * GET /api/admin/users - List users with pagination (admin only)
  * Query: page (default 1), limit (default 20, max 100), search (name/email), learningPath (filter by path)
@@ -53,33 +100,13 @@ async function listUsers(req, res) {
     );
     const search = queryString(req.query.search, 200);
     const learningPathRaw = queryString(req.query.learningPath, 64);
-    const allowedSort = [
-      'createdAt',
-      'name',
-      'email',
-      'learningPath',
-      'level',
-      'totalPoints',
-      'updatedAt',
-    ];
-    const sortBy = allowedSort.includes(req.query.sortBy) ? req.query.sortBy : 'createdAt';
-    const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+    const sortByRaw = queryString(req.query.sortBy, 64);
+    const sortByField = ADMIN_USER_SORT_FIELDS.includes(sortByRaw) ? sortByRaw : 'createdAt';
+    const sortOrderRaw = queryString(req.query.sortOrder, 8);
+    const ascending = sortOrderRaw === 'asc';
 
-    const query = {};
-    if (search) {
-      const searchRegex = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
-      query.$or = [{ name: searchRegex }, { email: searchRegex }];
-    }
-    if (learningPathRaw && learningPathRaw !== 'all') {
-      if (learningPathRaw === 'none') {
-        query.learningPath = { $in: [null, '', 'none'] };
-      } else if (USER_LEARNING_PATH_ENUM.has(learningPathRaw)) {
-        query.learningPath = learningPathRaw;
-      }
-    }
-
-    const sortOpt = { [sortBy]: sortOrder };
-    if (sortBy !== 'createdAt') sortOpt.createdAt = -1;
+    const query = buildAdminUserListFilter(search, learningPathRaw);
+    const sortOpt = buildAdminUserListSort(sortByField, ascending);
 
     const [users, total] = await Promise.all([
       User.find(query)
@@ -110,6 +137,8 @@ async function listUsers(req, res) {
  */
 async function getUserById(req, res) {
   try {
+    const badId = invalidUserIdResponse(req.params.id, res);
+    if (badId) return badId;
     const user = await User.findById(req.params.id)
       .select('-password')
       .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
@@ -131,6 +160,8 @@ async function getUserById(req, res) {
  */
 async function updateUser(req, res) {
   try {
+    const badIdUpdate = invalidUserIdResponse(req.params.id, res);
+    if (badIdUpdate) return badIdUpdate;
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -150,8 +181,7 @@ async function updateUser(req, res) {
       user.email = normalized;
     }
     if (learningPath !== undefined) {
-      const valid = ['javascript-basics', 'advanced', 'none'];
-      if (valid.includes(learningPath)) {
+      if (typeof learningPath === 'string' && USER_LEARNING_PATH_ENUM.has(learningPath)) {
         user.learningPath = learningPath;
       }
     }
@@ -179,6 +209,8 @@ async function updateUser(req, res) {
 async function deleteUser(req, res) {
   try {
     const targetId = req.params.id;
+    const badIdDelete = invalidUserIdResponse(targetId, res);
+    if (badIdDelete) return badIdDelete;
     if (req.user._id.toString() === targetId) {
       return res.status(400).json({ message: 'You cannot delete your own account' });
     }
@@ -212,7 +244,11 @@ async function listAdmins(req, res) {
  */
 async function addAdmin(req, res) {
   try {
-    const email = (req.body.email || '').trim().toLowerCase();
+    const rawEmail = req.body?.email;
+    if (typeof rawEmail !== 'string') {
+      return res.status(400).json({ message: 'Valid email required' });
+    }
+    const email = rawEmail.trim().toLowerCase();
     if (!email || !email.includes('@')) {
       return res.status(400).json({ message: 'Valid email required' });
     }
@@ -265,6 +301,8 @@ async function removeAdmin(req, res) {
  */
 async function grantAdminToUser(req, res) {
   try {
+    const badIdGrant = invalidUserIdResponse(req.params.id, res);
+    if (badIdGrant) return badIdGrant;
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -290,6 +328,8 @@ async function grantAdminToUser(req, res) {
  */
 async function revokeAdminFromUser(req, res) {
   try {
+    const badIdRevoke = invalidUserIdResponse(req.params.id, res);
+    if (badIdRevoke) return badIdRevoke;
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });

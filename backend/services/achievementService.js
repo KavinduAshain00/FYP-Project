@@ -23,6 +23,28 @@ function maxMergedStat(gameStats, progressData, key) {
 }
 
 /**
+ * Only allowlisted numeric game-stat fields from the client (no raw req.body in merge logic).
+ */
+function pickClientGameStats(body) {
+  if (body === undefined || body === null || typeof body !== "object" || Array.isArray(body)) {
+    return {};
+  }
+  const out = {};
+  for (const key of MERGED_GAMESTAT_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(body, key)) continue;
+    const v = body[key];
+    const n = typeof v === "number" ? v : parseInt(String(v), 10);
+    if (Number.isFinite(n) && n >= 0) {
+      out[key] = n;
+    }
+  }
+  if (body.debugSession === true) {
+    out.debugSession = true;
+  }
+  return out;
+}
+
+/**
  * Merge client payload with user's persisted state so achievements are evaluated
  * against lifetime/canonical data. Persists merged gameStats back to user.
  */
@@ -119,7 +141,8 @@ async function checkProgress(userId, progressData) {
   if (!user.earnedAchievements) user.earnedAchievements = [];
   if (!user.gameStats) user.gameStats = {};
 
-  const merged = mergeProgressWithUser(user, progressData);
+  const safeProgress = pickClientGameStats(progressData);
+  const merged = mergeProgressWithUser(user, safeProgress);
   copyMergedStatsToUserDoc(user, merged);
 
   const allAchievements = await Achievement.find({ isActive: true });
@@ -157,4 +180,5 @@ module.exports = {
   checkProgress,
   grantSignupAchievement,
   mergeProgressWithUser,
+  pickClientGameStats,
 };

@@ -4,6 +4,12 @@ const achievementService = require('../services/achievementService');
 const lessonXpService = require('../services/lessonXpService');
 const crypto = require('crypto');
 
+function parseAchievementId(raw) {
+  if (typeof raw === 'number' && Number.isInteger(raw)) return raw;
+  if (typeof raw === 'string' && /^\d+$/.test(raw.trim())) return parseInt(raw.trim(), 10);
+  return null;
+}
+
 async function getAll(req, res) {
   try {
     const achievements = await Achievement.find({ isActive: true }).sort({ id: 1 });
@@ -40,7 +46,10 @@ async function getUserAchievements(req, res) {
 async function earn(req, res) {
   const userId = req.user?._id?.toString();
   try {
-    const { achievementId } = req.body;
+    const achievementId = parseAchievementId(req.body?.achievementId);
+    if (achievementId === null) {
+      return res.status(400).json({ message: 'Invalid achievement id' });
+    }
     console.log('[Achievements] earn', { userId, achievementId });
     const achievement = await Achievement.findOne({ id: achievementId });
     if (!achievement) {
