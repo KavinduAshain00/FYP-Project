@@ -374,54 +374,74 @@ function isCodeEmptyForStep(normalized) {
   return false;
 }
 
-const VERIFICATION_PARSE_FALLBACK = {
-  correct: false,
-  feedback:
-    'Verification could not be read. Please try again or ensure your code addresses the step.',
-};
+/**
+ * Parse step verification JSON into { correct: boolean, feedback: string }.
+ * Handles JSON in code blocks, extra text, and malformed output.
+ */
+function parseVerificationResponse(raw) {
+  const fallbackFail = {
+    correct: false,
+    feedback:
+      'Verification could not be read. Please try again or ensure your code addresses the step.',
+  };
+  if (!raw || typeof raw !== 'string') return fallbackFail;
 
-function verificationFeedbackFromResult(result) {
-  let feedback = 'Try again.';
-  if (typeof result.feedback === 'string' && result.feedback.trim()) {
-    feedback = result.feedback.trim();
-  } else if (result.correct) {
-    feedback = 'Step complete!';
-  }
-  return feedback;
-}
+  const trimmed = raw
+    .trim()
+    .replace(/^```json?\s*|\s*```$/g, '')
+    .trim();
+  if (!trimmed) return fallbackFail;
 
-function tryParseVerificationJsonObject(jsonText) {
+  // 1) Try direct parse
   try {
-    const result = JSON.parse(jsonText);
+    const result = JSON.parse(trimmed);
     if (typeof result.correct === 'boolean') {
-      return { correct: result.correct, feedback: verificationFeedbackFromResult(result) };
+      let feedback = 'Try again.';
+      if (typeof result.feedback === 'string' && result.feedback.trim()) {
+        feedback = result.feedback.trim();
+      } else if (result.correct) {
+        feedback = 'Step complete!';
+      }
+      return { correct: result.correct, feedback };
     }
   } catch {
-    /* continue */
+    // continue to extraction
   }
-  return null;
-}
 
-function sliceFirstBalancedJsonObject(trimmed) {
+  // 2) Try to extract JSON object (first { to matching })
   const firstBrace = trimmed.indexOf('{');
-  if (firstBrace === -1) return null;
-  let depth = 0;
-  let end = -1;
-  for (let i = firstBrace; i < trimmed.length; i++) {
-    if (trimmed[i] === '{') depth++;
-    if (trimmed[i] === '}') {
-      depth--;
-      if (depth === 0) {
-        end = i;
-        break;
+  if (firstBrace !== -1) {
+    let depth = 0;
+    let end = -1;
+    for (let i = firstBrace; i < trimmed.length; i++) {
+      if (trimmed[i] === '{') depth++;
+      if (trimmed[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+    if (end !== -1) {
+      try {
+        const result = JSON.parse(trimmed.slice(firstBrace, end + 1));
+        if (typeof result.correct === 'boolean') {
+          let feedback = 'Try again.';
+          if (typeof result.feedback === 'string' && result.feedback.trim()) {
+            feedback = result.feedback.trim();
+          } else if (result.correct) {
+            feedback = 'Step complete!';
+          }
+          return { correct: result.correct, feedback };
+        }
+      } catch {
+        // continue
       }
     }
   }
-  if (end === -1) return null;
-  return trimmed.slice(firstBrace, end + 1);
-}
 
-function tryParseVerificationHeuristics(raw) {
+  // 3) Heuristic: look for "correct": true/false and "feedback": "..." in raw text
   const correctMatch = raw.match(/"correct"\s*:\s*(true|false)/i);
   const feedbackMatch = raw.match(/"feedback"\s*:\s*"((?:[^"\\]|\\.)*)"/);
   if (correctMatch) {
@@ -434,41 +454,16 @@ function tryParseVerificationHeuristics(raw) {
     }
     return { correct, feedback };
   }
+
+  // 4) Simple success indicators (model said yes / correct without valid JSON)
   if (/\bcorrect\s*:\s*true\b/i.test(raw) || /\b"correct"\s*:\s*true\b/i.test(raw)) {
     return { correct: true, feedback: 'Step complete!' };
   }
   if (/\b(the code is correct|yes,? it('s| is) correct|step complete)\b/i.test(raw)) {
     return { correct: true, feedback: 'Step complete!' };
   }
-  return null;
-}
 
-/**
- * Parse step verification JSON into { correct: boolean, feedback: string }.
- * Handles JSON in code blocks, extra text, and malformed output.
- */
-function parseVerificationResponse(raw) {
-  if (!raw || typeof raw !== 'string') return VERIFICATION_PARSE_FALLBACK;
-
-  const trimmed = raw
-    .trim()
-    .replace(/^```json?\s*|\s*```$/g, '')
-    .trim();
-  if (!trimmed) return VERIFICATION_PARSE_FALLBACK;
-
-  const direct = tryParseVerificationJsonObject(trimmed);
-  if (direct) return direct;
-
-  const sliced = sliceFirstBalancedJsonObject(trimmed);
-  if (sliced) {
-    const extracted = tryParseVerificationJsonObject(sliced);
-    if (extracted) return extracted;
-  }
-
-  const heuristic = tryParseVerificationHeuristics(raw);
-  if (heuristic) return heuristic;
-
-  return VERIFICATION_PARSE_FALLBACK;
+  return fallbackFail;
 }
 
 /**

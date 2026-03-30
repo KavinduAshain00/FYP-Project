@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Achievement = require('../models/Achievement');
 const { isAdmin } = require('../utils/admin');
 const aiService = require('../services/aiService');
 

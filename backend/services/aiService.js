@@ -9,24 +9,6 @@ const {
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const STEP_VERIFY_TYPES = new Set(["code", "checkConsole", "checkComments"]);
 
-/** Strip optional ``` / ```json wrapping from model output. */
-function stripAiJsonBlock(raw) {
-  let text = String(raw || "").trim();
-  if (text.startsWith("```")) {
-    const firstNl = text.indexOf("\n");
-    const close = text.indexOf("\n```", firstNl + 1);
-    if (close !== -1) {
-      text = text.slice(firstNl + 1, close).trim();
-    } else {
-      text = text
-        .replace(/^```\w*\n?/, "")
-        .replace(/\n?```\s*$/, "")
-        .trim();
-    }
-  }
-  return text;
-}
-
 if (!GITHUB_TOKEN) {
   console.warn(
     "Warning: GITHUB_TOKEN not set. GitHub Models calls will fail until configured.",
@@ -328,10 +310,15 @@ Reply with ONLY a short explanation (2-4 sentences). No preamble like "The corre
  * @param {string} [opts.language='javascript']
  * @returns {Promise<string>}
  */
-async function explainCodeSnippet(opts, language) {
-  const code = opts?.code;
-  if (!code || !String(code).trim()) throw new Error("No code provided");
-  const prompt = `You are a friendly programming tutor. The student highlighted this code and asked for an explanation.
+async function explain(opts) {
+  if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
+  const type = opts?.type;
+  const language = opts?.language ?? "javascript";
+
+  if (type === "code") {
+    const code = opts?.code;
+    if (!code || !String(code).trim()) throw new Error("No code provided");
+    const prompt = `You are a friendly programming tutor. The student highlighted this code and asked for an explanation.
 
 Code (${language}):
 \`\`\`${language}
@@ -344,27 +331,27 @@ Give a clear, concise explanation (3-6 sentences):
 3. One tip or thing to watch out for (if relevant)
 
 Do not repeat the code in full. Use simple language.`;
-  try {
-    const explanation = await generateTextWithModel(prompt, {
-      maxTokens: 400,
-      temperature: 0.3,
-    });
-    return (explanation || "").trim() || "Could not generate explanation.";
-  } catch (err) {
-    throw new Error(err.message || "Explanation failed", { cause: err });
+    try {
+      const explanation = await generateTextWithModel(prompt, {
+        maxTokens: 400,
+        temperature: 0.3,
+      });
+      return (explanation || "").trim() || "Could not generate explanation.";
+    } catch (err) {
+      throw new Error(err.message || "Explanation failed", { cause: err });
+    }
   }
-}
 
-async function explainErrorMessage(opts, language) {
-  const errorMessage = opts?.errorMessage;
-  const codeSnippet = opts?.codeSnippet ?? "";
-  if (!errorMessage || !String(errorMessage).trim())
-    throw new Error("No error message provided");
-  const codeBlock =
-    codeSnippet && String(codeSnippet).trim()
-      ? `\nRelevant code (for context only):\n\`\`\`${language}\n${String(codeSnippet).substring(0, 800)}\n\`\`\``
-      : "";
-  const prompt = `You are a patient programming tutor. The student sees this error and wants to understand it.
+  if (type === "error") {
+    const errorMessage = opts?.errorMessage;
+    const codeSnippet = opts?.codeSnippet ?? "";
+    if (!errorMessage || !String(errorMessage).trim())
+      throw new Error("No error message provided");
+    const codeBlock =
+      codeSnippet && String(codeSnippet).trim()
+        ? `\nRelevant code (for context only):\n\`\`\`${language}\n${String(codeSnippet).substring(0, 800)}\n\`\`\``
+        : "";
+    const prompt = `You are a patient programming tutor. The student sees this error and wants to understand it.
 
 ERROR MESSAGE:
 ${String(errorMessage).substring(0, 600)}
@@ -376,25 +363,19 @@ Explain in simple terms (2-3 short paragraphs):
 3. What to check or try first (do NOT write the full fix; point to the idea)
 
 Do not provide the complete corrected code. Guide them to fix it themselves.`;
-  try {
-    const explanation = await generateTextWithModel(prompt, {
-      maxTokens: 400,
-      temperature: 0.3,
-    });
-    return (explanation || "").trim() || "Could not generate explanation.";
-  } catch (err) {
-    throw new Error(err.message || "Error explanation failed", {
-      cause: err,
-    });
+    try {
+      const explanation = await generateTextWithModel(prompt, {
+        maxTokens: 400,
+        temperature: 0.3,
+      });
+      return (explanation || "").trim() || "Could not generate explanation.";
+    } catch (err) {
+      throw new Error(err.message || "Error explanation failed", {
+        cause: err,
+      });
+    }
   }
-}
 
-async function explain(opts) {
-  if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
-  const type = opts?.type;
-  const language = opts?.language ?? "javascript";
-  if (type === "code") return explainCodeSnippet(opts, language);
-  if (type === "error") return explainErrorMessage(opts, language);
   throw new Error('explain() requires type: "code" or "error"');
 }
 
@@ -466,7 +447,19 @@ RULES:
       { maxTokens: 1600, temperature: 0.35 },
       AI_LECTURE_MODEL,
     );
-    notes = stripAiJsonBlock((notes || "").trim());
+    notes = (notes || "").trim();
+    // Strip wrapping ```markdown ... ``` fences from the response
+    if (notes.startsWith("```")) {
+      const firstNewline = notes.indexOf("\n");
+      const closeFence = notes.indexOf("\n```", firstNewline + 1);
+      if (closeFence !== -1)
+        notes = notes.slice(firstNewline + 1, closeFence).trim();
+      else
+        notes = notes
+          .replace(/^```\w*\n?/, "")
+          .replace(/\n?```\s*$/, "")
+          .trim();
+    }
     return notes || "Could not generate lecture notes.";
   } catch (err) {
     throw new Error(err.message || "Lecture notes generation failed", {
@@ -562,7 +555,19 @@ OUTPUT RULES — CRITICAL:
     AI_GENERAL_MODEL,
   );
 
-  const text = stripAiJsonBlock(raw);
+  let text = String(raw || "").trim();
+  if (text.startsWith("```")) {
+    const firstNl = text.indexOf("\n");
+    const close = text.indexOf("\n```", firstNl + 1);
+    if (close !== -1) {
+      text = text.slice(firstNl + 1, close).trim();
+    } else {
+      text = text
+        .replace(/^```\w*\n?/, "")
+        .replace(/\n?```\s*$/, "")
+        .trim();
+    }
+  }
 
   let parsed;
   try {
@@ -579,6 +584,23 @@ OUTPUT RULES — CRITICAL:
 }
 
 const CURRICULUM_PARTS = new Set(["hints", "starterCode"]);
+
+function stripAiJsonBlock(raw) {
+  let text = String(raw || "").trim();
+  if (text.startsWith("```")) {
+    const firstNl = text.indexOf("\n");
+    const close = text.indexOf("\n```", firstNl + 1);
+    if (close !== -1) {
+      text = text.slice(firstNl + 1, close).trim();
+    } else {
+      text = text
+        .replace(/^```\w*\n?/, "")
+        .replace(/\n?```\s*$/, "")
+        .trim();
+    }
+  }
+  return text;
+}
 
 function normalizeStarterCodeForAdmin(raw) {
   const d = (v) => String(v ?? "");
@@ -642,112 +664,6 @@ function ensureVanillaStarterCode(sc, moduleTitle) {
   return out;
 }
 
-function formatCurriculumStepsBlock(steps) {
-  if (!Array.isArray(steps)) return "";
-  const stepsLines = steps
-    .map((s, i) => {
-      const t = String(s?.title ?? "").trim();
-      const ins = String(s?.instruction ?? "").trim().slice(0, 600);
-      return t
-        ? `${i + 1}. ${t}${ins ? `\n   What the student must do: ${ins}` : ""}`
-        : null;
-    })
-    .filter(Boolean);
-  if (stepsLines.length === 0) return "";
-  return `\nEXISTING STEPS (starter code must NOT already accomplish these — leave work for the student):\n${stepsLines.join("\n\n")}\n`;
-}
-
-function buildCurriculumPartRules(parts, category) {
-  const partRules = [];
-  if (parts.includes("hints")) {
-    partRules.push(
-      `"hints": JSON array of exactly 4 to 6 short strings. Gentle nudges for stuck learners; do NOT give full solutions or complete code answers.`,
-    );
-  }
-  if (parts.includes("starterCode")) {
-    const serverPart =
-      category === "multiplayer"
-        ? `CATEGORY is multiplayer: include a non-empty "serverJs" scaffold only (Node/Socket.IO style) — listen/setup stubs without implementing full game sync or completing lesson logic in the starter.`
-        : `CATEGORY is NOT multiplayer: set "serverJs" to exactly "" (empty string).`;
-    partRules.push(
-      `"starterCode": JSON object with string fields ONLY: html, css, javascript, serverJs. RUNTIME is always vanilla browser HTML/CSS/JS — NOT React or JSX. SCAFFOLD ONLY — this is the code loaded BEFORE the student starts. You MUST NOT implement the lesson outcome, game logic, step tasks, console.log outputs required by steps, or full event handlers that complete the project. Use: empty or stub function bodies, // TODO markers, placeholder values, and wiring only (e.g. canvas element in HTML, querySelector variables set to null or unused) so the student still has meaningful edits to make. If steps are listed above, the starter must intentionally leave every step's core work undone. You MUST include all three: "html", "css", and "javascript" as NON-EMPTY strings. "html": valid HTML document with structural elements for the lesson but no inline scripts that complete tasks. "css": layout/typography/theme only — no cheating by hiding required work. "javascript": comments, empty stubs, or minimal boilerplate (e.g. const canvas = document.getElementById('gameCanvas');) WITHOUT drawing, game loop, or completing instructions. ${serverPart}`,
-    );
-  }
-  return partRules;
-}
-
-function buildModuleCurriculumPrompt(ctx) {
-  const {
-    title,
-    description,
-    difficulty,
-    category,
-    content,
-    stepsBlock,
-    parts,
-    partRules,
-  } = ctx;
-  const keyList = parts.map((p) => `"${p}"`).join(", ");
-  const starterExtra = parts.includes("starterCode")
-    ? `4. Starter code is INCOMPLETE by design: a new learner following the steps must still write or change JavaScript (and sometimes HTML/CSS) to pass verification — do not ship a working solution. If no steps were listed, still avoid a finished mini-project; use skeleton only.
-5. Never put complete game loops, full implementations of step instructions, or final console.log outputs in the starter; those belong in the student's edits.`
-    : "";
-  return `You are a curriculum assistant for a game-themed coding education app.
-
-MODULE TITLE: ${title}
-DESCRIPTION: ${description || "(none)"}
-DIFFICULTY: ${difficulty}
-CATEGORY: ${category || "(unspecified)"}
-RUNTIME: Vanilla HTML / CSS / JavaScript in the browser (no React, no JSX).
-
-LESSON CONTENT (markdown):
----
-${content.slice(0, 8000) || "(infer from title and description only)"}
----
-${stepsBlock}
-Generate ONLY the following JSON object keys: ${keyList}
-Do not include any other top-level keys.
-
-Rules for each key:
-${partRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}
-
-OUTPUT RULES — CRITICAL:
-1. Reply with ONLY one JSON object (no markdown fences, no commentary).
-2. Escape newlines inside strings as \\n when needed; keep strings valid JSON.
-3. Starter "html", "css", and "javascript" must all be non-empty and syntactically plausible for ${difficulty} learners.
-${starterExtra}`;
-}
-
-function curriculumModelCallOptions(parts) {
-  const hasStarter = parts.includes("starterCode");
-  return {
-    maxTokens: hasStarter ? 5000 : 1200,
-    temperature: hasStarter ? 0.25 : 0.35,
-  };
-}
-
-function shapeCurriculumResponse(parsed, parts, category, title) {
-  const out = {};
-  if (parts.includes("hints")) {
-    const arr = Array.isArray(parsed.hints) ? parsed.hints : [];
-    out.hints = arr
-      .map((x) => String(x ?? "").trim())
-      .filter(Boolean)
-      .slice(0, 12);
-    if (out.hints.length === 0) {
-      throw new Error("Hints missing from response");
-    }
-  }
-  if (parts.includes("starterCode")) {
-    if (!parsed.starterCode || typeof parsed.starterCode !== "object") {
-      throw new Error("starterCode missing from response");
-    }
-    out.starterCode = ensureVanillaStarterCode(parsed.starterCode, title);
-    if (category !== "multiplayer") out.starterCode.serverJs = "";
-  }
-  return out;
-}
-
 /**
  * Generate hints and/or starter code for admin module editor.
  * @param {Object} opts
@@ -778,22 +694,78 @@ async function generateModuleCurriculumParts(opts) {
   const content = String(opts?.content ?? "").trim();
   const category = String(opts?.category ?? "").trim();
   const difficulty = String(opts?.difficulty ?? "beginner").trim();
-  const stepsBlock = formatCurriculumStepsBlock(opts?.steps);
-  const partRules = buildCurriculumPartRules(parts, category);
-  const prompt = buildModuleCurriculumPrompt({
-    title,
-    description,
-    difficulty,
-    category,
-    content,
-    stepsBlock,
-    parts,
-    partRules,
-  });
+
+  const stepsLines = Array.isArray(opts?.steps)
+    ? opts.steps
+        .map((s, i) => {
+          const t = String(s?.title ?? "").trim();
+          const ins = String(s?.instruction ?? "")
+            .trim()
+            .slice(0, 600);
+          return t
+            ? `${i + 1}. ${t}${ins ? `\n   What the student must do: ${ins}` : ""}`
+            : null;
+        })
+        .filter(Boolean)
+    : [];
+  const stepsBlock =
+    stepsLines.length > 0
+      ? `\nEXISTING STEPS (starter code must NOT already accomplish these — leave work for the student):\n${stepsLines.join("\n\n")}\n`
+      : "";
+
+  const keyList = parts.map((p) => `"${p}"`).join(", ");
+  const partRules = [];
+  if (parts.includes("hints")) {
+    partRules.push(
+      `"hints": JSON array of exactly 4 to 6 short strings. Gentle nudges for stuck learners; do NOT give full solutions or complete code answers.`,
+    );
+  }
+  if (parts.includes("starterCode")) {
+    const isMultiplayerCat = category === "multiplayer";
+    const serverPart = isMultiplayerCat
+      ? `CATEGORY is multiplayer: include a non-empty "serverJs" scaffold only (Node/Socket.IO style) — listen/setup stubs without implementing full game sync or completing lesson logic in the starter.`
+      : `CATEGORY is NOT multiplayer: set "serverJs" to exactly "" (empty string).`;
+    partRules.push(
+      `"starterCode": JSON object with string fields ONLY: html, css, javascript, serverJs. RUNTIME is always vanilla browser HTML/CSS/JS — NOT React or JSX. SCAFFOLD ONLY — this is the code loaded BEFORE the student starts. You MUST NOT implement the lesson outcome, game logic, step tasks, console.log outputs required by steps, or full event handlers that complete the project. Use: empty or stub function bodies, // TODO markers, placeholder values, and wiring only (e.g. canvas element in HTML, querySelector variables set to null or unused) so the student still has meaningful edits to make. If steps are listed above, the starter must intentionally leave every step's core work undone. You MUST include all three: "html", "css", and "javascript" as NON-EMPTY strings. "html": valid HTML document with structural elements for the lesson but no inline scripts that complete tasks. "css": layout/typography/theme only — no cheating by hiding required work. "javascript": comments, empty stubs, or minimal boilerplate (e.g. const canvas = document.getElementById('gameCanvas');) WITHOUT drawing, game loop, or completing instructions. ${serverPart}`,
+    );
+  }
+
+  const prompt = `You are a curriculum assistant for a game-themed coding education app.
+
+MODULE TITLE: ${title}
+DESCRIPTION: ${description || "(none)"}
+DIFFICULTY: ${difficulty}
+CATEGORY: ${category || "(unspecified)"}
+RUNTIME: Vanilla HTML / CSS / JavaScript in the browser (no React, no JSX).
+
+LESSON CONTENT (markdown):
+---
+${content.slice(0, 8000) || "(infer from title and description only)"}
+---
+${stepsBlock}
+Generate ONLY the following JSON object keys: ${keyList}
+Do not include any other top-level keys.
+
+Rules for each key:
+${partRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}
+
+OUTPUT RULES — CRITICAL:
+1. Reply with ONLY one JSON object (no markdown fences, no commentary).
+2. Escape newlines inside strings as \\n when needed; keep strings valid JSON.
+3. Starter "html", "css", and "javascript" must all be non-empty and syntactically plausible for ${difficulty} learners.
+${
+  parts.includes("starterCode")
+    ? `4. Starter code is INCOMPLETE by design: a new learner following the steps must still write or change JavaScript (and sometimes HTML/CSS) to pass verification — do not ship a working solution. If no steps were listed, still avoid a finished mini-project; use skeleton only.
+5. Never put complete game loops, full implementations of step instructions, or final console.log outputs in the starter; those belong in the student's edits.`
+    : ""
+}`;
 
   const raw = await generateTextWithModel(
     prompt,
-    curriculumModelCallOptions(parts),
+    {
+      maxTokens: parts.includes("starterCode") ? 5000 : 1200,
+      temperature: parts.includes("starterCode") ? 0.25 : 0.35,
+    },
     AI_GENERAL_MODEL,
   );
 
@@ -808,7 +780,27 @@ async function generateModuleCurriculumParts(opts) {
     throw new Error("Invalid curriculum response payload");
   }
 
-  return shapeCurriculumResponse(parsed, parts, category, title);
+  const out = {};
+  if (parts.includes("hints")) {
+    const arr = Array.isArray(parsed.hints) ? parsed.hints : [];
+    out.hints = arr
+      .map((x) => String(x ?? "").trim())
+      .filter(Boolean)
+      .slice(0, 12);
+    if (out.hints.length === 0) {
+      throw new Error("Hints missing from response");
+    }
+  }
+  if (parts.includes("starterCode")) {
+    if (!parsed.starterCode || typeof parsed.starterCode !== "object") {
+      throw new Error("starterCode missing from response");
+    }
+    const isMultiplayerCat = category === "multiplayer";
+    out.starterCode = ensureVanillaStarterCode(parsed.starterCode, title);
+    if (!isMultiplayerCat) out.starterCode.serverJs = "";
+  }
+
+  return out;
 }
 
 module.exports = {
