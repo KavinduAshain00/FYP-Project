@@ -48,6 +48,14 @@ if (process.env.TRUST_PROXY === "1") {
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
+    xContentTypeOptions: true,
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "frame-ancestors": ["'self'"],
+      },
+    },
+    xFrameOptions: false,
   }),
 );
 
