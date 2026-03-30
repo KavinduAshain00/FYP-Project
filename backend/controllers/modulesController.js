@@ -3,11 +3,102 @@ const { getEffectivePathCategories } = require('../utils/learningPathModules');
 
 const SLIM_FIELDS = '_id title description difficulty category order';
 
+const MODULE_CATEGORIES = new Set([
+  'javascript-basics',
+  'game-development',
+  'multiplayer',
+  'advanced-concepts',
+]);
+const MODULE_DIFFICULTIES = new Set(['beginner', 'intermediate', 'advanced']);
+const MODULE_TYPES = new Set(['vanilla', 'react']);
+const STEP_VERIFY_TYPES = new Set(['code', 'checkConsole', 'checkComments']);
+
+const STARTER_CODE_KEYS = ['html', 'css', 'javascript', 'serverJs'];
+
+function queryFilterString(raw, maxLen) {
+  if (raw === undefined || raw === null || typeof raw !== 'string') return '';
+  return raw.trim().substring(0, maxLen);
+}
+
+function pickStarterCode(raw) {
+  if (raw === undefined || raw === null || typeof raw !== 'object' || Array.isArray(raw))
+    return undefined;
+  const out = {};
+  for (const k of STARTER_CODE_KEYS) {
+    if (typeof raw[k] === 'string') out[k] = raw[k];
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+function pickStep(raw) {
+  if (raw === undefined || raw === null || typeof raw !== 'object' || Array.isArray(raw))
+    return null;
+  if (typeof raw.title !== 'string' || !raw.title.trim()) return null;
+  const step = { title: raw.title.trim() };
+  if (typeof raw.instruction === 'string') step.instruction = raw.instruction;
+  if (typeof raw.concept === 'string') step.concept = raw.concept;
+  if (STEP_VERIFY_TYPES.has(raw.verifyType)) step.verifyType = raw.verifyType;
+  if (raw.expectedConsole !== undefined) step.expectedConsole = raw.expectedConsole;
+  return step;
+}
+
+/**
+ * Allowlisted module fields only (no mass assignment / operator injection via req.body).
+ */
+function pickModuleWritablePayload(body) {
+  if (
+    body === undefined ||
+    body === null ||
+    typeof body !== 'object' ||
+    Array.isArray(body)
+  )
+    return {};
+  const out = {};
+
+  if (typeof body.title === 'string') out.title = body.title;
+  if (typeof body.description === 'string') out.description = body.description;
+  if (typeof body.content === 'string') out.content = body.content;
+
+  if (body.order !== undefined && body.order !== null) {
+    const n = Number(body.order);
+    if (Number.isFinite(n)) out.order = n;
+  }
+
+  if (typeof body.difficulty === 'string' && MODULE_DIFFICULTIES.has(body.difficulty)) {
+    out.difficulty = body.difficulty;
+  }
+  if (typeof body.category === 'string' && MODULE_CATEGORIES.has(body.category)) {
+    out.category = body.category;
+  }
+  if (typeof body.moduleType === 'string' && MODULE_TYPES.has(body.moduleType)) {
+    out.moduleType = body.moduleType;
+  }
+
+  const starterCode = pickStarterCode(body.starterCode);
+  if (starterCode) out.starterCode = starterCode;
+
+  if (Array.isArray(body.steps)) {
+    out.steps = body.steps.map((s) => pickStep(s)).filter(Boolean);
+  }
+  if (Array.isArray(body.hints)) {
+    out.hints = body.hints.filter((h) => typeof h === 'string');
+  }
+
+  return out;
+}
+
 async function buildModuleListQuery(req) {
   const query = {};
-  const { category, difficulty } = req.query;
+  let forceEmpty = false;
+  const category = queryFilterString(req.query.category, 128);
+  const difficulty = queryFilterString(req.query.difficulty, 64);
+
   if (category && category !== 'all') {
-    query.category = category;
+    if (MODULE_CATEGORIES.has(category)) {
+      query.category = category;
+    } else {
+      forceEmpty = true;
+    }
   } else if (
     !category &&
     req.user &&
@@ -20,7 +111,14 @@ async function buildModuleListQuery(req) {
     }
   }
   if (difficulty && difficulty !== 'all') {
-    query.difficulty = difficulty;
+    if (MODULE_DIFFICULTIES.has(difficulty)) {
+      query.difficulty = difficulty;
+    } else {
+      forceEmpty = true;
+    }
+  }
+  if (forceEmpty) {
+    query._id = { $in: [] };
   }
   return query;
 }
@@ -125,7 +223,8 @@ async function getById(req, res) {
 
 async function create(req, res) {
   try {
-    const module = new Module(req.body);
+    const payload = pickModuleWritablePayload(req.body);
+    const module = new Module(payload);
     await module.save();
     return res.status(201).json({ message: 'Module created', module });
   } catch (error) {
@@ -136,9 +235,10 @@ async function create(req, res) {
 
 async function update(req, res) {
   try {
+    const payload = pickModuleWritablePayload(req.body);
     const module = await Module.findByIdAndUpdate(
       req.params.id,
-      { $set: req.body },
+      { $set: payload },
       { new: true, runValidators: true }
     );
     if (!module) {
@@ -146,7 +246,7 @@ async function update(req, res) {
     }
     return res.json({
       message: 'Module updated',
-      delta: { _id: module._id, ...req.body },
+      delta: { _id: module._id, ...payload },
     });
   } catch (error) {
     console.error('Update module error:', error);

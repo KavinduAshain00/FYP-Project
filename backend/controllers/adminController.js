@@ -30,6 +30,16 @@ function toAdminUserView(user) {
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 
+const USER_LEARNING_PATH_ENUM = new Set(['javascript-basics', 'advanced', 'none']);
+
+/**
+ * Use only primitive string query values (avoid passing parsed objects into Mongo filters).
+ */
+function queryString(value, maxLen) {
+  if (value === undefined || value === null || typeof value !== 'string') return '';
+  return value.trim().substring(0, maxLen ?? value.length);
+}
+
 /**
  * GET /api/admin/users - List users with pagination (admin only)
  * Query: page (default 1), limit (default 20, max 100), search (name/email), learningPath (filter by path)
@@ -41,8 +51,8 @@ async function listUsers(req, res) {
       MAX_PAGE_SIZE,
       Math.max(1, parseInt(req.query.limit, 10) || DEFAULT_PAGE_SIZE)
     );
-    const search = (req.query.search || '').trim().substring(0, 200);
-    const learningPath = req.query.learningPath || '';
+    const search = queryString(req.query.search, 200);
+    const learningPathRaw = queryString(req.query.learningPath, 64);
     const allowedSort = [
       'createdAt',
       'name',
@@ -60,8 +70,12 @@ async function listUsers(req, res) {
       const searchRegex = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
       query.$or = [{ name: searchRegex }, { email: searchRegex }];
     }
-    if (learningPath && learningPath !== 'all') {
-      query.learningPath = learningPath === 'none' ? { $in: [null, '', 'none'] } : learningPath;
+    if (learningPathRaw && learningPathRaw !== 'all') {
+      if (learningPathRaw === 'none') {
+        query.learningPath = { $in: [null, '', 'none'] };
+      } else if (USER_LEARNING_PATH_ENUM.has(learningPathRaw)) {
+        query.learningPath = learningPathRaw;
+      }
     }
 
     const sortOpt = { [sortBy]: sortOrder };
