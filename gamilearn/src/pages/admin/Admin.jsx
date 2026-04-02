@@ -25,7 +25,7 @@ import { useAuth } from "../../context/AuthContext";
 import { adminAPI, modulesAPI, achievementsAPI } from "../../api/api";
 import { PageHeader } from "../../components/layout/GameLayout";
 import ConfirmModal from "../../components/ui/ConfirmModal";
-import { LoadingScreen, useShellPagesCache } from "../../components/AppRouteShell";
+import { LoadingScreen, useShellPagesCache } from "../../App";
 import { MODULE_CATEGORIES, DIFFICULTIES } from "../../utils/moduleUtils";
 
 const LEARNING_PATHS = ["none", "javascript-basics", "advanced"];

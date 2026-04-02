@@ -1,38 +1,28 @@
-/**
- * Unified XP / level pipeline for Gamilearn.
- *
- * - **Lifetime XP** lives in `User.totalPoints`; **level** is always `computeLevelFromTotalPoints(totalPoints)`.
- * - **Keyed grants** (`grantKeyedXp`, step / MCQ / module-complete) use `User.lessonXpKeys` so rewards are idempotent.
- * - **Achievements** add points in application code, then call `syncStoredLevelFromPoints(user)` before `save()`.
- * - **API payloads** use `getLevelInfo(totalPoints)` for rank + progress bars (wraps `utils/levelSystem.buildLevelInfo`).
- */
+// Lesson XP: totalPoints is canonical; lessonXpKeys stops double-paying the same step/mcq/complete.
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const Module = require('../models/Module');
 const {
-  XP_PER_LEVEL,
   MODULE_COMPLETION_XP,
   STEP_VERIFY_XP,
   MCQ_CORRECT_XP,
+  MODULE_DIFFICULTY_XP_MULTIPLIER,
+  applyModuleDifficultyXpMultiplier,
 } = require('../constants/levelRanks');
 const {
   buildLevelInfo,
   computeLevelFromTotalPoints,
 } = require('../utils/levelSystem');
 
-// ─── Public: level / display (no DB) ─────────────────────────────────────────
-
 function getLevelInfo(totalPoints) {
   const tp = Number(totalPoints) || 0;
   return buildLevelInfo(tp);
 }
 
-/** Keep User.level in sync with totalPoints after in-memory XP changes (achievements, etc.). */
 function syncStoredLevelFromPoints(user) {
   if (!user) return;
   user.level = computeLevelFromTotalPoints(user.totalPoints);
 }
-
-// ─── Internal: grant result shape ─────────────────────────────────────────────
 
 function grantSnapshot(totalPoints, awarded, xpAwarded) {
   const tp = Number(totalPoints) || 0;
@@ -51,10 +41,19 @@ function emptySnapshot(totalPoints = 0) {
   return grantSnapshot(tp, false, 0);
 }
 
-/**
- * Grant XP once per dedupe key (lesson step, MCQ slot, module completion).
- * Wrong MCQ / failed verify never write a key; a later success can still grant.
- */
+async function resolveModuleDifficulty(moduleId, explicitDifficulty) {
+  if (
+    explicitDifficulty &&
+    MODULE_DIFFICULTY_XP_MULTIPLIER[explicitDifficulty]
+  ) {
+    return explicitDifficulty;
+  }
+  const mod = await Module.findById(moduleId).select('difficulty').lean();
+  const d = mod?.difficulty;
+  if (d && MODULE_DIFFICULTY_XP_MULTIPLIER[d]) return d;
+  return 'beginner';
+}
+
 async function grantKeyedXp(userId, key, amount) {
   if (!userId || !key || !amount || amount <= 0) {
     return emptySnapshot();
@@ -85,25 +84,37 @@ async function grantKeyedXp(userId, key, amount) {
   return grantSnapshot(refreshed.totalPoints || 0, true, amount);
 }
 
-async function grantStepVerifyXp(userId, moduleId, stepIndex) {
+async function grantStepVerifyXp(userId, moduleId, stepIndex, moduleDifficulty) {
   if (!mongoose.Types.ObjectId.isValid(String(moduleId))) return emptySnapshot();
   if (!Number.isFinite(stepIndex) || stepIndex < 0) return emptySnapshot();
   const key = `${String(moduleId)}:step:${stepIndex}`;
-  return grantKeyedXp(userId, key, STEP_VERIFY_XP);
+  const difficulty = await resolveModuleDifficulty(moduleId, moduleDifficulty);
+  const amount = applyModuleDifficultyXpMultiplier(STEP_VERIFY_XP, difficulty);
+  return grantKeyedXp(userId, key, amount);
 }
 
-async function grantMcqCorrectXp(userId, moduleId, stepIndex, questionIndex) {
+async function grantMcqCorrectXp(
+  userId,
+  moduleId,
+  stepIndex,
+  questionIndex,
+  moduleDifficulty,
+) {
   if (!mongoose.Types.ObjectId.isValid(String(moduleId))) return emptySnapshot();
   if (!Number.isFinite(stepIndex) || stepIndex < 0) return emptySnapshot();
   if (!Number.isFinite(questionIndex) || questionIndex < 0) return emptySnapshot();
   const key = `${String(moduleId)}:mcq:${stepIndex}:${questionIndex}`;
-  return grantKeyedXp(userId, key, MCQ_CORRECT_XP);
+  const difficulty = await resolveModuleDifficulty(moduleId, moduleDifficulty);
+  const amount = applyModuleDifficultyXpMultiplier(MCQ_CORRECT_XP, difficulty);
+  return grantKeyedXp(userId, key, amount);
 }
 
-async function grantModuleCompletionXp(userId, moduleId) {
+async function grantModuleCompletionXp(userId, moduleId, moduleDifficulty) {
   if (!mongoose.Types.ObjectId.isValid(String(moduleId))) return emptySnapshot();
   const key = `${String(moduleId)}:complete`;
-  return grantKeyedXp(userId, key, MODULE_COMPLETION_XP);
+  const difficulty = await resolveModuleDifficulty(moduleId, moduleDifficulty);
+  const amount = applyModuleDifficultyXpMultiplier(MODULE_COMPLETION_XP, difficulty);
+  return grantKeyedXp(userId, key, amount);
 }
 
 module.exports = {
@@ -117,5 +128,6 @@ module.exports = {
   MODULE_COMPLETION_XP,
   STEP_VERIFY_XP,
   MCQ_CORRECT_XP,
-  XP_PER_LEVEL,
+  MODULE_DIFFICULTY_XP_MULTIPLIER,
+  applyModuleDifficultyXpMultiplier,
 };

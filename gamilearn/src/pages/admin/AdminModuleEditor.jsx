@@ -5,7 +5,7 @@ import { FaArrowLeft } from "react-icons/fa";
 import { adminAPI, modulesAPI } from "../../api/api";
 import { PageHeader } from "../../components/layout/GameLayout";
 import ConfirmModal from "../../components/ui/ConfirmModal";
-import { LoadingScreen } from "../../components/AppRouteShell";
+import { LoadingScreen } from "../../App";
 import AdminModuleFormSections from "./AdminModuleFormSections";
 import {
   MODULE_FORM_TABS,

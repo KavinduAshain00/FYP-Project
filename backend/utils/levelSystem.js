@@ -1,21 +1,14 @@
 const {
   EXPERIENCE_RANKS,
-  XP_PER_LEVEL,
   XP_PER_LEVEL_BASE,
   XP_PER_LEVEL_INCREMENT,
 } = require('../constants/levelRanks');
 
-/**
- * Total XP required to advance from `level` to level + 1 (level is 1-based).
- */
 function xpToAdvanceFromLevel(level) {
   const L = Math.max(1, Math.floor(Number(level)) || 1);
   return XP_PER_LEVEL_BASE + (L - 1) * XP_PER_LEVEL_INCREMENT;
 }
 
-/**
- * Split lifetime totalPoints into current level and progress toward the next level.
- */
 function peelTotalPointsToProgress(totalPoints) {
   let tp = Math.max(0, Number(totalPoints) || 0);
   let level = 1;
@@ -35,7 +28,6 @@ function peelTotalPointsToProgress(totalPoints) {
   }
 }
 
-/** Single source for stored/display level from lifetime XP (matches User.level updates). */
 function computeLevelFromTotalPoints(totalPoints) {
   return peelTotalPointsToProgress(totalPoints).level;
 }
@@ -72,10 +64,6 @@ function getRankProgress(level) {
   };
 }
 
-/**
- * Build levelInfo for a user (rank, xpProgress, rankProgress).
- * Level and bar progress use XP_PER_LEVEL_BASE / XP_PER_LEVEL_INCREMENT from levelRanks.js.
- */
 function buildLevelInfo(totalPoints) {
   const total = Number(totalPoints) || 0;
   const lvl = computeLevelFromTotalPoints(total);
@@ -88,10 +76,6 @@ function buildLevelInfo(totalPoints) {
     rank: {
       name: rank.name,
       title: rank.title,
-      color: rank.color,
-      bgColor: rank.bgColor,
-      borderColor: rank.borderColor,
-      description: rank.description,
     },
     xpProgress: {
       currentXP: xpProgress.currentXP,
@@ -115,5 +99,4 @@ module.exports = {
   calculateXPProgress,
   getRankProgress,
   buildLevelInfo,
-  XP_PER_LEVEL,
 };

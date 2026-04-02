@@ -3,10 +3,8 @@ const User = require('../models/User');
 const achievementService = require('../services/achievementService');
 const lessonXpService = require('../services/lessonXpService');
 const crypto = require('crypto');
+const { debug } = require('../utils/logger');
 
-/**
- * GET /api/achievements - Active achievement catalog (public)
- */
 async function getAll(req, res) {
   try {
     const achievements = await Achievement.find({ isActive: true }).sort({ id: 1 });
@@ -17,10 +15,6 @@ async function getAll(req, res) {
   }
 }
 
-/**
- * GET /api/achievements/user - Catalog with earned flag per row (auth)
- * Response: ETag; supports If-None-Match 304
- */
 async function getUserAchievements(req, res) {
   try {
     const user = await User.findById(req.user._id).select('earnedAchievements');
@@ -44,15 +38,11 @@ async function getUserAchievements(req, res) {
   }
 }
 
-/**
- * POST /api/achievements/earn - Grant badge by id without rule check (auth)
- * Body: { achievementId }
- */
 async function earn(req, res) {
   const userId = req.user?._id?.toString();
   try {
     const { achievementId } = req.body;
-    console.log('[Achievements] earn', { userId, achievementId });
+    debug('[Achievements] earn', { userId, achievementId });
     const achievement = await Achievement.findOne({ id: achievementId });
     if (!achievement) {
       return res.status(404).json({ message: 'Achievement not found' });
@@ -71,7 +61,7 @@ async function earn(req, res) {
       user.totalPoints = (user.totalPoints || 0) + achievement.points;
       lessonXpService.syncStoredLevelFromPoints(user);
       await user.save();
-      console.log('[Achievements] earn success', {
+      debug('[Achievements] earn success', {
         userId,
         achievementId,
         name: achievement?.name,
@@ -103,9 +93,6 @@ async function earn(req, res) {
   }
 }
 
-/**
- * GET /api/achievements/stats - Earned count vs total for current user (auth)
- */
 async function getStats(req, res) {
   try {
     const user = await User.findById(req.user._id);
@@ -124,20 +111,16 @@ async function getStats(req, res) {
   }
 }
 
-/**
- * POST /api/achievements/check - Evaluate rules; merge gameStats; return newlyEarned (auth)
- * Body: session/editor counters (totalEdits, aiHintRequests, …)
- */
 async function check(req, res) {
   const userId = req.user?._id?.toString();
   try {
-    console.log('[Achievements] check', { userId });
+    debug('[Achievements] check', { userId });
     const { newlyEarned, user } = await achievementService.checkProgress(req.user._id, req.body);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
     if ((newlyEarned || []).length > 0) {
-      console.log('[Achievements] check newlyEarned', {
+      debug('[Achievements] check newlyEarned', {
         userId,
         count: newlyEarned.length,
         ids: newlyEarned.map((a) => a?.id),

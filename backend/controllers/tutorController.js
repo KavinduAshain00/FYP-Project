@@ -4,9 +4,12 @@ const { AI_CODER_MODEL } = require('../constants/ai');
 const lessonXpService = require('../services/lessonXpService');
 const {
   assessQuestionConfidence,
-  getFallbackHints,
   buildPedagogicalPrompt,
 } = require('../utils/tutor');
+const { debug } = require('../utils/logger');
+
+const TUTOR_UNAVAILABLE_MESSAGE =
+  'The AI tutor is unavailable at the moment. Please try again in a little while.';
 
 function parseStepIndex(si) {
   if (typeof si === 'number' && !Number.isNaN(si)) return si;
@@ -14,9 +17,6 @@ function parseStepIndex(si) {
   return Number.isFinite(n) ? n : NaN;
 }
 
-/**
- * jsonStepVerify - JSON response for step/MCQ verify; may grant step XP when correct.
- */
 async function jsonStepVerify(req, res, correct, feedback) {
   const { moduleId, stepIndex: si } = req.body;
   const stepIndexNum = parseStepIndex(si);
@@ -40,24 +40,20 @@ async function jsonStepVerify(req, res, correct, feedback) {
   return res.json(payload);
 }
 
-/**
- * POST /api/tutor/mcq/generate - Generate 1-2 MCQs for a step (auth, rate limited)
- * Body: { stepTitle, stepConcept?, moduleTitle?, count? }
- */
 async function generateMCQs(req, res) {
   const { stepTitle, stepConcept, moduleTitle, count } = req.body;
   if (!stepTitle || typeof stepTitle !== 'string') {
     return res.status(400).json({ error: 'stepTitle (string) is required' });
   }
   try {
-    console.log('[Tutor] generateMCQs', { stepTitle: stepTitle?.slice(0, 40), moduleTitle });
+    debug('[Tutor] generateMCQs', { stepTitle: stepTitle?.slice(0, 40), moduleTitle });
     const result = await ai.generateMCQs(
       stepTitle,
       stepConcept || '',
       moduleTitle || '',
       typeof count === 'number' ? Math.min(2, Math.max(1, count)) : 2
     );
-    console.log('[Tutor] generateMCQs success', { questionCount: result?.questions?.length ?? 0 });
+    debug('[Tutor] generateMCQs success', { questionCount: result?.questions?.length ?? 0 });
     return res.json(result);
   } catch (err) {
     console.error('[Tutor] generateMCQs error', err.message || err);
@@ -67,10 +63,6 @@ async function generateMCQs(req, res) {
   }
 }
 
-/**
- * POST /api/tutor/mcq/verify - Verify answer + optional MCQ XP (auth, rate limited)
- * Body: { question, options, correctIndex, selectedIndex, moduleId?, stepIndex?, questionIndex? }
- */
 async function verifyMCQ(req, res) {
   const { question, options, correctIndex, selectedIndex } = req.body;
   if (
@@ -84,7 +76,7 @@ async function verifyMCQ(req, res) {
       .json({ error: 'question, options (array), correctIndex, and selectedIndex are required' });
   }
   try {
-    console.log('[Tutor] verifyMCQ', { correct: selectedIndex === correctIndex });
+    debug('[Tutor] verifyMCQ', { correct: selectedIndex === correctIndex });
     const result = await ai.verifyMCQAnswer(question, options, correctIndex, selectedIndex);
     const payload = { ...result, xpAwarded: 0 };
     if (result.correct && req.user?._id) {
@@ -127,17 +119,13 @@ async function verifyMCQ(req, res) {
   }
 }
 
-/**
- * POST /api/tutor/explain-code - Explain highlighted code (auth, rate limited)
- * Body: { code, language? }
- */
 async function explainCode(req, res) {
   const { code, language } = req.body;
   if (!code || typeof code !== 'string') {
     return res.status(400).json({ error: 'code (string) is required' });
   }
   try {
-    console.log('[Tutor] explainCode', {
+    debug('[Tutor] explainCode', {
       language: language || 'javascript',
       codeLen: code?.length,
     });
@@ -155,17 +143,13 @@ async function explainCode(req, res) {
   }
 }
 
-/**
- * POST /api/tutor/explain-error - Plain-language error explanation (auth, rate limited)
- * Body: { errorMessage, codeSnippet?, language? }
- */
 async function explainError(req, res) {
   const { errorMessage, codeSnippet, language } = req.body;
   if (!errorMessage || typeof errorMessage !== 'string' || !errorMessage.trim()) {
     return res.status(400).json({ error: 'errorMessage (string) is required' });
   }
   try {
-    console.log('[Tutor] explainError', {
+    debug('[Tutor] explainError', {
       errorLen: errorMessage?.length,
       hasCodeSnippet: Boolean(codeSnippet),
     });
@@ -184,17 +168,13 @@ async function explainError(req, res) {
   }
 }
 
-/**
- * POST /api/tutor/lecture-notes - Lecture notes from overview text (auth, rate limited)
- * Body: { overview, moduleTitle?, difficulty?, category?, steps?, userLevel? }
- */
 async function generateLectureNotes(req, res) {
   const { overview, moduleTitle, difficulty, category, steps, userLevel } = req.body;
   if (!overview || typeof overview !== 'string' || !overview.trim()) {
     return res.status(400).json({ error: 'overview (string) is required' });
   }
   try {
-    console.log('[Tutor] generateLectureNotes', { moduleTitle: moduleTitle?.slice(0, 40) });
+    debug('[Tutor] generateLectureNotes', { moduleTitle: moduleTitle?.slice(0, 40) });
     const notes = await ai.generateLectureNotes({
       overview: overview.trim(),
       moduleTitle: moduleTitle || 'This lesson',
@@ -212,10 +192,6 @@ async function generateLectureNotes(req, res) {
   }
 }
 
-/**
- * POST /api/tutor - Hints, companion chat, contextual tips (auth, rate limited)
- * Body: { message, context? } (hint-mode may summarize/verify code)
- */
 async function postTutor(req, res) {
   const { message, context } = req.body;
   const userId = req.user?._id?.toString();
@@ -224,7 +200,7 @@ async function postTutor(req, res) {
   }
 
   try {
-    console.log('[Tutor] postTutor', {
+    debug('[Tutor] postTutor', {
       userId,
       contextType: context?.type,
       hintStyle: context?.hintStyle,
@@ -234,9 +210,9 @@ async function postTutor(req, res) {
       const hintStyle = context?.hintStyle || 'general';
 
       if (confidence < 0.3) {
-        const fallbackHints = getFallbackHints(message);
         return res.json({
-          answer: `🤔 I need a bit more context to help you best. Here are some things to check:\n\n${fallbackHints.join('\n\n')}\n\n💬 Can you tell me more about what you're trying to do and what's happening?`,
+          answer:
+            'Please add a bit more detail about what you are trying to do and what is going wrong, then ask again.',
           hintType: 'fallback',
           confidence,
         });
@@ -289,11 +265,10 @@ async function postTutor(req, res) {
 
       const verification = await ai.verifyTutorResponse(message, answer);
       if (!verification.ok) {
-        answer =
-          "I couldn't verify that response. Please try rephrasing your question or ask about a specific part of your code.";
+        answer = TUTOR_UNAVAILABLE_MESSAGE;
       }
       if (!answer || !String(answer).trim()) {
-        answer = "I couldn't generate a reply right now. Try asking again in a moment.";
+        answer = TUTOR_UNAVAILABLE_MESSAGE;
       }
 
       return res.json({
@@ -315,7 +290,7 @@ async function postTutor(req, res) {
       promptParts.push(`You are a code generation assistant for React/JavaScript.
 - Generate clean, well-commented code
 - Use modern React patterns (hooks, functional components) when relevant
-- Include helpful console.log statements for debugging
+- Comment non-obvious logic; use console logging only where it clearly teaches debugging
 - Make the code educational and easy to understand`);
     } else {
       promptParts.push(
@@ -346,36 +321,32 @@ async function postTutor(req, res) {
     if (!skipVerification) {
       const verification = await ai.verifyTutorResponse(message, answer);
       if (!verification.ok) {
-        answer =
-          "I couldn't verify that response. Please try rephrasing your question or be more specific.";
+        answer = TUTOR_UNAVAILABLE_MESSAGE;
       }
     }
     if (!answer || !String(answer).trim()) {
-      answer = "I couldn't generate a reply right now. Try asking again in a moment.";
+      answer = TUTOR_UNAVAILABLE_MESSAGE;
     }
 
     return res.json({ answer });
   } catch (err) {
     console.error('[Tutor] postTutor error', { userId, error: err.message });
-    return res.status(500).json({ error: 'Tutor service failed to generate a response' });
+    return res.status(500).json({ error: TUTOR_UNAVAILABLE_MESSAGE });
   }
 }
 
-/**
- * getCodeForVerify - Normalize { html, css, js } from request (js vs javascript keys).
- */
 function getCodeForVerify(code) {
   if (!code || typeof code !== 'object') return null;
   return {
     html: code.html || '',
     css: code.css || '',
-    js: (code.javascript !== undefined ? code.javascript : code.js) || '',
+    js:
+      code.javascript === undefined || code.javascript === null
+        ? ''
+        : String(code.javascript),
   };
 }
 
-/**
- * isCodeEmptyForStep - True if student code is too empty for remote verification.
- */
 function isCodeEmptyForStep(normalized) {
   const full = [normalized.html, normalized.css, normalized.js].join('\n');
   const noWhitespace = full.replace(/\s+/g, ' ').trim();
@@ -390,9 +361,6 @@ function isCodeEmptyForStep(normalized) {
   return false;
 }
 
-/**
- * parseVerificationResponse - { correct, feedback } from model JSON or heuristics.
- */
 function parseVerificationResponse(raw) {
   const fallbackFail = {
     correct: false,
@@ -481,9 +449,6 @@ function parseVerificationResponse(raw) {
   return fallbackFail;
 }
 
-/**
- * checkConsoleOutput - verifyType checkConsole: compare panel lines to expectedConsole rules.
- */
 function checkConsoleOutput(consoleOutput, expectedConsole) {
   if (!Array.isArray(consoleOutput) || consoleOutput.length === 0) {
     return {
@@ -539,9 +504,6 @@ function checkConsoleOutput(consoleOutput, expectedConsole) {
   return { ok: true, feedback: 'Console output captured. Step complete!' };
 }
 
-/**
- * checkCommentsStep - verifyType checkComments: detect single-line vs block comment syntax.
- */
 function checkCommentsStep(stepDescription, normalized) {
   const stepLower = (stepDescription || '').toLowerCase();
   const js = normalized && normalized.js ? normalized.js : '';
@@ -590,10 +552,6 @@ function checkCommentsStep(stepDescription, normalized) {
   return null;
 }
 
-/**
- * POST /api/tutor/verify - Step satisfaction (AI, console, or comment checks) + XP if correct (auth, rate limited)
- * Body: { stepDescription, code, stepIndex?, verifyType?, consoleOutput?, expectedConsole?, … }
- */
 async function verifyStep(req, res) {
   const {
     stepIndex,
@@ -618,7 +576,7 @@ async function verifyStep(req, res) {
     return res.status(400).json({ error: 'code (object with html/css/javascript) is required' });
   }
 
-  console.log('[Tutor] verifyStep', { userId, stepIndex, verifyType, moduleTitle });
+  debug('[Tutor] verifyStep', { userId, stepIndex, verifyType, moduleTitle });
   const normalized = getCodeForVerify(code);
 
   // --- verifyType: checkConsole (non-coding step: user must run and have console output) ---
@@ -702,7 +660,7 @@ Respond with ONLY a JSON object: {"correct": true or false, "feedback": "brief s
       AI_CODER_MODEL
     );
     const result = parseVerificationResponse(raw);
-    console.log('[Tutor] verifyStep result', { userId, stepIndex, correct: result.correct });
+    debug('[Tutor] verifyStep result', { userId, stepIndex, correct: result.correct });
     return jsonStepVerify(req, res, result.correct, result.feedback);
   } catch (err) {
     console.error('[Tutor] verifyStep error', { userId, stepIndex, error: err.message });

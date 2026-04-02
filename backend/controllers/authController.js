@@ -4,10 +4,8 @@ const { generateToken, signPasswordResetToken, verifyPasswordResetToken } = requ
 const { isAdmin } = require('../utils/admin');
 const { grantSignupAchievement } = require('../services/achievementService');
 const lessonXpService = require('../services/lessonXpService');
+const { debug } = require('../utils/logger');
 
-/**
- * AI_PRESET_BY_PATH - Default tutor preferences applied at signup by learningPath.
- */
 const AI_PRESET_BY_PATH = {
   'javascript-basics': { tone: 'friendly', hintDetail: 'detailed', assistanceFrequency: 'high' },
   advanced: { tone: 'friendly', hintDetail: 'moderate', assistanceFrequency: 'normal' },
@@ -15,10 +13,6 @@ const AI_PRESET_BY_PATH = {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/**
- * POST /api/auth/signup-precheck - Validate email/password before path selection (rate limited)
- * Body: { email, password } (no user created)
- */
 async function signupPrecheck(req, res) {
   try {
     const email = (req.body.email || '').trim();
@@ -47,10 +41,6 @@ async function signupPrecheck(req, res) {
   }
 }
 
-/**
- * POST /api/auth/signup - Register new user (rate limited)
- * Body: { name, email, password, knowsJavaScript }
- */
 async function signup(req, res) {
   try {
     const { name, email, password, knowsJavaScript } = req.body;
@@ -65,7 +55,7 @@ async function signup(req, res) {
     if (typeof password !== 'string' || password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
-    console.log('[Auth] signup', { email: emailTrimmed });
+    debug('[Auth] signup', { email: emailTrimmed });
 
     const existingUser = await User.findOne({ email: emailTrimmed.toLowerCase() });
     if (existingUser) {
@@ -97,7 +87,7 @@ async function signup(req, res) {
     }
 
     await grantSignupAchievement(user._id);
-    console.log('[Auth] signup success', { userId: user._id?.toString(), email });
+    debug('[Auth] signup success', { userId: user._id?.toString(), email });
     const token = generateToken(user._id);
 
     const savedUser = await User.findById(user._id)
@@ -120,10 +110,6 @@ async function signup(req, res) {
   }
 }
 
-/**
- * POST /api/auth/login - Issue JWT (rate limited)
- * Body: { email, password }
- */
 async function login(req, res) {
   try {
     const { email, password } = req.body;
@@ -131,7 +117,7 @@ async function login(req, res) {
     if (!email || !password) {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
-    console.log('[Auth] login', { email });
+    debug('[Auth] login', { email });
 
     const user = await User.findOne({ email });
     if (!user) {
@@ -144,7 +130,7 @@ async function login(req, res) {
     }
 
     const token = generateToken(user._id);
-    console.log('[Auth] login success', { userId: user._id?.toString(), email });
+    debug('[Auth] login success', { userId: user._id?.toString(), email });
     const fullUser = await User.findById(user._id)
       .select('-password')
       .populate('completedModules.moduleId', 'title category')
@@ -165,11 +151,6 @@ async function login(req, res) {
   }
 }
 
-/**
- * POST /api/auth/forgot-password - Password reset token (rate limited)
- * Body: { email }
- * Response: resetToken (JWT, short-lived; no DB row)
- */
 async function forgotPassword(req, res) {
   try {
     const email = (req.body.email || '').trim().toLowerCase();
@@ -191,10 +172,6 @@ async function forgotPassword(req, res) {
   }
 }
 
-/**
- * POST /api/auth/reset-password - Apply new password using reset JWT (rate limited)
- * Body: { token, newPassword }
- */
 async function resetPassword(req, res) {
   try {
     const { token, newPassword } = req.body;

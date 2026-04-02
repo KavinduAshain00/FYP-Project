@@ -5,13 +5,12 @@ const {
   AI_LECTURE_MODEL,
   AI_GENERAL_MODEL,
 } = require("../constants/ai");
+const { debug } = require("../utils/logger");
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const STEP_VERIFY_TYPES = new Set(["code", "checkConsole", "checkComments"]);
 
-/**
- * Injected into user-facing prompts so replies feel welcoming and easy to skim.
- */
+// Appended to prompts so tutor copy stays warm and scannable.
 const USER_REPLY_STYLE = `--- How your answer should feel (learners read this) ---
   Voice    Warm, patient, encouraging—like a supportive coach, not a cold manual.
   Layout   Short paragraphs; use bullet lists when you give several steps or ideas.
@@ -23,9 +22,8 @@ if (!GITHUB_TOKEN) {
   );
 }
 
-console.log(`Using GitHub Models with model ${AI_MODEL}`);
+debug(`Using GitHub Models with model ${AI_MODEL}`);
 
-/** Generate text with a specific model. */
 async function generateTextWithModel(prompt, options = {}, model = AI_MODEL) {
   if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
 
@@ -49,10 +47,6 @@ async function generateTextWithModel(prompt, options = {}, model = AI_MODEL) {
   }
 }
 
-/**
- * Summarize user code into a short markdown context (for tutor). No hallucinations:
- * only describe what is actually present in the code.
- */
 async function summarizeCodeToMarkdown(codeByFile) {
   if (!GITHUB_TOKEN) return "Code context unavailable.";
   const parts = [];
@@ -99,10 +93,6 @@ Markdown bullets only. No intro line. No fenced code blocks.`;
   }
 }
 
-/**
- * Verify that a tutor/hint response is safe and grounded: no fabricated code,
- * no harmful advice, and relevant to the question. Returns { ok: boolean, reason?: string }.
- */
 async function verifyTutorResponse(question, response) {
   if (!GITHUB_TOKEN) return { ok: true };
   const prompt = `You are a careful fact-checker for educational AI answers.
@@ -135,9 +125,6 @@ Rules: no markdown fences, no extra keys, no explanation outside the JSON.`;
   }
 }
 
-/**
- * Verify that a code summary accurately reflects the code (no added content).
- */
 async function verifyCodeSummary(codeExcerpt, summary) {
   if (!GITHUB_TOKEN) return true;
   const prompt = `You verify whether a short summary stays faithful to code.
@@ -165,10 +152,6 @@ Your answer:`;
   }
 }
 
-/**
- * Generate 1-2 MCQ questions for a step/concept (educational, code-focused).
- * Returns { questions: [{ question, options: string[], correctIndex: number }] }
- */
 async function generateMCQs(stepTitle, stepConcept, moduleTitle, count = 2) {
   if (!GITHUB_TOKEN) return { questions: [] };
 
@@ -281,10 +264,6 @@ ${stepConcept ? `  Teaching focus (stick to this; do not drift into unrelated to
   }
 }
 
-/**
- * Explain why an MCQ answer is wrong (or confirm correct).
- * Returns { correct: boolean, explanation: string }
- */
 async function verifyMCQAnswer(question, options, correctIndex, selectedIndex) {
   if (!GITHUB_TOKEN)
     return {
@@ -339,16 +318,6 @@ ${(options || []).map((o, i) => `  [${i}] ${o}`).join("\n")}
   }
 }
 
-/**
- * Explain code or an error message (educational, concise). Uses main model.
- * @param {Object} opts
- * @param {'code'|'error'} opts.type - 'code' to explain highlighted code, 'error' to explain an error message
- * @param {string} [opts.code] - Code to explain (required when type is 'code')
- * @param {string} [opts.errorMessage] - Error message to explain (required when type is 'error')
- * @param {string} [opts.codeSnippet] - Optional code context when type is 'error'
- * @param {string} [opts.language='javascript']
- * @returns {Promise<string>}
- */
 async function explain(opts) {
   if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
   const type = opts?.type;
@@ -422,18 +391,6 @@ Never hand them the complete corrected program; empower them to fix it.`;
   throw new Error('explain() requires type: "code" or "error"');
 }
 
-/**
- * Generate lecture-like notes from a module's learning overview (summary).
- * Expands the summary into step-by-step educational content explaining what the user will learn.
- * @param {Object} opts
- * @param {string} opts.overview - Module content/summary (the learning overview)
- * @param {string} opts.moduleTitle - Module title
- * @param {string} [opts.difficulty] - beginner | intermediate | advanced
- * @param {string} [opts.category] - e.g. javascript-basics, react-basics
- * @param {Array<{title:string,instruction?:string,concept?:string}>} [opts.steps] - Module steps
- * @param {string} [opts.userLevel] - User's experience level for personalization
- * @returns {Promise<string>} Markdown lecture notes
- */
 async function generateLectureNotes(opts) {
   if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
   const overview = opts?.overview;
@@ -540,18 +497,6 @@ function normalizeAdminStep(raw) {
   };
 }
 
-/**
- * Generate 4–6 module steps for the admin panel (JSON), aligned with lesson content.
- * @param {Object} opts
- * @param {string} opts.title
- * @param {string} [opts.description]
- * @param {string} [opts.content] - markdown lesson body
- * @param {string} [opts.category]
- * @param {string} [opts.difficulty]
- * @param {string} [opts.moduleType] - vanilla | react
- * @param {number} [opts.stepCount] - target count (clamped 4–6)
- * @returns {Promise<Array<object>>}
- */
 async function generateModuleSteps(opts) {
   if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
   const title = String(opts?.title ?? "").trim();
@@ -691,9 +636,6 @@ h1 {
 
 const FALLBACK_STARTER_JS = "// Write your JavaScript here\n";
 
-/**
- * Admin modules use vanilla HTML/CSS/JS only. Never omit html, css, or javascript.
- */
 function ensureVanillaStarterCode(sc, moduleTitle) {
   const out = normalizeStarterCodeForAdmin(sc);
   const safeTitle = String(moduleTitle || "Lesson")
@@ -715,19 +657,6 @@ function ensureVanillaStarterCode(sc, moduleTitle) {
   return out;
 }
 
-/**
- * Generate hints and/or starter code for admin module editor.
- * @param {Object} opts
- * @param {string} opts.title
- * @param {string} [opts.description]
- * @param {string} [opts.content]
- * @param {string} [opts.category]
- * @param {string} [opts.difficulty]
- * @param {string} [opts.moduleType]
- * @param {('hints'|'starterCode')[]} opts.parts
- * @param {Array<{title?:string,instruction?:string}>} [opts.steps] - optional context
- * @returns {Promise<{hints?: string[], starterCode?: object}>}
- */
 async function generateModuleCurriculumParts(opts) {
   if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
   const title = String(opts?.title ?? "").trim();

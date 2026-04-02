@@ -18,7 +18,7 @@ import {
   FaCheckCircle,
   FaChevronRight,
 } from "react-icons/fa";
-import { LoadingScreen, useShellPagesCache } from "../components/AppRouteShell";
+import { LoadingScreen, useShellPagesCache } from "../App";
 import { getLastWorkedEditorModuleId } from "../utils/draftStorage";
 import { getXpBarProps } from "../utils/levelCurve";
 import { toModuleId } from "../utils/moduleUtils";

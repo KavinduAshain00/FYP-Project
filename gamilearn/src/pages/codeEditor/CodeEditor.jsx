@@ -9,9 +9,9 @@ import {
   tutorAPI,
   achievementsAPI,
   invalidateUserCaches,
-} from "../api/api";
+} from "../../api/api";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import {
   FaBookOpen,
   FaUndo,
@@ -32,36 +32,36 @@ import {
   FaCheckCircle,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
-import ConfirmModal from "../components/ui/ConfirmModal";
-import ModuleCompleteResultsModal from "./codeEditor/ModuleCompleteResultsModal";
-import { LoadingScreen } from "../components/AppRouteShell";
-import MarkdownContent from "../components/ui/MarkdownContent";
+import ConfirmModal from "../../components/ui/ConfirmModal";
+import ModuleCompleteResultsModal from "./ModuleCompleteResultsModal";
+import { LoadingScreen } from "../../App";
+import MarkdownContent from "../../components/ui/MarkdownContent";
 import {
   clearEditorDraftEverywhere,
   loadEditorDraft,
   loadLocalEditorDraft,
   pickNewerEditorDraft,
   saveEditorDraftWithLocalMirror,
-} from "../utils/draftStorage";
-import { getModuleImageUrl, toModuleId } from "../utils/moduleUtils";
+} from "../../utils/draftStorage";
+import { getModuleImageUrl, toModuleId } from "../../utils/moduleUtils";
 import {
   buildServerPreviewHtml,
   buildClientPreviewHtml,
-} from "../utils/multiplayerRuntime";
-import { buildSinglePlayerPreviewHtml } from "../utils/singlePlayerPreviewHtml";
+} from "../../utils/multiplayerRuntime";
+import { buildSinglePlayerPreviewHtml } from "../../utils/singlePlayerPreviewHtml";
 import CodeEditorMirrors, {
   CodeEditorFileTabs,
-} from "./codeEditor/CodeEditorMirrors";
-import CodeEditorMultiplayerPreviewPanel from "./codeEditor/CodeEditorMultiplayerPreviewPanel";
-import CodeEditorSinglePlayerPreviewPanel from "./codeEditor/CodeEditorSinglePlayerPreviewPanel";
-import CodeEditorConsoleBody from "./codeEditor/CodeEditorConsoleBody";
-import LectureOverviewPopup from "./codeEditor/LectureOverviewPopup";
-import CodeEditorTutorSidebar from "./codeEditor/CodeEditorTutorSidebar";
-import { useLectureOverview } from "./codeEditor/functions/useLectureOverview";
+} from "./CodeEditorMirrors";
+import CodeEditorMultiplayerPreviewPanel from "./CodeEditorMultiplayerPreviewPanel";
+import CodeEditorSinglePlayerPreviewPanel from "./CodeEditorSinglePlayerPreviewPanel";
+import CodeEditorConsoleBody from "./CodeEditorConsoleBody";
+import LectureOverviewPopup from "./LectureOverviewPopup";
+import CodeEditorTutorSidebar from "./CodeEditorTutorSidebar";
+import { useLectureOverview } from "./functions/useLectureOverview";
 import {
   buildTutorAskOptions,
   sanitizeTutorAnswer,
-} from "./codeEditor/functions/tutorAskPayload";
+} from "./functions/tutorAskPayload";
 
 // Module type configurations (multiplayer: server + HTML/CSS/JS clients)
 const MODULE_TYPES = {
@@ -80,7 +80,6 @@ const CodeEditor = () => {
   const [activeTab, setActiveTab] = useState("html");
   const [loading, setLoading] = useState(true);
   const [previewKey, setPreviewKey] = useState(0);
-  /** When false, debounced editor changes do not reload preview; use Refresh in preview bar */
   const [previewAutoRefresh, setPreviewAutoRefresh] = useState(true);
   const [editorKey, setEditorKey] = useState(0); // Force editor remount when needed
   const [isLoadingDraft, setIsLoadingDraft] = useState(false);
@@ -111,13 +110,11 @@ const CodeEditor = () => {
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyFeedback, setVerifyFeedback] = useState(null);
   const [verifyPassed, setVerifyPassed] = useState(false);
-  /** When user fails a step: show step crossed and this explanation (key = step index) */
   const [stepFailureFeedback, setStepFailureFeedback] = useState({});
 
-  /** Step guide: primary place for step list + verify actions (sidebar rail removed) */
   const [showStepGuide, setShowStepGuide] = useState(true);
 
-  // MCQ between steps (1-2 questions, generated/verified by qwen3-coder)
+  // MCQ gates between steps
   const [mcqGateForStep, setMcqGateForStep] = useState(null);
   const [mcqQuestions, setMcqQuestions] = useState([]);
   const [mcqCurrentIndex, setMcqCurrentIndex] = useState(0);
@@ -140,10 +137,8 @@ const CodeEditor = () => {
   const applyLivePreviewRefreshRef = useRef(() => {});
   const isLoadingDraftRef = useRef(false);
   const isMountedRef = useRef(true);
-  /** Cleared on unmount — avoids orphaned timers after leaving the editor */
   const trackedTimeoutsRef = useRef(new Set());
   const pointFloaterTidRef = useRef(null);
-  /** Incremented when moduleId changes (cleanup) or on unmount — drop stale async MCQ/verify results */
   const asyncUiGenRef = useRef(0);
   const saveInProgressRef = useRef(false);
   const moduleIdRef = useRef(moduleId);
@@ -152,9 +147,7 @@ const CodeEditor = () => {
   const currentStepIndexRef = useRef(currentStepIndex);
   const runFeedbackTidRef = useRef(null);
   const runFeedbackClearTidRef = useRef(null);
-  /** Tracks codeChanges for live preview refresh gamification */
   const codeChangesRef = useRef(0);
-  /** codeChanges snapshot at last preview refresh — points only when user edited since last refresh */
   const lastRunCodeChangeCountRef = useRef(0);
   useEffect(() => {
     isLoadingDraftRef.current = isLoadingDraft;
@@ -232,9 +225,7 @@ const CodeEditor = () => {
   }, [codeChanges]);
 
   const [pointFloater, setPointFloater] = useState(null);
-  /** Step just verified (for celebration animation); cleared after delay */
   const [lastVerifiedStepIndex, setLastVerifiedStepIndex] = useState(null);
-  /** Points pill pulse when user earns points */
   const [pointsJustEarned, setPointsJustEarned] = useState(false);
   const lastVerifiedStepClearTidRef = useRef(null);
 
@@ -271,15 +262,11 @@ const CodeEditor = () => {
   const [player2PreviewKey, setPlayer2PreviewKey] = useState(0);
   const [serverPreviewKey, setServerPreviewKey] = useState(0);
   const [activePreviewTab, setActivePreviewTab] = useState("server");
-  /** Multiplayer: frozen preview HTML so iframes don't reload on every code change (only on Run/Reset) */
   const [multiplayerSnapshot, setMultiplayerSnapshot] = useState(null);
   const [consoleLogs, setConsoleLogs] = useState([]);
   const [consoleOpen, setConsoleOpen] = useState(true);
-  /** Ref synced with error count for "errors fixed" detection after Run */
   const errorCountRef = useRef(0);
-  /** Floating gamified messages (e.g. "Errors fixed! +10") */
   const [floatingMessages, setFloatingMessages] = useState([]);
-  /** Brief "All clear!" state when errors go to zero after a run (replaces error panel) */
   const [showAllClear, setShowAllClear] = useState(false);
 
   const recentErrors = useMemo(
@@ -929,7 +916,6 @@ const CodeEditor = () => {
     [stepsVerified],
   );
 
-  /** First step not yet verified; `steps.length` when all are verified */
   const firstIncompleteStepIndex = useMemo(() => {
     if (!steps.length) return 0;
     const i = steps.findIndex((_, idx) => !stepsVerified[idx]);
@@ -950,7 +936,6 @@ const CodeEditor = () => {
     ],
   );
 
-  /** Persisted “how far you are” for dashboard — not the step you’re only browsing */
   const progressStepIndexForSave = useMemo(() => {
     if (!steps.length) return 0;
     if (firstIncompleteStepIndex >= steps.length) return steps.length - 1;
@@ -1268,7 +1253,6 @@ const CodeEditor = () => {
     }
   };
 
-  /** After a wrong answer (or verify failure): show correct answer, then advance quiz or leave gate */
   const handleMCQContinueAfterIncorrect = () => {
     setMcqResult(null);
     setMcqSelectedIndex(null);

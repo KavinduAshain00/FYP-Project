@@ -18,7 +18,7 @@ import {
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import { achievementsAPI, userAPI } from "../api/api";
-import { LoadingScreen, useShellPagesCache } from "../components/AppRouteShell";
+import { LoadingScreen, useShellPagesCache } from "../App";
 import { getXpBarProps } from "../utils/levelCurve";
 
 const groupAvatarsByUnlock = (avatars) => {

@@ -7,10 +7,8 @@ const achievementService = require('../services/achievementService');
 const { AVATAR_LIST, AVATAR_PRESETS } = require('../constants/avatars');
 const { getPathCategories } = require('../constants/learningPath');
 const { isAdmin } = require('../utils/admin');
+const { debug } = require('../utils/logger');
 
-/**
- * getEffectivePathCategories - Module categories visible on the learning path (beginner).
- */
 async function getEffectivePathCategories(user) {
   let pathCategories = getPathCategories(user.learningPath);
   if (user.learningPath === 'javascript-basics' && pathCategories.length > 0) {
@@ -101,10 +99,6 @@ function toProfileUser(user) {
   };
 }
 
-/**
- * GET /api/user/avatars - Avatar list with unlock state (level + achievements)
- * Response: ETag; supports If-None-Match 304
- */
 async function getAvatars(req, res) {
   try {
     const user = await User.findById(req.user._id).select('earnedAchievements totalPoints');
@@ -166,13 +160,10 @@ async function getAvatars(req, res) {
   }
 }
 
-/**
- * GET /api/user/profile - Full profile, levelInfo, pathCategories (auth)
- */
 async function getProfile(req, res) {
   const userId = req.user?._id?.toString();
   try {
-    console.log('[User] getProfile', { userId });
+    debug('[User] getProfile', { userId });
     const user = await User.findById(req.user._id)
       .select('-password')
       .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
@@ -193,19 +184,13 @@ async function getProfile(req, res) {
   }
 }
 
-/**
- * DASHBOARD_USER_SELECT - Lean fields for getDashboard aggregation.
- */
 const DASHBOARD_USER_SELECT =
   'name email avatarUrl totalPoints level learningPath earnedAchievements completedModules currentModule';
 
-/**
- * GET /api/user/dashboard - Modules on path, next module, learning+general achievements, levelInfo (auth)
- */
 async function getDashboard(req, res) {
   const userId = req.user?._id?.toString();
   try {
-    console.log('[User] getDashboard', { userId });
+    debug('[User] getDashboard', { userId });
     const user = await User.findById(req.user._id)
       .select(DASHBOARD_USER_SELECT)
       .populate('completedModules.moduleId', '_id')
@@ -281,9 +266,6 @@ async function getDashboard(req, res) {
   }
 }
 
-/**
- * GET /api/user/module/step-progress/:moduleId - Saved editor step flags for one module (auth)
- */
 async function getModuleStepProgress(req, res) {
   const userId = req.user?._id?.toString();
   const { moduleId } = req.params;
@@ -312,15 +294,11 @@ async function getModuleStepProgress(req, res) {
   }
 }
 
-/**
- * PUT /api/user/module/complete - First completion grants XP; runs achievement check (auth)
- * Body: { moduleId, sessionStats? }
- */
 async function completeModule(req, res) {
   const userId = req.user?._id?.toString();
   const { moduleId, sessionStats = {} } = req.body;
   try {
-    console.log('[User] completeModule', { userId, moduleId });
+    debug('[User] completeModule', { userId, moduleId });
     const user = await User.findById(req.user._id);
     const module = await Module.findById(moduleId);
     if (!module) return res.status(404).json({ message: 'Module not found' });
@@ -345,7 +323,11 @@ async function completeModule(req, res) {
         user.currentModule = undefined;
       }
       await user.save();
-      moduleXpGrant = await lessonXpService.grantModuleCompletionXp(user._id, moduleId);
+      moduleXpGrant = await lessonXpService.grantModuleCompletionXp(
+        user._id,
+        moduleId,
+        module.difficulty,
+      );
     }
 
     const completedCount = user.completedModules.length;
@@ -390,7 +372,7 @@ async function completeModule(req, res) {
       delta.levelInfo = lessonXpService.getLevelInfo(after.totalPoints || 0);
     }
 
-    console.log('[User] completeModule success', {
+    debug('[User] completeModule success', {
       userId,
       moduleId,
       newlyEarned: (newlyEarned || []).length,
@@ -407,14 +389,10 @@ async function completeModule(req, res) {
   }
 }
 
-/**
- * PUT /api/user/module/current - Set current module; optional stepsVerified + currentStepIndex (auth)
- * Body: { moduleId, stepsVerified?, currentStepIndex? }
- */
 async function setCurrentModule(req, res) {
   const userId = req.user?._id?.toString();
   try {
-    console.log('[User] setCurrentModule', { userId, moduleId: req.body?.moduleId });
+    debug('[User] setCurrentModule', { userId, moduleId: req.body?.moduleId });
     const { moduleId, currentStepIndex, stepsVerified } = req.body;
     if (!moduleId) return res.status(400).json({ message: 'moduleId is required' });
     const [user, module] = await Promise.all([
@@ -480,13 +458,10 @@ async function setCurrentModule(req, res) {
   }
 }
 
-/**
- * PUT /api/user/profile - name, avatarUrl, avatarPresetId, aiPreferences (auth)
- */
 async function updateProfile(req, res) {
   const userId = req.user?._id?.toString();
   try {
-    console.log('[User] updateProfile', { userId, hasAiPrefs: Boolean(req.body?.aiPreferences) });
+    debug('[User] updateProfile', { userId, hasAiPrefs: Boolean(req.body?.aiPreferences) });
     const { name, avatarUrl, avatarPresetId, aiPreferences } = req.body;
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -548,10 +523,6 @@ async function updateProfile(req, res) {
   }
 }
 
-/**
- * PUT /api/user/password - Change password (auth)
- * Body: { currentPassword, newPassword }
- */
 async function changePassword(req, res) {
   try {
     const { currentPassword, newPassword } = req.body;

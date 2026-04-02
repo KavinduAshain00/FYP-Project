@@ -1,11 +1,3 @@
-const {
-  FALLBACK_HINTS,
-  DEFAULT_FALLBACK_HINTS,
-} = require("../constants/tutor");
-
-/**
- * Assess confidence level based on question clarity and context
- */
 function assessQuestionConfidence(message, context) {
   let confidence = 0.5;
 
@@ -43,30 +35,6 @@ function assessQuestionConfidence(message, context) {
   return Math.max(0.1, Math.min(1.0, confidence));
 }
 
-/**
- * Get fallback hints based on keywords in the message
- */
-function getFallbackHints(message) {
-  const lowerMessage = message.toLowerCase();
-  const hints = [];
-
-  for (const [keyword, keywordHints] of Object.entries(FALLBACK_HINTS)) {
-    if (lowerMessage.includes(keyword)) {
-      hints.push(...keywordHints);
-    }
-  }
-
-  return hints.length > 0 ? hints : DEFAULT_FALLBACK_HINTS;
-}
-
-/**
- * Build pedagogical prompt for hint-mode tutor
- * @param {string} message - Student question
- * @param {object} context - Code summary, module, etc.
- * @param {string} hintStyle - hint type (general, error-explanation, etc.)
- * @param {number} confidence - assessed confidence
- * @param {object} [aiPreferences] - user's tone, hintDetail, assistanceFrequency
- */
 function buildPedagogicalPrompt(
   message,
   context,
@@ -269,6 +237,5 @@ They are inside a MODULE and on a CURRENT STEP. Ground every answer in that cont
 
 module.exports = {
   assessQuestionConfidence,
-  getFallbackHints,
   buildPedagogicalPrompt,
 };

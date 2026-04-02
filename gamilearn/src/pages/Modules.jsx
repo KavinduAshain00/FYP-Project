@@ -11,12 +11,11 @@ import {
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
-import { LoadingScreen, useShellPagesCache } from "../components/AppRouteShell";
+import { LoadingScreen, useShellPagesCache } from "../App";
 import { getXpBarProps } from "../utils/levelCurve";
 import { getModuleImageUrl, toModuleId } from "../utils/moduleUtils";
 
 const MODULES_PER_PAGE = 12;
-/** API caps limit at 100 (see modulesController). */
 const MODULES_FETCH_CAP = 100;
 
 function moduleMatchesFilters(module, filterCategory, filterDifficulty) {
@@ -55,7 +54,6 @@ const Modules = () => {
     () => saved?.filterDifficulty ?? "all",
   );
   const [questPage, setQuestPage] = useState(() => saved?.questPage ?? 1);
-  /** Avoid re-scrolling to the same continue-module + filter combo. */
   const scrolledToNextKeyRef = useRef("");
   const { refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -143,7 +141,6 @@ const Modules = () => {
     dashboard?.nextModule ??
     modulePath.find((m) => !completedModuleIds.includes(toModuleId(m._id)));
 
-  /** Prefer in-progress currentModule from the server; otherwise next on the path. */
   const continueModule = useMemo(() => {
     const cur = dashboard?.user?.currentModule;
     if (cur?._id) {
