@@ -14,7 +14,9 @@ function parseStepIndex(si) {
   return Number.isFinite(n) ? n : NaN;
 }
 
-/** Attach server XP when step verification passes (once per module step). */
+/**
+ * jsonStepVerify - JSON response for step/MCQ verify; may grant step XP when correct.
+ */
 async function jsonStepVerify(req, res, correct, feedback) {
   const { moduleId, stepIndex: si } = req.body;
   const stepIndexNum = parseStepIndex(si);
@@ -38,7 +40,10 @@ async function jsonStepVerify(req, res, correct, feedback) {
   return res.json(payload);
 }
 
-/** POST /api/tutor/mcq/generate - Generate 1-2 MCQs for a step */
+/**
+ * POST /api/tutor/mcq/generate - Generate 1-2 MCQs for a step (auth, rate limited)
+ * Body: { stepTitle, stepConcept?, moduleTitle?, count? }
+ */
 async function generateMCQs(req, res) {
   const { stepTitle, stepConcept, moduleTitle, count } = req.body;
   if (!stepTitle || typeof stepTitle !== 'string') {
@@ -62,7 +67,10 @@ async function generateMCQs(req, res) {
   }
 }
 
-/** POST /api/tutor/mcq/verify - Verify MCQ answer; return explanation if wrong */
+/**
+ * POST /api/tutor/mcq/verify - Verify answer + optional MCQ XP (auth, rate limited)
+ * Body: { question, options, correctIndex, selectedIndex, moduleId?, stepIndex?, questionIndex? }
+ */
 async function verifyMCQ(req, res) {
   const { question, options, correctIndex, selectedIndex } = req.body;
   if (
@@ -119,7 +127,10 @@ async function verifyMCQ(req, res) {
   }
 }
 
-/** POST /api/tutor/explain-code - Explain a highlighted code snippet */
+/**
+ * POST /api/tutor/explain-code - Explain highlighted code (auth, rate limited)
+ * Body: { code, language? }
+ */
 async function explainCode(req, res) {
   const { code, language } = req.body;
   if (!code || typeof code !== 'string') {
@@ -144,7 +155,10 @@ async function explainCode(req, res) {
   }
 }
 
-/** POST /api/tutor/explain-error - Explain a runtime/syntax error message in simple terms */
+/**
+ * POST /api/tutor/explain-error - Plain-language error explanation (auth, rate limited)
+ * Body: { errorMessage, codeSnippet?, language? }
+ */
 async function explainError(req, res) {
   const { errorMessage, codeSnippet, language } = req.body;
   if (!errorMessage || typeof errorMessage !== 'string' || !errorMessage.trim()) {
@@ -170,7 +184,10 @@ async function explainError(req, res) {
   }
 }
 
-/** POST /api/tutor/lecture-notes - Generate lecture notes from module learning overview */
+/**
+ * POST /api/tutor/lecture-notes - Lecture notes from overview text (auth, rate limited)
+ * Body: { overview, moduleTitle?, difficulty?, category?, steps?, userLevel? }
+ */
 async function generateLectureNotes(req, res) {
   const { overview, moduleTitle, difficulty, category, steps, userLevel } = req.body;
   if (!overview || typeof overview !== 'string' || !overview.trim()) {
@@ -196,8 +213,8 @@ async function generateLectureNotes(req, res) {
 }
 
 /**
- * POST /api/tutor - Hints and short answers from the tutor pipeline.
- * Code is summarized to markdown and verified before return.
+ * POST /api/tutor - Hints, companion chat, contextual tips (auth, rate limited)
+ * Body: { message, context? } (hint-mode may summarize/verify code)
  */
 async function postTutor(req, res) {
   const { message, context } = req.body;
@@ -345,7 +362,7 @@ async function postTutor(req, res) {
 }
 
 /**
- * Normalize code from request: frontend may send "javascript" or "js".
+ * getCodeForVerify - Normalize { html, css, js } from request (js vs javascript keys).
  */
 function getCodeForVerify(code) {
   if (!code || typeof code !== 'object') return null;
@@ -357,8 +374,7 @@ function getCodeForVerify(code) {
 }
 
 /**
- * Check if code is effectively empty: only whitespace or almost no code.
- * Returns true if code should be rejected as "empty" before remote verification.
+ * isCodeEmptyForStep - True if student code is too empty for remote verification.
  */
 function isCodeEmptyForStep(normalized) {
   const full = [normalized.html, normalized.css, normalized.js].join('\n');
@@ -375,8 +391,7 @@ function isCodeEmptyForStep(normalized) {
 }
 
 /**
- * Parse step verification JSON into { correct: boolean, feedback: string }.
- * Handles JSON in code blocks, extra text, and malformed output.
+ * parseVerificationResponse - { correct, feedback } from model JSON or heuristics.
  */
 function parseVerificationResponse(raw) {
   const fallbackFail = {
@@ -467,8 +482,7 @@ function parseVerificationResponse(raw) {
 }
 
 /**
- * Check console output against expected (for verifyType: checkConsole).
- * expectedConsole: { type: 'any'|'multipleLines' } or { exactLine: string } or { contains: string[] }
+ * checkConsoleOutput - verifyType checkConsole: compare panel lines to expectedConsole rules.
  */
 function checkConsoleOutput(consoleOutput, expectedConsole) {
   if (!Array.isArray(consoleOutput) || consoleOutput.length === 0) {
@@ -526,8 +540,7 @@ function checkConsoleOutput(consoleOutput, expectedConsole) {
 }
 
 /**
- * Check code for comment requirements (for verifyType: checkComments).
- * Lenient: only checks that the right type of comment exists, not exact wording.
+ * checkCommentsStep - verifyType checkComments: detect single-line vs block comment syntax.
  */
 function checkCommentsStep(stepDescription, normalized) {
   const stepLower = (stepDescription || '').toLowerCase();
@@ -578,9 +591,8 @@ function checkCommentsStep(stepDescription, normalized) {
 }
 
 /**
- * POST /api/tutor/verify - Check whether user code satisfies the current step.
- * Body: { stepIndex, stepDescription, stepInstruction?, stepConcept?, code, moduleTitle?, verifyType?, consoleOutput?, expectedConsole? }
- * Returns: { correct: boolean, feedback: string }
+ * POST /api/tutor/verify - Step satisfaction (AI, console, or comment checks) + XP if correct (auth, rate limited)
+ * Body: { stepDescription, code, stepIndex?, verifyType?, consoleOutput?, expectedConsole?, … }
  */
 async function verifyStep(req, res) {
   const {

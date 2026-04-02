@@ -3,19 +3,29 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 const achievementsController = require("../controllers/achievementsController");
 
-// Get all achievements
+/**
+ * GET /api/achievements - Active catalog
+ */
 router.get("/", achievementsController.getAll);
 
-// Get the user's achievements
+/**
+ * GET /api/achievements/user - Catalog + earned flags (auth)
+ */
 router.get("/user", auth, achievementsController.getUserAchievements);
 
-// Earn an achievement
+/**
+ * POST /api/achievements/earn - Manual grant (auth)
+ */
 router.post("/earn", auth, achievementsController.earn);
 
-// Get the user's achievement stats
+/**
+ * GET /api/achievements/stats - Progress summary (auth)
+ */
 router.get("/stats", auth, achievementsController.getStats);
 
-// Check if an achievement is earned
+/**
+ * POST /api/achievements/check - Run rules against merged stats (auth)
+ */
 router.post("/check", auth, achievementsController.check);
 
 module.exports = router;

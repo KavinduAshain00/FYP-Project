@@ -5,7 +5,9 @@ const { isAdmin } = require('../utils/admin');
 const { grantSignupAchievement } = require('../services/achievementService');
 const lessonXpService = require('../services/lessonXpService');
 
-/** Default tutor/companion preferences by learning path (applied at signup). */
+/**
+ * AI_PRESET_BY_PATH - Default tutor preferences applied at signup by learningPath.
+ */
 const AI_PRESET_BY_PATH = {
   'javascript-basics': { tone: 'friendly', hintDetail: 'detailed', assistanceFrequency: 'high' },
   advanced: { tone: 'friendly', hintDetail: 'moderate', assistanceFrequency: 'normal' },
@@ -14,7 +16,8 @@ const AI_PRESET_BY_PATH = {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * POST /api/auth/signup-precheck — validate email/password before path selection (no user created).
+ * POST /api/auth/signup-precheck - Validate email/password before path selection (rate limited)
+ * Body: { email, password } (no user created)
  */
 async function signupPrecheck(req, res) {
   try {
@@ -45,7 +48,8 @@ async function signupPrecheck(req, res) {
 }
 
 /**
- * POST /api/auth/signup - Register new user
+ * POST /api/auth/signup - Register new user (rate limited)
+ * Body: { name, email, password, knowsJavaScript }
  */
 async function signup(req, res) {
   try {
@@ -117,7 +121,8 @@ async function signup(req, res) {
 }
 
 /**
- * POST /api/auth/login - Login user
+ * POST /api/auth/login - Issue JWT (rate limited)
+ * Body: { email, password }
  */
 async function login(req, res) {
   try {
@@ -161,8 +166,9 @@ async function login(req, res) {
 }
 
 /**
- * POST /api/auth/forgot-password - Request password reset. Body: { email }
- * Returns a JWT reset token (1h) in the response; frontend stores it (no DB persistence).
+ * POST /api/auth/forgot-password - Password reset token (rate limited)
+ * Body: { email }
+ * Response: resetToken (JWT, short-lived; no DB row)
  */
 async function forgotPassword(req, res) {
   try {
@@ -186,8 +192,8 @@ async function forgotPassword(req, res) {
 }
 
 /**
- * POST /api/auth/reset-password - Set new password with JWT reset token. Body: { token, newPassword }
- * Token is verified (signature + expiry); no DB lookup.
+ * POST /api/auth/reset-password - Apply new password using reset JWT (rate limited)
+ * Body: { token, newPassword }
  */
 async function resetPassword(req, res) {
   try {

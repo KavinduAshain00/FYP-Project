@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { FaTrophy } from "react-icons/fa";
-import { getXpBarProps } from "../../utils/levelFromApi";
-import { ParticleBackground, XPBar, GameAvatar } from "../ui/GameUI";
+import { getXpBarProps } from "../../utils/levelCurve";
+import { XPBar, GameAvatar } from "../ui/GameUI";
 const contentEase = [0.25, 0.1, 0.25, 1];
 
 /**
@@ -108,14 +108,12 @@ export const GameSidebar = ({
 
 export const GameLayout = ({
   children,
-  showParticles = false,
   showSidebar = false,
   sidebarProps = {},
   className = "",
 }) => {
   return (
     <div className="min-h-screen bg-neutral-900 text-blue-100">
-      {showParticles && <ParticleBackground count={12} />}
       <main className="min-h-screen">
         {showSidebar ? (
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">

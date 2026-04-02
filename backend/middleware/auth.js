@@ -2,27 +2,25 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { isAdmin } = require("../utils/admin");
 
+/**
+ * auth - JWT Bearer middleware; sets req.user or 401 (OPTIONS passes through).
+ */
 const auth = async (req, res, next) => {
-  // Allow preflight requests to pass through without authentication
   if (req.method === "OPTIONS") {
     return next();
   }
   try {
-    // Get token from header
     const authHeader = req.get("Authorization") || req.get("authorization");
     const token = authHeader ? authHeader.replace("Bearer ", "") : null;
 
     if (!token) {
-      // No token present - client not authorized to access this route
       return res
         .status(401)
         .json({ message: "No authentication token, access denied" });
     }
 
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Find user
     const user = await User.findById(decoded.userId).select("-password");
 
     if (!user) {
@@ -36,7 +34,9 @@ const auth = async (req, res, next) => {
   }
 };
 
-/** Use after auth(); returns 403 if the current user's role is not admin. */
+/**
+ * requireAdmin - After auth: 403 unless User.role is admin.
+ */
 const requireAdmin = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ message: "Authentication required" });

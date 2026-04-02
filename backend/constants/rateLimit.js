@@ -1,15 +1,14 @@
 /**
- * Rate limiting configuration
+ * rateLimit.js - express-rate-limit presets for auth and tutor routers.
  */
 const { ipKeyGenerator } = require("express-rate-limit");
 
 /**
- * Tutor API: use with `auth` before this limiter so `req.user` is set.
- * Each authenticated user gets their own counter; IP fallback covers OPTIONS / edge cases.
+ * TUTOR_LIMIT - Per-user key when req.user set; else IP (use after auth middleware).
  */
 const TUTOR_LIMIT = {
   windowMs: 60 * 1000, // 1 minute
-  max: 20,
+  max: 15,
   message: { error: "Too many tutor requests. Try again later." },
   keyGenerator(req) {
     if (req.user?.id) {
@@ -19,7 +18,9 @@ const TUTOR_LIMIT = {
   },
 };
 
-/** Auth routes: limit login/signup/forgot-password to reduce brute-force and abuse */
+/**
+ * AUTH_LIMIT - Login/signup/password routes (brute-force mitigation).
+ */
 const AUTH_LIMIT = {
   windowMs: 10 * 60 * 1000, // 10 minutes
   max: 20,

@@ -32,26 +32,39 @@ mongoose
     process.exit(1);
   });
 
-// Routes
-// Authentication routes
+/**
+ * Mount - GET|POST /api/auth/* (see routes/auth.js).
+ */
 app.use("/api/auth", require("./routes/auth"));
 
-// Modules routes
+/**
+ * Mount - GET /api/modules/* learner catalog (see routes/modules.js).
+ */
 app.use("/api/modules", require("./routes/modules"));
 
-// User routes
+/**
+ * Mount - /api/user/* profile, dashboard, module progress (see routes/user.js).
+ */
 app.use("/api/user", require("./routes/user"));
 
-// Achievements routes
+/**
+ * Mount - /api/achievements/* catalog and checks (see routes/achievements.js).
+ */
 app.use("/api/achievements", require("./routes/achievements"));
 
-// Tutor routes
+/**
+ * Mount - /api/tutor/* AI tutor (see routes/tutor.js).
+ */
 app.use("/api/tutor", require("./routes/tutor"));
 
-// Admin (user management, etc.) – requires auth
+/**
+ * Mount - /api/admin/* staff routes (see routes/admin.js).
+ */
 app.use("/api/admin", require("./routes/admin"));
 
-// Health check
+/**
+ * GET / - Process health (not under /api).
+ */
 app.get("/", (req, res) => {
   res.json({ status: "ok", message: "Server is running" });
 });

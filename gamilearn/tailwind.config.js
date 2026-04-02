@@ -31,20 +31,11 @@ export default {
         'xp-gold': 'rgb(var(--color-warm-rgb) / <alpha-value>)',
         'shield-purple': 'rgb(var(--color-blue-500-rgb) / <alpha-value>)',
       },
-      boxShadow: {
-        'glow-cyan': '0 2px 14px rgba(56,220,240,0.22)',
-        'glow-purple': '0 2px 12px rgba(14,184,214,0.18)',
-        'glow-pink': '0 2px 12px rgba(94,205,250,0.16)',
-        'glow-gold': '0 2px 14px rgba(251,191,36,0.2)',
-        'glow-green': '0 2px 14px rgba(52,211,153,0.22)',
-        'glow-red': '0 2px 14px rgba(251,113,133,0.2)',
-        'neon-border': '0 1px 4px rgba(0,0,0,0.25)',
-        'game-card': '0 2px 16px rgba(0,0,0,0.45)',
-      },
       backgroundImage: {
-        'hero-grid': 'radial-gradient(circle at 1px 1px, rgba(56,220,240,0.07) 1px, transparent 0)',
+        'hero-grid':
+          'radial-gradient(circle at 1px 1px, rgb(var(--color-blue-400-rgb) / 0.07) 1px, transparent 0)',
         'cyber-grid':
-          'linear-gradient(rgba(56,220,240,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(56,220,240,0.04) 1px, transparent 1px)',
+          'linear-gradient(rgb(var(--color-blue-400-rgb) / 0.04) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--color-blue-400-rgb) / 0.04) 1px, transparent 1px)',
         panel: 'none',
         'gradient-radial': 'none',
         'gradient-conic': 'none',

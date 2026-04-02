@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
-import { useShellPagesCache } from "../utils/shellPagesCacheContext";
 import { userAPI } from "../api/api";
 import { toast } from "react-toastify";
 import {
@@ -19,10 +18,10 @@ import {
   FaCheckCircle,
   FaChevronRight,
 } from "react-icons/fa";
-import LoadingScreen from "../components/ui/LoadingScreen";
-import { toModuleId } from "../utils/ids";
+import { LoadingScreen, useShellPagesCache } from "../components/AppRouteShell";
 import { getLastWorkedEditorModuleId } from "../utils/draftStorage";
-import { getXpBarProps } from "../utils/levelFromApi";
+import { getXpBarProps } from "../utils/levelCurve";
+import { toModuleId } from "../utils/moduleUtils";
 
 const ease = [0.25, 0.1, 0.25, 1];
 
@@ -693,7 +692,7 @@ const Dashboard = () => {
                         <div
                           className={`w-0.5 shrink-0 self-stretch rounded-full ${
                             ach.earned
-                              ? "bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.4)]"
+                              ? "bg-blue-400 shadow-[0_0_6px_rgb(var(--color-blue-400-rgb)/0.4)]"
                               : "bg-amber-800/90"
                           }`}
                           aria-hidden
@@ -701,7 +700,7 @@ const Dashboard = () => {
                         <div
                           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
                             ach.earned
-                              ? "bg-cyan-400/20 ring-1 ring-cyan-400/40"
+                              ? "bg-blue-400/20 ring-1 ring-blue-400/40"
                               : "bg-blue-900/90 ring-1 ring-amber-700/40"
                           }`}
                         >

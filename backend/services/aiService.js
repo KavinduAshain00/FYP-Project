@@ -9,6 +9,14 @@ const {
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const STEP_VERIFY_TYPES = new Set(["code", "checkConsole", "checkComments"]);
 
+/**
+ * Injected into user-facing prompts so replies feel welcoming and easy to skim.
+ */
+const USER_REPLY_STYLE = `--- How your answer should feel (learners read this) ---
+  Voice    Warm, patient, encouraging—like a supportive coach, not a cold manual.
+  Layout   Short paragraphs; use bullet lists when you give several steps or ideas.
+  Emojis   A few purposeful ones (💡 tip, ✅ cheer, ⚠️ caution, 🎯 focus)—never every line.`;
+
 if (!GITHUB_TOKEN) {
   console.warn(
     "Warning: GITHUB_TOKEN not set. GitHub Models calls will fail until configured.",
@@ -62,11 +70,20 @@ async function summarizeCodeToMarkdown(codeByFile) {
     );
   if (parts.length === 0) return "No code provided.";
 
-  const prompt = `You are a code summarizer. Given the following code excerpts, output ONLY a short markdown summary (2-4 bullet points) that describes what the code actually contains. Do NOT add features, fix bugs, or invent code that is not there. Only describe what is present.
+  const prompt = `You create short, accurate code summaries for a live tutor. Stay grounded in what you see—no imagination.
 
+--- Your job ---
+  • Read the excerpts below.
+  • Write ONLY 2–4 markdown bullet points describing what is actually there.
+  • Do NOT add features, fix bugs, or mention code that does not appear.
+
+${USER_REPLY_STYLE}
+
+--- Excerpts ---
 ${parts.join("\n\n")}
 
-Output format: markdown bullet points only. No preamble. No code blocks.`;
+--- Output ---
+Markdown bullets only. No intro line. No fenced code blocks.`;
   try {
     const raw = await generateTextWithModel(prompt, {
       maxTokens: 256,
@@ -88,17 +105,20 @@ Output format: markdown bullet points only. No preamble. No code blocks.`;
  */
 async function verifyTutorResponse(question, response) {
   if (!GITHUB_TOKEN) return { ok: true };
-  const prompt = `You are a fact-checker for educational AI responses.
+  const prompt = `You are a careful fact-checker for educational AI answers.
 
-QUESTION: ${question.substring(0, 300)}
+--- QUESTION (truncated) ---
+${question.substring(0, 300)}
 
-RESPONSE TO VERIFY: ${response.substring(0, 800)}
+--- RESPONSE TO CHECK ---
+${response.substring(0, 800)}
 
-Rules:
-1. Reply with ONLY a JSON object: {"ok": true} or {"ok": false, "reason": "brief reason"}.
-2. Set ok to false if the response invents code or concepts not in the question/context, gives harmful or unsafe advice, or is clearly off-topic.
-3. Set ok to true if the response is helpful, relevant, and does not fabricate facts.
-4. No other text.`;
+--- YOUR TASK ---
+Reply with ONLY a JSON object, nothing else:
+  • {"ok": true}  → helpful, on-topic, no invented code or facts
+  • {"ok": false, "reason": "brief reason"}  → harmful, off-topic, or fabricates details
+
+Rules: no markdown fences, no extra keys, no explanation outside the JSON.`;
   try {
     const raw = await generateTextWithModel(prompt, {
       maxTokens: 128,
@@ -120,14 +140,20 @@ Rules:
  */
 async function verifyCodeSummary(codeExcerpt, summary) {
   if (!GITHUB_TOKEN) return true;
-  const prompt = `You are a verifier. Does the following summary accurately describe ONLY what is in the code? Reply with ONLY "YES" or "NO".
-If the summary adds features, fixes, or details not present in the code, say NO.
+  const prompt = `You verify whether a short summary stays faithful to code.
 
-CODE EXCERPT: ${(codeExcerpt || "").substring(0, 500)}
+--- CODE EXCERPT ---
+${(codeExcerpt || "").substring(0, 500)}
 
-SUMMARY: ${summary.substring(0, 400)}
+--- SUMMARY TO CHECK ---
+${summary.substring(0, 400)}
 
-Answer (YES or NO):`;
+--- RULE ---
+Answer with ONLY the word YES or NO (uppercase).
+  YES → summary describes only what is really in the excerpt.
+  NO  → summary adds features, fixes, or details not in the code.
+
+Your answer:`;
   try {
     const raw = await generateTextWithModel(prompt, {
       maxTokens: 10,
@@ -146,28 +172,31 @@ Answer (YES or NO):`;
 async function generateMCQs(stepTitle, stepConcept, moduleTitle, count = 2) {
   if (!GITHUB_TOKEN) return { questions: [] };
 
-  const prompt = `You write multiple-choice quizzes for a programming lesson. Produce exactly ${count} question object(s).
+  const prompt = `You write friendly, fair multiple-choice quizzes for a coding lesson. Build exactly ${count} question(s).
 
-CONTEXT
-- Module: ${moduleTitle || "Programming"}
-- Step title: ${stepTitle}
-${stepConcept ? `- Teaching focus (use this; do not invent unrelated topics): ${stepConcept}` : ""}
+--- Context ---
+  Module: ${moduleTitle || "Programming"}
+  Step: ${stepTitle}
+${stepConcept ? `  Teaching focus (stick to this; do not drift into unrelated topics):\n  ${stepConcept}` : ""}
 
-NON-NEGOTIABLE (single correct answer)
-- For EACH question, exactly ONE option is correct. The other three must be incorrect for that specific question wording.
-- Before you output JSON, mentally check: "If I pick any option other than correctIndex, would a fair expert still say I'm wrong?" If another option could also be right, rewrite the question or replace distractors until only one option survives.
-- Tie the question to THIS step (e.g. "In this step…", "According to what you practiced…") when the concept could be ambiguous in the wider language.
+--- Fairness (non-negotiable) ---
+  • Each question has exactly ONE correct option; the other three must be clearly wrong for that wording.
+  • Before you output: if an expert could defend a second option, rewrite the question or replace distractors.
+  • Anchor questions in THIS step when needed ("In this step…", "From what you practiced…").
 
-DISTRACTORS (make them good, not trick double-corrects)
-- Use three different wrong ideas: e.g. common beginner mistake, slightly wrong syntax/API name, reversed cause/effect, or a plausible but invalid statement about behavior.
-- Do NOT use two options that are both valid answers to the same question.
-- Do NOT use vague options that could match the correct one (avoid "It depends" / "Both A and B" unless the question is about that).
-- Keep each option one short line (max ~120 chars), concrete, and mutually distinct in meaning (not rephrases of the same answer).
+--- Distractors ---
+  • Three different wrong ideas (common mistake, wrong API name, reversed cause/effect, plausible but false behavior).
+  • Never two options that are both valid answers.
+  • Avoid vague "it depends" unless the question is truly about that.
+  • Each option: one short line (~120 chars max), concrete, meaningfully different from the others.
 
-OUTPUT
-- Return ONLY one JSON object, no markdown fences, no commentary.
-- Shape: {"questions":[{"question":"...","options":["opt0","opt1","opt2","opt3"],"correctIndex":0}]}
-- correctIndex: 0-based index into options. Exactly 4 options per question.`;
+--- Friendly look ---
+  • You may start each question string with one relevant emoji. Keep option text plain (no emojis inside options).
+
+--- Output (machine-readable) ---
+  Return ONLY one JSON object—no markdown fences, no chat before or after.
+  Shape: {"questions":[{"question":"...","options":["opt0","opt1","opt2","opt3"],"correctIndex":0}]}
+  correctIndex is 0-based. Exactly four options per question.`;
 
   const parseQuestions = (raw) => {
     const trimmed = raw
@@ -271,14 +300,24 @@ async function verifyMCQAnswer(question, options, correctIndex, selectedIndex) {
     return { correct: true, explanation: "Correct! Well done." };
   }
 
-  const prompt = `You are a patient programming tutor. The student chose the wrong answer. Explain briefly WHY their choice is wrong and WHY the correct answer is right. Teach the concept in 2-4 sentences. Be clear and encouraging.
+  const prompt = `You are a kind programming tutor. The learner picked the wrong MCQ option—help them understand, not feel bad.
 
-QUESTION: ${question}
-OPTIONS: ${(options || []).map((o, i) => `[${i}] ${o}`).join(" | ")}
-CORRECT INDEX: ${correctIndex} (correct answer: "${correctText}")
-STUDENT CHOSE INDEX: ${selectedIndex} (their answer: "${selectedText}")
+${USER_REPLY_STYLE}
 
-Reply with ONLY a short explanation (2-4 sentences). No preamble like "The correct answer is...". Focus on WHY the wrong answer is wrong and what the right concept is.`;
+--- The question ---
+${question}
+
+--- Options ---
+${(options || []).map((o, i) => `  [${i}] ${o}`).join("\n")}
+
+--- Answer key ---
+  Correct index: ${correctIndex} ("${correctText}")
+  Student chose: ${selectedIndex} ("${selectedText}")
+
+--- Your reply ---
+  • 2–4 sentences only. No opening like "The correct answer is…".
+  • Explain WHY their choice misses the mark and WHY the right idea fits.
+  • Plain text only (this feeds straight into the UI).`;
 
   try {
     const explanation = await generateTextWithModel(
@@ -318,19 +357,21 @@ async function explain(opts) {
   if (type === "code") {
     const code = opts?.code;
     if (!code || !String(code).trim()) throw new Error("No code provided");
-    const prompt = `You are a friendly programming tutor. The student highlighted this code and asked for an explanation.
+    const prompt = `You are a friendly programming tutor. The learner highlighted code and wants to understand it.
 
-Code (${language}):
+${USER_REPLY_STYLE}
+
+--- Code (${language}) ---
 \`\`\`${language}
 ${String(code).substring(0, 2000)}
 \`\`\`
 
-Give a clear, concise explanation (3-6 sentences):
-1. What this code does in plain language
-2. Key concepts or syntax used
-3. One tip or thing to watch out for (if relevant)
+--- Cover these gently (about 3–6 sentences total) ---
+  1. What the snippet does in everyday language
+  2. Main ideas or syntax worth noticing
+  3. One practical tip or pitfall (if it helps)
 
-Do not repeat the code in full. Use simple language.`;
+Do not dump the whole code back. Keep language simple and inviting.`;
     try {
       const explanation = await generateTextWithModel(prompt, {
         maxTokens: 400,
@@ -351,18 +392,20 @@ Do not repeat the code in full. Use simple language.`;
       codeSnippet && String(codeSnippet).trim()
         ? `\nRelevant code (for context only):\n\`\`\`${language}\n${String(codeSnippet).substring(0, 800)}\n\`\`\``
         : "";
-    const prompt = `You are a patient programming tutor. The student sees this error and wants to understand it.
+    const prompt = `You are a calm programming tutor. The learner hit an error and wants clarity, not panic.
 
-ERROR MESSAGE:
+${USER_REPLY_STYLE}
+
+--- Error message ---
 ${String(errorMessage).substring(0, 600)}
 ${codeBlock}
 
-Explain in simple terms (2-3 short paragraphs):
-1. What this error means in plain language
-2. Common causes (e.g. typo, wrong type, missing bracket)
-3. What to check or try first (do NOT write the full fix; point to the idea)
+--- Explain in 2–3 short, friendly paragraphs ---
+  1. What the message is trying to say (plain English)
+  2. Typical causes (typo, type mismatch, missing bracket, etc.)
+  3. What to inspect or try first—ideas only, not a full pasted fix
 
-Do not provide the complete corrected code. Guide them to fix it themselves.`;
+Never hand them the complete corrected program; empower them to fix it.`;
     try {
       const explanation = await generateTextWithModel(prompt, {
         maxTokens: 400,
@@ -412,34 +455,37 @@ async function generateLectureNotes(opts) {
     ? `\nThe student's experience level: ${userLevel}. Adapt explanations to be accessible but not overly basic.`
     : "";
 
-  const prompt = `You are a friendly programming instructor. Create LECTURE SLIDES from the learning overview below. Your output will be split into 2–4 slides - each \`##\` heading starts a new slide.
+  const prompt = `You are a warm, clear programming instructor. Turn the overview below into inviting lecture slides learners swipe through one at a time.
 
-MODULE: ${moduleTitle}
-DIFFICULTY: ${difficulty}
-${category ? `CATEGORY: ${category}` : ""}${stepsSection}${personalization}
+--- Module ---
+  Title: ${moduleTitle}
+  Level: ${difficulty}
+${category ? `  Category: ${category}` : ""}${stepsSection}${personalization}
 
-LEARNING OVERVIEW (summary only):
----
+--- Source material (summary) ---
 ${String(overview).substring(0, 2000)}
----
 
-LECTURE SLIDE STRUCTURE (use exactly 2–4 slides):
-- Slide 1: Start with \`## What You'll Learn\` - 3–4 concise bullet points of key takeaways.
-- Slides 2–3 (or 2–4): Each \`##\` heading begins a new slide. One main concept per slide. Use clear headings like \`## Creating a Room\`, \`## How It Works\`, \`## Key Concepts\`.
-- Last slide: End with \`## Recap\` or \`## Summary\` - 2–3 bullet points reinforcing what was covered.
+--- Slide flow (use 2–4 slides total) ---
+  • First slide: \`## What You'll Learn\` with 3–4 crisp bullets of takeaways.
+  • Middle slide(s): one big idea each; friendly headings like \`## How It Works\` or \`## Key Concepts\`.
+  • Last slide: \`## Recap\` or \`## Summary\` with 2–3 reinforcing bullets.
 
-RULES:
-1. Output RAW markdown only - never wrap your response in \`\`\`markdown or code fences.
-2. Use \`##\` for every slide heading. Do NOT use \`#\` - only \`##\` so each section becomes a slide.
-3. Keep each slide concise (2–5 bullet points or 1–2 short paragraphs). Slides are viewed one at a time.
-4. Explain WHY concepts matter, not just WHAT they are. Be pedagogical and encouraging.
-5. Do NOT include full code solutions - only brief snippets if they illustrate a concept, wrapped in \`\`\`javascript\`\`\`.
-6. Write for a ${difficulty} learner. Use simple language, avoid jargon unless you explain it.
-7. MARKDOWN FORMATTING:
-   - For variable/state names: use INLINE code, e.g. \`roomCode\`, \`socket\` - never separate code blocks for single words.
-   - Only use fenced code blocks (\`\`\`js\`\`\` or \`\`\`javascript\`\`\`) for multi-line code examples.
-   - Use \`---\` between major sections if it improves readability.
-   - No stray backticks or quotes on their own lines.`;
+--- Quality bar ---
+  • Explain WHY ideas matter, not only WHAT they are.
+  • Audience: ${difficulty}—simple words; define jargon when you use it.
+  • No full solutions; tiny code samples only inside \`\`\`javascript\`\`\` fences when they teach a point.
+  • Each slide: 2–5 bullets or 1–2 short paragraphs so nothing feels like a wall of text.
+
+--- Markdown rules ---
+  • Output RAW markdown only (never wrap the whole answer in \`\`\`markdown\`\`\`).
+  • Every slide starts with \`## Heading\`. Do not use a single \`#\` top-level title.
+  • Names like \`playerScore\` use inline backticks—not their own code block.
+  • Multi-line examples only in fenced \`\`\`js\`\`\` or \`\`\`javascript\`\`\` blocks.
+  • Optional \`---\` between sections if it helps the eye.
+
+--- Voice on the slides ---
+${USER_REPLY_STYLE}
+  You may use light emoji in bullet text; headings can stay plain or include one emoji if it stays readable.`;
 
   try {
     let notes = await generateTextWithModel(
@@ -519,35 +565,40 @@ async function generateModuleSteps(opts) {
   if (!Number.isFinite(n)) n = 5;
   n = Math.min(6, Math.max(4, n));
 
-  const prompt = `You are a curriculum designer for a learn-to-code platform (game-themed lessons).
+  const prompt = `You design bite-sized lesson steps for a playful, game-themed coding platform. Each step is something the learner does in the editor—not a lecture.
 
-Create exactly ${n} sequential learning STEPS for one module. Each step is a small task the student completes in the code editor.
+--- Module snapshot ---
+  Title: ${title}
+  Blurb: ${description || "(none)"}
+  Level: ${difficulty}
+  Category: ${category || "(unspecified)"}
+  Stack: Vanilla HTML, CSS, JavaScript in the browser (no React).
 
-MODULE TITLE: ${title}
-SHORT DESCRIPTION: ${description || "(none)"}
-DIFFICULTY: ${difficulty}
-CATEGORY: ${category || "(unspecified)"}
-RUNTIME: Vanilla HTML / CSS / JavaScript in the browser (no React).
+--- Lesson content (may be partial) ---
+${content.slice(0, 6000) || "(infer from title and description)"}
 
-LESSON CONTENT (markdown, may be partial):
----
-${content.slice(0, 6000) || "(no extra content — infer from title and description)"}
----
+--- Build exactly ${n} steps ---
+  • Order them so each step naturally follows the last.
+  • Wording should feel doable and specific for a ${difficulty} learner.
+  • Starter code is only a thin scaffold: every step must still require real edits the student has not already finished.
 
-OUTPUT RULES — CRITICAL:
-1. Reply with ONLY a JSON array (no markdown fences, no commentary).
-2. Each element must be an object with these keys:
-   - "title": short step name (string)
-   - "instruction": what the student should do, plain text (string)
-   - "concept": one sentence teaching the idea for an optional MCQ (string)
-   - "verifyType": one of "code" | "checkConsole" | "checkComments"
-   - "expectedConsole": null OR an object — only when verifyType is "checkConsole"
-3. Use "checkConsole" when the step is about console.log / seeing output; set expectedConsole to {"type":"any"} for one line, {"type":"multipleLines"} when multiple logs are required.
-4. Use "checkComments" when the step only requires adding meaningful comments (no console output needed). expectedConsole must be null.
-5. Use "code" for steps verified against the student's code (variables, functions, DOM, canvas, etc.). expectedConsole must be null.
-6. Steps must build in order; later steps may assume earlier ones are done.
-7. Keep instructions concrete and appropriate for ${difficulty} level.
-8. Assume module starter code will be a minimal scaffold only (not a full solution); each step must require the student to add or change code that is not already correctly implemented in such a scaffold.`;
+--- Each step object (JSON) ---
+  "title"           Short, motivating name (optional leading emoji).
+  "instruction"     Plain language: what to do, where to look, what “done” looks like.
+  "concept"         One sentence that could back an MCQ.
+  "verifyType"      One of: "code" | "checkConsole" | "checkComments"
+  "expectedConsole" null unless verifyType is "checkConsole"
+
+--- verifyType cheatsheet ---
+  "checkConsole"    Step is about console.log / seeing output → expectedConsole {"type":"any"} (one line) or {"type":"multipleLines"}.
+  "checkComments"   Only meaningful comments needed → expectedConsole must be null.
+  "code"            DOM, variables, canvas, logic, etc. → expectedConsole null.
+
+${USER_REPLY_STYLE}
+  Apply voice/layout hints to "title" and "instruction" only (strings shown in the app).
+
+--- Output ---
+  Reply with ONLY a JSON array—no fences, no preamble.`;
 
   const raw = await generateTextWithModel(
     prompt,
@@ -685,9 +736,7 @@ async function generateModuleCurriculumParts(opts) {
   let parts = Array.isArray(opts?.parts) ? opts.parts : [];
   parts = [...new Set(parts.filter((p) => CURRICULUM_PARTS.has(p)))];
   if (parts.length === 0) {
-    throw new Error(
-      "parts must include at least one of: hints, starterCode",
-    );
+    throw new Error("parts must include at least one of: hints, starterCode");
   }
 
   const description = String(opts?.description ?? "").trim();
@@ -717,7 +766,7 @@ async function generateModuleCurriculumParts(opts) {
   const partRules = [];
   if (parts.includes("hints")) {
     partRules.push(
-      `"hints": JSON array of exactly 4 to 6 short strings. Gentle nudges for stuck learners; do NOT give full solutions or complete code answers.`,
+      `"hints": JSON array of 4–6 short strings—warm nudges, never full solutions. ${USER_REPLY_STYLE} Each hint may start with one small emoji.`,
     );
   }
   if (parts.includes("starterCode")) {
@@ -730,33 +779,33 @@ async function generateModuleCurriculumParts(opts) {
     );
   }
 
-  const prompt = `You are a curriculum assistant for a game-themed coding education app.
+  const prompt = `You help author curriculum for a game-flavored coding school: hints that feel human, and starter code that invites tinkering—not finished games.
 
-MODULE TITLE: ${title}
-DESCRIPTION: ${description || "(none)"}
-DIFFICULTY: ${difficulty}
-CATEGORY: ${category || "(unspecified)"}
-RUNTIME: Vanilla HTML / CSS / JavaScript in the browser (no React, no JSX).
+--- Module ---
+  Title: ${title}
+  About: ${description || "(none)"}
+  Level: ${difficulty}
+  Category: ${category || "(unspecified)"}
+  Stack: Vanilla HTML / CSS / JavaScript (no React, no JSX).
 
-LESSON CONTENT (markdown):
----
-${content.slice(0, 8000) || "(infer from title and description only)"}
----
+--- Lesson body ---
+${content.slice(0, 8000) || "(infer from title and description)"}
 ${stepsBlock}
-Generate ONLY the following JSON object keys: ${keyList}
-Do not include any other top-level keys.
+--- Produce ONLY these JSON keys ---
+${keyList}
+(No other top-level keys.)
 
-Rules for each key:
+--- Rules per key ---
 ${partRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}
 
-OUTPUT RULES — CRITICAL:
-1. Reply with ONLY one JSON object (no markdown fences, no commentary).
-2. Escape newlines inside strings as \\n when needed; keep strings valid JSON.
-3. Starter "html", "css", and "javascript" must all be non-empty and syntactically plausible for ${difficulty} learners.
+--- Output contract ---
+1. One JSON object only—no markdown fences, no chit-chat.
+2. Escape newlines inside strings as \\n; keep valid JSON.
+3. If starterCode is included: "html", "css", and "javascript" must each be a non-empty, believable string for ${difficulty} learners.
 ${
   parts.includes("starterCode")
-    ? `4. Starter code is INCOMPLETE by design: a new learner following the steps must still write or change JavaScript (and sometimes HTML/CSS) to pass verification — do not ship a working solution. If no steps were listed, still avoid a finished mini-project; use skeleton only.
-5. Never put complete game loops, full implementations of step instructions, or final console.log outputs in the starter; those belong in the student's edits.`
+    ? `4. Starter stays deliberately incomplete: after loading it, the learner must still edit JS (and sometimes HTML/CSS) to pass checks—never ship a solved mini-game.
+5. No finished game loops, no completed step logic, no final console.log outputs that satisfy the lesson; those belong in student code.`
     : ""
 }`;
 

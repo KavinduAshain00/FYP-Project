@@ -261,9 +261,9 @@ const ModuleCompleteResultsModal = ({
             exit={{ opacity: 0, scale: 0.98, y: 12 }}
             transition={{ duration: 0.32, ease }}
           >
-            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/95 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.75)] backdrop-blur-xl">
+            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-blue-950/95 shadow-[0_24px_80px_-12px_rgb(0_0_0/0.75)] backdrop-blur-xl">
               <div
-                className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-500/[0.07] via-transparent to-amber-500/[0.05]"
+                className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-500/[0.07] via-transparent to-amber-500/[0.05]"
                 aria-hidden
               />
               <div
@@ -304,7 +304,7 @@ const ModuleCompleteResultsModal = ({
                   >
                     <div className="relative mx-auto w-fit">
                       <div
-                        className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-cyan-400/60 to-blue-600/40 opacity-80 blur-[2px]"
+                        className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-blue-400/60 to-blue-600/40 opacity-80 blur-[2px]"
                         aria-hidden
                       />
                       <div className="relative h-[5.5rem] w-[5.5rem] overflow-hidden rounded-full border-2 border-white/20 bg-blue-950 shadow-lg ring-4 ring-blue-950/80 sm:h-[6rem] sm:w-[6rem]">
@@ -322,7 +322,7 @@ const ModuleCompleteResultsModal = ({
                         )}
                       </div>
                       <span
-                        className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-950 bg-emerald-400 text-slate-950 shadow-md"
+                        className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-blue-950 bg-neon-green text-blue-950 shadow-md"
                         aria-hidden
                       >
                         <FaCheck className="text-xs font-black" />
@@ -330,7 +330,7 @@ const ModuleCompleteResultsModal = ({
                     </div>
                   </motion.div>
                   <div className="relative z-[1] text-center">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-300/80">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-300/80">
                       You
                     </p>
                     <motion.p
@@ -351,7 +351,7 @@ const ModuleCompleteResultsModal = ({
                 {/* Main column */}
                 <div className="relative flex min-w-0 flex-1 flex-col px-5 pb-5 pt-6 sm:px-7 sm:pb-6 sm:pt-7">
                   <header className="min-w-0 border-b border-white/10 pb-5">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-400/90">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-400/90">
                       Module complete
                     </p>
                     <h2
@@ -381,7 +381,7 @@ const ModuleCompleteResultsModal = ({
                       </p>
                       <div className="mt-0.5 flex items-baseline gap-2">
                         <motion.span
-                          className="text-[2.75rem] font-black leading-none tabular-nums tracking-tight text-cyan-300 sm:text-5xl"
+                          className="text-[2.75rem] font-black leading-none tabular-nums tracking-tight text-blue-300 sm:text-5xl"
                           key={displayXpGain}
                           initial={{ scale: 1.06 }}
                           animate={{ scale: 1 }}
@@ -410,13 +410,13 @@ const ModuleCompleteResultsModal = ({
                         {Math.round(barFill)} / {barXpCap}
                       </span>
                     </div>
-                    <div className="relative h-3 overflow-hidden rounded-full bg-blue-950/90 ring-1 ring-white/10 shadow-[inset_0_1px_3px_rgba(0,0,0,0.45)]">
+                    <div className="relative h-3 overflow-hidden rounded-full bg-blue-950/90 ring-1 ring-white/10 shadow-[inset_0_1px_3px_rgb(0_0_0/0.45)]">
                       <div
                         className="pointer-events-none absolute inset-0 rounded-full bg-black/15"
                         aria-hidden
                       />
                       <motion.div
-                        className="absolute bottom-0 left-0 top-0 z-[1] overflow-hidden rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 shadow-[0_0_14px_rgba(34,211,238,0.35)]"
+                        className="absolute bottom-0 left-0 top-0 z-[1] overflow-hidden rounded-full bg-gradient-to-r from-blue-400 via-blue-300 to-blue-500 shadow-[0_0_14px_rgb(var(--color-blue-400-rgb)/0.35)]"
                         initial={false}
                         animate={{ width: `${barPct}%` }}
                         transition={{ width: barMotionTransition }}
@@ -483,7 +483,7 @@ const ModuleCompleteResultsModal = ({
                                   {ach?.name || "Achievement"}
                                 </p>
                                 {ach?.points != null && Number(ach.points) > 0 ? (
-                                  <p className="mt-1 text-[11px] font-bold tabular-nums text-cyan-300/90">
+                                  <p className="mt-1 text-[11px] font-bold tabular-nums text-blue-300/90">
                                     +{ach.points} XP
                                   </p>
                                 ) : null}
@@ -518,7 +518,7 @@ const ModuleCompleteResultsModal = ({
                     onClick={onContinue}
                     className={`mt-6 flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-bold transition-colors md:mt-0 md:py-4 ${
                       animationsDone
-                        ? "bg-cyan-400 text-slate-950 shadow-glow-cyan hover:bg-cyan-300"
+                        ? "bg-blue-400 text-blue-950 shadow-[0_0_24px_rgb(var(--color-blue-400-rgb)/0.35)] hover:bg-blue-300"
                         : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-blue-500"
                     }`}
                   >
@@ -528,7 +528,7 @@ const ModuleCompleteResultsModal = ({
 
                   {!animationsDone && (
                     <p className="mt-2 flex items-center justify-center gap-2 text-center text-[11px] font-medium text-blue-400">
-                      <FaSpinner className="animate-spin text-cyan-400/90" aria-hidden />
+                      <FaSpinner className="animate-spin text-blue-400/90" aria-hidden />
                       Tallying rewards…
                     </p>
                   )}

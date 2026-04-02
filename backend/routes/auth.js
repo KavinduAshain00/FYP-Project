@@ -12,19 +12,29 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Validate email (and password rules) before multi-step signup continues to path choice
+/**
+ * POST /api/auth/signup-precheck - Validate email/password before path step
+ */
 router.post("/signup-precheck", authLimiter, authController.signupPrecheck);
 
-// Sign up a new user
+/**
+ * POST /api/auth/signup - Create account
+ */
 router.post("/signup", authLimiter, authController.signup);
 
-// Login a user
+/**
+ * POST /api/auth/login - Issue JWT
+ */
 router.post("/login", authLimiter, authController.login);
 
-// Forgot password – request reset token
+/**
+ * POST /api/auth/forgot-password - Request reset JWT
+ */
 router.post("/forgot-password", authLimiter, authController.forgotPassword);
 
-// Reset password – set new password with token
+/**
+ * POST /api/auth/reset-password - Set password from reset JWT
+ */
 router.post("/reset-password", authLimiter, authController.resetPassword);
 
 module.exports = router;

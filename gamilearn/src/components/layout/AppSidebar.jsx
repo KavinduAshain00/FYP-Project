@@ -106,7 +106,12 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
   const { user } = useAuth();
 
   const navLinks = [
-    { path: "/dashboard", label: "Dashboard", caption: "Overview", icon: FaHome },
+    {
+      path: "/dashboard",
+      label: "Dashboard",
+      caption: "Overview",
+      icon: FaHome,
+    },
     {
       path: "/modules",
       label: "Modules",
@@ -223,7 +228,10 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
                 />
               ) : (
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-blue-100">
-                  <FaUserCircle className="text-[2.35rem] -mb-0.5" aria-hidden />
+                  <FaUserCircle
+                    className="text-[2.35rem] -mb-0.5"
+                    aria-hidden
+                  />
                 </div>
               )}
               <div className="min-w-0 flex-1">

@@ -3,7 +3,7 @@ import { tutorAPI } from "../../../api/api";
 import {
   loadCachedLectureNotes,
   saveCachedLectureNotes,
-} from "./lectureNotesStorage";
+} from "../../../utils/draftStorage";
 import { splitLectureSlides } from "./splitLectureSlides";
 
 /**

@@ -33,23 +33,25 @@ import {
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import ConfirmModal from "../components/ui/ConfirmModal";
-import ModuleCompleteResultsModal from "../components/ui/ModuleCompleteResultsModal";
-import LoadingScreen from "../components/ui/LoadingScreen";
+import ModuleCompleteResultsModal from "./codeEditor/ModuleCompleteResultsModal";
+import { LoadingScreen } from "../components/AppRouteShell";
 import MarkdownContent from "../components/ui/MarkdownContent";
 import {
-  clearEditorDraft,
+  clearEditorDraftEverywhere,
   loadEditorDraft,
-  saveEditorDraft,
+  loadLocalEditorDraft,
+  pickNewerEditorDraft,
+  saveEditorDraftWithLocalMirror,
 } from "../utils/draftStorage";
-import { toModuleId } from "../utils/ids";
-import { getModuleImageUrl } from "../utils/moduleImageUrl";
+import { getModuleImageUrl, toModuleId } from "../utils/moduleUtils";
 import {
   buildServerPreviewHtml,
   buildClientPreviewHtml,
 } from "../utils/multiplayerRuntime";
 import { buildSinglePlayerPreviewHtml } from "../utils/singlePlayerPreviewHtml";
-import CodeEditorFileTabs from "./codeEditor/CodeEditorFileTabs";
-import CodeEditorMirrors from "./codeEditor/CodeEditorMirrors";
+import CodeEditorMirrors, {
+  CodeEditorFileTabs,
+} from "./codeEditor/CodeEditorMirrors";
 import CodeEditorMultiplayerPreviewPanel from "./codeEditor/CodeEditorMultiplayerPreviewPanel";
 import CodeEditorSinglePlayerPreviewPanel from "./codeEditor/CodeEditorSinglePlayerPreviewPanel";
 import CodeEditorConsoleBody from "./codeEditor/CodeEditorConsoleBody";
@@ -530,7 +532,12 @@ const CodeEditor = () => {
           draftLoadTimeoutRef.current = setTimeout(async () => {
             try {
               if (fetchAbortedRef.current) return;
-              const draft = await loadEditorDraft(storageUserId, moduleId);
+              const idbDraft = await loadEditorDraft(storageUserId, moduleId);
+              const localDraft = loadLocalEditorDraft(
+                storageUserId,
+                moduleId,
+              );
+              const draft = pickNewerEditorDraft(idbDraft, localDraft);
               if (fetchAbortedRef.current) return;
               if (!usedProgress) {
                 if (
@@ -832,7 +839,7 @@ const CodeEditor = () => {
       saveInProgressRef.current = true;
       try {
         const r = codeRefs.current;
-        await saveEditorDraft(storageUserId, moduleId, {
+        await saveEditorDraftWithLocalMirror(storageUserId, moduleId, {
           stepsVerified: stepsVerifiedRef.current,
           currentStepIndex: currentStepIndexRef.current,
           code: {
@@ -858,7 +865,7 @@ const CodeEditor = () => {
       if (saveInProgressRef.current) return;
       saveInProgressRef.current = true;
       const r = codeRefs.current;
-      saveEditorDraft(storageUserId, moduleId, {
+      saveEditorDraftWithLocalMirror(storageUserId, moduleId, {
         stepsVerified: stepsVerifiedRef.current,
         currentStepIndex: currentStepIndexRef.current,
         code: {
@@ -888,7 +895,7 @@ const CodeEditor = () => {
       if (!id || isLoadingDraftRef.current || saveInProgressRef.current) return;
       const r = codeRefs.current;
       saveInProgressRef.current = true;
-      saveEditorDraft(storageUserIdRef.current, id, {
+      saveEditorDraftWithLocalMirror(storageUserIdRef.current, id, {
         stepsVerified: stepsVerifiedRef.current,
         currentStepIndex: currentStepIndexRef.current,
         code: {
@@ -1464,7 +1471,7 @@ const CodeEditor = () => {
       } catch {
         /* ignore */
       }
-      void clearEditorDraft(storageUserId, moduleId);
+      void clearEditorDraftEverywhere(storageUserId, moduleId);
 
       const updated = await refreshProfile?.();
 
@@ -1520,7 +1527,7 @@ const CodeEditor = () => {
     } catch {
       /* ignore */
     }
-    await saveEditorDraft(storageUserId, moduleId, {
+    await saveEditorDraftWithLocalMirror(storageUserId, moduleId, {
       stepsVerified: sv,
       currentStepIndex: ci,
       code: {
@@ -1621,7 +1628,7 @@ const CodeEditor = () => {
     }
     setShowResetConfirm(false);
     sessionStorage.removeItem(STORAGE_KEY);
-    void clearEditorDraft(storageUserId, moduleId);
+    void clearEditorDraftEverywhere(storageUserId, moduleId);
     toast.info("Code reset to starter template.");
   };
 

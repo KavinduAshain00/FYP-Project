@@ -22,12 +22,11 @@ import {
   FaAward,
 } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
-import { useShellPagesCache } from "../../utils/shellPagesCacheContext";
 import { adminAPI, modulesAPI, achievementsAPI } from "../../api/api";
 import { PageHeader } from "../../components/layout/GameLayout";
 import ConfirmModal from "../../components/ui/ConfirmModal";
-import LoadingScreen from "../../components/ui/LoadingScreen";
-import { MODULE_CATEGORIES, DIFFICULTIES } from "../../utils/moduleEditorUtils";
+import { LoadingScreen, useShellPagesCache } from "../../components/AppRouteShell";
+import { MODULE_CATEGORIES, DIFFICULTIES } from "../../utils/moduleUtils";
 
 const LEARNING_PATHS = ["none", "javascript-basics", "advanced"];
 

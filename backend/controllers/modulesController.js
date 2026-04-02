@@ -1,8 +1,13 @@
 const Module = require('../models/Module');
 const { getPathCategories } = require('../constants/learningPath');
+const { isAdmin } = require('../utils/admin');
 
 const SLIM_FIELDS = '_id title description difficulty category order';
 
+/**
+ * GET /api/modules or GET /api/admin/modules - List modules (auth; admin route uses same handler)
+ * Query: category, difficulty, meta, page, limit (see controller)
+ */
 async function getAll(req, res) {
   try {
     const { category, difficulty, meta } = req.query;
@@ -87,6 +92,10 @@ async function getAll(req, res) {
   }
 }
 
+/**
+ * GET /api/modules/:id or GET /api/admin/modules/:id - Full module document (auth)
+ * Learner path: beginner gating unless user is admin
+ */
 async function getById(req, res) {
   const moduleId = req.params.id;
   try {
@@ -94,6 +103,10 @@ async function getById(req, res) {
     const module = await Module.findById(moduleId);
     if (!module) {
       return res.status(404).json({ message: 'Module not found' });
+    }
+
+    if (req.user && isAdmin(req.user)) {
+      return res.json({ module });
     }
 
     // Enforce beginner gating for direct module access
@@ -122,6 +135,9 @@ async function getById(req, res) {
   }
 }
 
+/**
+ * POST /api/admin/modules - Create module (admin only)
+ */
 async function create(req, res) {
   try {
     const module = new Module(req.body);
@@ -133,6 +149,9 @@ async function create(req, res) {
   }
 }
 
+/**
+ * PUT /api/admin/modules/:id - Partial update (admin only)
+ */
 async function update(req, res) {
   try {
     const module = await Module.findByIdAndUpdate(
@@ -153,6 +172,9 @@ async function update(req, res) {
   }
 }
 
+/**
+ * DELETE /api/admin/modules/:id - Remove module (admin only)
+ */
 async function remove(req, res) {
   try {
     const module = await Module.findByIdAndDelete(req.params.id);

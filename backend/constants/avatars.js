@@ -1,6 +1,6 @@
 /**
- * Preset avatars with unlock rules. Users can select one by index or set a custom URL.
- * unlock: 'default' | { type: 'level', level } | { type: 'achievement', achievementId }
+ * avatars.js - Preset avatar URLs and unlock rules (default | level | achievement).
+ * Used by GET /api/user/avatars for unlock labels and profile picker.
  */
 const AVATAR_LIST = [
   // Default (always unlocked)

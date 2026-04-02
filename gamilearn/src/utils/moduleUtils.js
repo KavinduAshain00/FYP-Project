@@ -1,3 +1,13 @@
+/**
+ * Module ids, admin form helpers, and catalog image URLs.
+ */
+
+/** Normalize module or document id (object with _id or primitive) to string. */
+export function toModuleId(id) {
+  if (id && typeof id === "object" && id._id != null) return String(id._id);
+  return id != null ? String(id) : "";
+}
+
 export const MODULE_CATEGORIES = [
   "javascript-basics",
   "game-development",
@@ -105,4 +115,14 @@ export function moduleFormComparable(m) {
       serverJs: sc.serverJs ?? "",
     },
   };
+}
+
+/**
+ * Placeholder art for module cards / completion UI — seed matches Modules catalog.
+ */
+export function getModuleImageUrl(module, width = 400, height = 250) {
+  const seed = (module?._id || module?.title || "")
+    .toString()
+    .replace(/\s/g, "");
+  return `https://picsum.photos/seed/${seed || "module"}/${width}/${height}`;
 }

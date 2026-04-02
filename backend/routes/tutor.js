@@ -11,23 +11,39 @@ const tutorLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Post a tutor request
+/**
+ * POST /api/tutor - Tutor chat / hints (auth, rate limited)
+ */
 router.post("/", auth, tutorLimiter, tutorController.postTutor);
 
-// Verify code against current step (tutor)
+/**
+ * POST /api/tutor/verify - Step code verification + optional XP (auth, rate limited)
+ */
 router.post("/verify", auth, tutorLimiter, tutorController.verifyStep);
 
-// MCQ: generate (qwen3-coder:480b) and verify with explanation if wrong
+/**
+ * POST /api/tutor/mcq/generate - Generate MCQs for a step (auth, rate limited)
+ */
 router.post("/mcq/generate", auth, tutorLimiter, tutorController.generateMCQs);
+
+/**
+ * POST /api/tutor/mcq/verify - Verify MCQ + optional XP (auth, rate limited)
+ */
 router.post("/mcq/verify", auth, tutorLimiter, tutorController.verifyMCQ);
 
-// Explain highlighted code snippet
+/**
+ * POST /api/tutor/explain-code - Explain selection (auth, rate limited)
+ */
 router.post("/explain-code", auth, tutorLimiter, tutorController.explainCode);
 
-// Explain a runtime/syntax error message
+/**
+ * POST /api/tutor/explain-error - Explain error message (auth, rate limited)
+ */
 router.post("/explain-error", auth, tutorLimiter, tutorController.explainError);
 
-// Generate lecture notes from module learning overview (on popup open)
+/**
+ * POST /api/tutor/lecture-notes - Learning overview notes (auth, rate limited)
+ */
 router.post(
   "/lecture-notes",
   auth,

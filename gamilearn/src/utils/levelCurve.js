@@ -1,7 +1,7 @@
 /**
- * Must match backend/utils/levelSystem.js (xpToAdvanceFromLevel, peelTotalPointsToProgress) and
- * backend/constants/levelRanks.js (XP_PER_LEVEL_BASE, XP_PER_LEVEL_INCREMENT).
- * Used only where the client must simulate the curve (e.g. module-complete animation). Prefer API levelInfo elsewhere.
+ * Level / XP curve must match backend/utils/levelSystem.js and backend/constants/levelRanks.js.
+ * peelTotalPointsToProgress: client-only simulation (e.g. module-complete animation).
+ * getXpBarProps: display from API `levelInfo.xpProgress` everywhere else.
  */
 
 export const XP_PER_LEVEL_BASE = 100;
@@ -31,6 +31,18 @@ export function peelTotalPointsToProgress(totalPoints) {
   }
 }
 
-export function levelFromTotalPoints(totalPoints) {
-  return peelTotalPointsToProgress(totalPoints).level;
+/**
+ * XP bar props from API `user.levelInfo` / dashboard `levelInfo` (no client XP math).
+ */
+export function getXpBarProps(levelInfo) {
+  const p = levelInfo?.xpProgress;
+  if (!p) {
+    return { current: 0, max: 1, percentage: 0, xpToNext: 0 };
+  }
+  return {
+    current: p.currentXP ?? 0,
+    max: Math.max(1, p.xpNeeded ?? 1),
+    percentage: p.percentage ?? 0,
+    xpToNext: p.xpToNext ?? 0,
+  };
 }

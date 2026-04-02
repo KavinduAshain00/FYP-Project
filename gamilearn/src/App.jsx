@@ -10,9 +10,11 @@ import { useEffect } from "react";
 import { toast } from "react-toastify";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { AnimatePresence } from "framer-motion";
-import ProtectedRoute from "./components/ProtectedRoute";
-import PageTransition from "./components/PageTransition";
-import AppShellLayout from "./components/layout/AppShellLayout";
+import {
+  AppShellLayout,
+  PageTransition,
+  ProtectedRoute,
+} from "./components/AppRouteShell";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
 import ForgotPassword from "./pages/auth/ForgotPassword";

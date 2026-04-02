@@ -5,7 +5,7 @@ import { FaArrowLeft } from "react-icons/fa";
 import { adminAPI, modulesAPI } from "../../api/api";
 import { PageHeader } from "../../components/layout/GameLayout";
 import ConfirmModal from "../../components/ui/ConfirmModal";
-import LoadingScreen from "../../components/ui/LoadingScreen";
+import { LoadingScreen } from "../../components/AppRouteShell";
 import AdminModuleFormSections from "./AdminModuleFormSections";
 import {
   MODULE_FORM_TABS,
@@ -15,7 +15,7 @@ import {
   moduleFormComparable,
   isMultiplayerCategory,
   normalizeModuleCategory,
-} from "../../utils/moduleEditorUtils";
+} from "../../utils/moduleUtils";
 
 function buildFormFromApi(full) {
   const sc = full.starterCode || {};

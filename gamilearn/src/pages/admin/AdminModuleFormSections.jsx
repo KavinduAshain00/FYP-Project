@@ -7,7 +7,7 @@ import {
   isMultiplayerCategory,
   emptyModuleStep,
   DIFFICULTIES,
-} from "../../utils/moduleEditorUtils";
+} from "../../utils/moduleUtils";
 
 /**
  * Shared module create/edit fields (used on full-page editor).

@@ -8,7 +8,9 @@ const { AVATAR_LIST, AVATAR_PRESETS } = require('../constants/avatars');
 const { getPathCategories } = require('../constants/learningPath');
 const { isAdmin } = require('../utils/admin');
 
-/** Beginner: only javascript-basics until all completed, then game-development + multiplayer. Advanced: all three from start. */
+/**
+ * getEffectivePathCategories - Module categories visible on the learning path (beginner).
+ */
 async function getEffectivePathCategories(user) {
   let pathCategories = getPathCategories(user.learningPath);
   if (user.learningPath === 'javascript-basics' && pathCategories.length > 0) {
@@ -44,7 +46,7 @@ function upsertModuleStepProgress(user, moduleId, stepsVerified, currentStepInde
   );
   const clean = (Array.isArray(stepsVerified) ? stepsVerified : [])
     .slice(0, MAX_STEP_PROGRESS_LEN)
-    .map((x) => !!x);
+    .map((x) => Boolean(x));
   const ci = Math.max(0, Math.floor(Number(currentStepIndex)) || 0);
   const doc = {
     moduleId,
@@ -100,8 +102,8 @@ function toProfileUser(user) {
 }
 
 /**
- * GET /api/user/avatars
- * Returns avatars with unlock status for the current user (level + achievements).
+ * GET /api/user/avatars - Avatar list with unlock state (level + achievements)
+ * Response: ETag; supports If-None-Match 304
  */
 async function getAvatars(req, res) {
   try {
@@ -164,6 +166,9 @@ async function getAvatars(req, res) {
   }
 }
 
+/**
+ * GET /api/user/profile - Full profile, levelInfo, pathCategories (auth)
+ */
 async function getProfile(req, res) {
   const userId = req.user?._id?.toString();
   try {
@@ -188,10 +193,15 @@ async function getProfile(req, res) {
   }
 }
 
-/** Dashboard-only user fields + populated refs for path/completion logic. */
+/**
+ * DASHBOARD_USER_SELECT - Lean fields for getDashboard aggregation.
+ */
 const DASHBOARD_USER_SELECT =
   'name email avatarUrl totalPoints level learningPath earnedAchievements completedModules currentModule';
 
+/**
+ * GET /api/user/dashboard - Modules on path, next module, learning+general achievements, levelInfo (auth)
+ */
 async function getDashboard(req, res) {
   const userId = req.user?._id?.toString();
   try {
@@ -271,7 +281,9 @@ async function getDashboard(req, res) {
   }
 }
 
-/** GET /api/user/module/step-progress/:moduleId */
+/**
+ * GET /api/user/module/step-progress/:moduleId - Saved editor step flags for one module (auth)
+ */
 async function getModuleStepProgress(req, res) {
   const userId = req.user?._id?.toString();
   const { moduleId } = req.params;
@@ -290,7 +302,7 @@ async function getModuleStepProgress(req, res) {
     }
     return res.json({
       progress: {
-        stepsVerified: Array.isArray(entry.stepsVerified) ? entry.stepsVerified.map((x) => !!x) : [],
+        stepsVerified: Array.isArray(entry.stepsVerified) ? entry.stepsVerified.map((x) => Boolean(x)) : [],
         currentStepIndex: Math.max(0, Math.floor(Number(entry.currentStepIndex)) || 0),
       },
     });
@@ -300,6 +312,10 @@ async function getModuleStepProgress(req, res) {
   }
 }
 
+/**
+ * PUT /api/user/module/complete - First completion grants XP; runs achievement check (auth)
+ * Body: { moduleId, sessionStats? }
+ */
 async function completeModule(req, res) {
   const userId = req.user?._id?.toString();
   const { moduleId, sessionStats = {} } = req.body;
@@ -391,6 +407,10 @@ async function completeModule(req, res) {
   }
 }
 
+/**
+ * PUT /api/user/module/current - Set current module; optional stepsVerified + currentStepIndex (auth)
+ * Body: { moduleId, stepsVerified?, currentStepIndex? }
+ */
 async function setCurrentModule(req, res) {
   const userId = req.user?._id?.toString();
   try {
@@ -460,6 +480,9 @@ async function setCurrentModule(req, res) {
   }
 }
 
+/**
+ * PUT /api/user/profile - name, avatarUrl, avatarPresetId, aiPreferences (auth)
+ */
 async function updateProfile(req, res) {
   const userId = req.user?._id?.toString();
   try {
@@ -526,7 +549,8 @@ async function updateProfile(req, res) {
 }
 
 /**
- * PUT /api/user/password - Change password (auth required). Body: { currentPassword, newPassword }
+ * PUT /api/user/password - Change password (auth)
+ * Body: { currentPassword, newPassword }
  */
 async function changePassword(req, res) {
   try {

@@ -1,5 +1,5 @@
 /**
- * IndexedDB draft storage: auto-save module steps + code per signed-in user.
+ * Client persistence: IndexedDB code-editor drafts, localStorage mirrors, lecture notes cache.
  */
 
 const DB_NAME = "GamiLearnDrafts";
@@ -8,7 +8,7 @@ const STORE_EDITOR = "code-editor";
 
 let dbPromise = null;
 
-export function editorDraftKey(userId, moduleId) {
+function editorDraftKey(userId, moduleId) {
   const u =
     userId != null && String(userId).trim()
       ? String(userId).trim()
@@ -40,12 +40,9 @@ function openDB() {
   return dbPromise;
 }
 
-/**
- * Save code editor draft (module steps, code).
- * @param {string} userId - account id (required for per-user isolation)
- * @param {string} moduleId
- * @param {object} data - { stepsVerified, currentStepIndex, code: { html, css, javascript, serverJs } }
- */
+// ─── IndexedDB: editor drafts ────────────────────────────────────────────────
+
+/** Save module steps + file contents for the code editor (per user/module). */
 export async function saveEditorDraft(userId, moduleId, data) {
   if (!moduleId) return;
   const draftKey = editorDraftKey(userId, moduleId);
@@ -70,12 +67,7 @@ export async function saveEditorDraft(userId, moduleId, data) {
   }
 }
 
-/**
- * Load code editor draft.
- * @param {string} userId
- * @param {string} moduleId
- * @returns {Promise<object|null>}
- */
+/** Load a saved draft or null. */
 export async function loadEditorDraft(userId, moduleId) {
   if (!moduleId) return null;
   const draftKey = editorDraftKey(userId, moduleId);
@@ -111,13 +103,10 @@ export async function clearEditorDraft(userId, moduleId) {
   }
 }
 
-/**
- * Most recently saved module id for this user (from editor drafts).
- * @param {string} userId
- * @returns {Promise<string|null>}
- */
+/** Latest module id this user has a draft for (by timestamp). */
 export async function getLastWorkedEditorModuleId(userId) {
-  const uid = userId != null && String(userId).trim() ? String(userId).trim() : "";
+  const uid =
+    userId != null && String(userId).trim() ? String(userId).trim() : "";
   if (!uid) return null;
   const prefix = `${uid}::`;
   try {
@@ -143,5 +132,110 @@ export async function getLastWorkedEditorModuleId(userId) {
   } catch (e) {
     console.warn("Last worked module lookup failed:", e);
     return null;
+  }
+}
+
+// ─── localStorage: editor draft mirror ───────────────────────────────────────
+
+const EDITOR_LOCAL_MIRROR_KEY = "gamilearn_editor_drafts_local";
+
+function editorLocalEntryKey(userId, moduleId) {
+  const u =
+    userId != null && String(userId).trim()
+      ? String(userId).trim()
+      : "guest";
+  const m =
+    moduleId != null && String(moduleId).trim()
+      ? String(moduleId).trim()
+      : "";
+  return `${u}::${m}`;
+}
+
+export function loadLocalEditorDraft(userId, moduleId) {
+  if (!moduleId) return null;
+  try {
+    const raw = localStorage.getItem(EDITOR_LOCAL_MIRROR_KEY);
+    if (!raw) return null;
+    const map = JSON.parse(raw);
+    return map[editorLocalEntryKey(userId, moduleId)] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLocalEditorDraft(userId, moduleId, data) {
+  if (!moduleId) return;
+  try {
+    const raw = localStorage.getItem(EDITOR_LOCAL_MIRROR_KEY) || "{}";
+    const map = JSON.parse(raw);
+    map[editorLocalEntryKey(userId, moduleId)] = {
+      ...data,
+      moduleId: String(moduleId).trim(),
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(EDITOR_LOCAL_MIRROR_KEY, JSON.stringify(map));
+  } catch {
+    /* quota or private mode */
+  }
+}
+
+function clearLocalEditorDraft(userId, moduleId) {
+  if (!moduleId) return;
+  try {
+    const raw = localStorage.getItem(EDITOR_LOCAL_MIRROR_KEY);
+    if (!raw) return;
+    const map = JSON.parse(raw);
+    delete map[editorLocalEntryKey(userId, moduleId)];
+    localStorage.setItem(EDITOR_LOCAL_MIRROR_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Prefer the copy with the latest timestamp (falls back to IndexedDB if only one exists). */
+export function pickNewerEditorDraft(idbDraft, localDraft) {
+  if (!idbDraft && !localDraft) return null;
+  if (!idbDraft) return localDraft;
+  if (!localDraft) return idbDraft;
+  const ta = Number(idbDraft.timestamp) || 0;
+  const tb = Number(localDraft.timestamp) || 0;
+  return tb > ta ? localDraft : idbDraft;
+}
+
+export async function saveEditorDraftWithLocalMirror(userId, moduleId, data) {
+  await saveEditorDraft(userId, moduleId, data);
+  saveLocalEditorDraft(userId, moduleId, data);
+}
+
+export async function clearEditorDraftEverywhere(userId, moduleId) {
+  await clearEditorDraft(userId, moduleId);
+  clearLocalEditorDraft(userId, moduleId);
+}
+
+// ─── localStorage: lecture notes cache ───────────────────────────────────────
+
+export const LECTURE_NOTES_STORAGE_KEY = "gamilearn_lecture_notes";
+
+export function loadCachedLectureNotes(moduleId) {
+  if (!moduleId) return null;
+  try {
+    const raw = localStorage.getItem(LECTURE_NOTES_STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    return data?.[moduleId] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveCachedLectureNotes(moduleId, notes) {
+  if (!moduleId || !notes) return;
+  try {
+    const raw = localStorage.getItem(LECTURE_NOTES_STORAGE_KEY) || "{}";
+    const data = JSON.parse(raw);
+    data[moduleId] = notes;
+    localStorage.setItem(LECTURE_NOTES_STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    /* ignore */
   }
 }

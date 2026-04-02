@@ -4,6 +4,9 @@ const achievementService = require('../services/achievementService');
 const lessonXpService = require('../services/lessonXpService');
 const crypto = require('crypto');
 
+/**
+ * GET /api/achievements - Active achievement catalog (public)
+ */
 async function getAll(req, res) {
   try {
     const achievements = await Achievement.find({ isActive: true }).sort({ id: 1 });
@@ -14,6 +17,10 @@ async function getAll(req, res) {
   }
 }
 
+/**
+ * GET /api/achievements/user - Catalog with earned flag per row (auth)
+ * Response: ETag; supports If-None-Match 304
+ */
 async function getUserAchievements(req, res) {
   try {
     const user = await User.findById(req.user._id).select('earnedAchievements');
@@ -37,6 +44,10 @@ async function getUserAchievements(req, res) {
   }
 }
 
+/**
+ * POST /api/achievements/earn - Grant badge by id without rule check (auth)
+ * Body: { achievementId }
+ */
 async function earn(req, res) {
   const userId = req.user?._id?.toString();
   try {
@@ -92,6 +103,9 @@ async function earn(req, res) {
   }
 }
 
+/**
+ * GET /api/achievements/stats - Earned count vs total for current user (auth)
+ */
 async function getStats(req, res) {
   try {
     const user = await User.findById(req.user._id);
@@ -110,6 +124,10 @@ async function getStats(req, res) {
   }
 }
 
+/**
+ * POST /api/achievements/check - Evaluate rules; merge gameStats; return newlyEarned (auth)
+ * Body: session/editor counters (totalEdits, aiHintRequests, …)
+ */
 async function check(req, res) {
   const userId = req.user?._id?.toString();
   try {

@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Achievement = require('../models/Achievement');
 const { isAdmin } = require('../utils/admin');
 const aiService = require('../services/aiService');
+const lessonXpService = require('../services/lessonXpService');
 
 const POPULATE_OPTS = [
   { path: 'completedModules.moduleId', select: 'title category' },
@@ -161,6 +162,94 @@ async function updateUser(req, res) {
 }
 
 /**
+ * POST /api/admin/users/:id/achievements - Grant a badge by numeric achievement id (admin only)
+ * Body: { achievementId }
+ */
+async function grantUserAchievement(req, res) {
+  try {
+    const achievementId = Number(req.body?.achievementId);
+    if (!Number.isFinite(achievementId)) {
+      return res.status(400).json({ message: 'Valid achievementId required' });
+    }
+    const achievement = await Achievement.findOne({ id: achievementId });
+    if (!achievement) {
+      return res.status(404).json({ message: 'Achievement not found' });
+    }
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (!user.earnedAchievements) user.earnedAchievements = [];
+    const earnedNums = user.earnedAchievements.map(Number);
+    if (earnedNums.includes(achievementId)) {
+      return res.status(400).json({ message: 'User already has this achievement' });
+    }
+    user.earnedAchievements.push(achievementId);
+    user.totalPoints = (user.totalPoints || 0) + (achievement.points || 0);
+    lessonXpService.syncStoredLevelFromPoints(user);
+    await user.save();
+    const updated = await User.findById(user._id)
+      .select('-password')
+      .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
+      .populate(POPULATE_OPTS[1].path, POPULATE_OPTS[1].select);
+    return res.status(201).json({
+      message: 'Achievement granted',
+      user: toAdminUserView(updated),
+      achievement: {
+        id: achievement.id,
+        name: achievement.name,
+        points: achievement.points,
+      },
+    });
+  } catch (error) {
+    console.error('Admin grantUserAchievement error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+/**
+ * DELETE /api/admin/users/:id/achievements/:achievementId - Revoke a badge (admin only)
+ */
+async function revokeUserAchievement(req, res) {
+  try {
+    const achievementId = Number(req.params.achievementId);
+    if (!Number.isFinite(achievementId)) {
+      return res.status(400).json({ message: 'Invalid achievement id' });
+    }
+    const achievement = await Achievement.findOne({ id: achievementId });
+    if (!achievement) {
+      return res.status(404).json({ message: 'Achievement not found' });
+    }
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const list = user.earnedAchievements || [];
+    const idx = list.findIndex((x) => Number(x) === achievementId);
+    if (idx === -1) {
+      return res.status(400).json({ message: 'User does not have this achievement' });
+    }
+    list.splice(idx, 1);
+    user.earnedAchievements = list;
+    const pts = achievement.points || 0;
+    user.totalPoints = Math.max(0, (user.totalPoints || 0) - pts);
+    lessonXpService.syncStoredLevelFromPoints(user);
+    await user.save();
+    const updated = await User.findById(user._id)
+      .select('-password')
+      .populate(POPULATE_OPTS[0].path, POPULATE_OPTS[0].select)
+      .populate(POPULATE_OPTS[1].path, POPULATE_OPTS[1].select);
+    return res.json({
+      message: 'Achievement revoked',
+      user: toAdminUserView(updated),
+    });
+  } catch (error) {
+    console.error('Admin revokeUserAchievement error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+/**
  * DELETE /api/admin/users/:id - Delete a user (admin only)
  */
 async function deleteUser(req, res) {
@@ -195,7 +284,8 @@ async function listAdmins(req, res) {
 }
 
 /**
- * POST /api/admin/admins - Set a user as admin by email (admin only). Body: { email }
+ * POST /api/admin/admins - Promote user to admin by email (admin only)
+ * Body: { email }
  */
 async function addAdmin(req, res) {
   try {
@@ -220,7 +310,8 @@ async function addAdmin(req, res) {
 }
 
 /**
- * DELETE /api/admin/admins/:email - Revoke admin from a user (admin only). :email is URL-encoded.
+ * DELETE /api/admin/admins/:email - Revoke admin role (admin only)
+ * Param: email (URL-encoded)
  */
 async function removeAdmin(req, res) {
   try {
@@ -302,7 +393,7 @@ async function revokeAdminFromUser(req, res) {
 }
 
 /**
- * GET /api/admin/stats - Aggregate stats for admin overview (no need to load all users)
+ * GET /api/admin/stats - Dashboard aggregates (users, XP, completions, recent signups) (admin only)
  */
 async function getStats(req, res) {
   try {
@@ -344,7 +435,7 @@ async function getStats(req, res) {
 }
 
 /**
- * POST /api/admin/modules/generate-steps
+ * POST /api/admin/modules/generate-steps - AI-generated lesson steps JSON (admin only)
  * Body: { title, description?, content?, category?, difficulty?, moduleType?, stepCount? }
  */
 async function generateModuleSteps(req, res) {
@@ -374,7 +465,7 @@ async function generateModuleSteps(req, res) {
 }
 
 /**
- * POST /api/admin/modules/generate-curriculum
+ * POST /api/admin/modules/generate-curriculum - AI hints/starter code for a module (admin only)
  * Body: { title, description?, content?, category?, difficulty?, moduleType?, parts: ('hints'|'starterCode')[], steps? }
  */
 async function generateModuleCurriculum(req, res) {
@@ -422,6 +513,8 @@ module.exports = {
   listUsers,
   getUserById,
   updateUser,
+  grantUserAchievement,
+  revokeUserAchievement,
   deleteUser,
   listAdmins,
   addAdmin,

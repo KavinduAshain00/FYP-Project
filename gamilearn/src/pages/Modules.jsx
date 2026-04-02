@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useShellPagesCache } from "../utils/shellPagesCacheContext";
 import { modulesAPI, userAPI } from "../api/api";
 import {
   FaBolt,
@@ -12,10 +11,9 @@ import {
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
-import LoadingScreen from "../components/ui/LoadingScreen";
-import { toModuleId } from "../utils/ids";
-import { getXpBarProps } from "../utils/levelFromApi";
-import { getModuleImageUrl } from "../utils/moduleImageUrl";
+import { LoadingScreen, useShellPagesCache } from "../components/AppRouteShell";
+import { getXpBarProps } from "../utils/levelCurve";
+import { getModuleImageUrl, toModuleId } from "../utils/moduleUtils";
 
 const MODULES_PER_PAGE = 12;
 /** API caps limit at 100 (see modulesController). */
@@ -156,7 +154,12 @@ const Modules = () => {
       }
     }
     return nextModule;
-  }, [dashboard?.user?.currentModule, pathModules, completedModuleIds, nextModule]);
+  }, [
+    dashboard?.user?.currentModule,
+    pathModules,
+    completedModuleIds,
+    nextModule,
+  ]);
 
   const jsBasics = useMemo(() => {
     return [...pathModules]
@@ -225,11 +228,7 @@ const Modules = () => {
   useEffect(() => {
     if (!dashboard || !continueModuleIdStr || !continueModule) return;
     if (
-      !moduleMatchesFilters(
-        continueModule,
-        filterCategory,
-        filterDifficulty,
-      )
+      !moduleMatchesFilters(continueModule, filterCategory, filterDifficulty)
     ) {
       return;
     }
@@ -337,8 +336,9 @@ const Modules = () => {
           </h1>
           <p className="text-blue-300 mt-2 max-w-xl text-sm sm:text-base leading-relaxed">
             Browse everything in one place. Filters narrow the grid; your path
-            card below matches Home.             We jump to your continue lesson (in progress or next on the path)
-            when it appears in the grid, including after changing pages.
+            card below matches Home. We jump to your continue lesson (in
+            progress or next on the path) when it appears in the grid, including
+            after changing pages.
           </p>
         </div>
 
@@ -391,7 +391,9 @@ const Modules = () => {
                   <div className="h-2 rounded-full bg-blue-900 overflow-hidden">
                     <div
                       className="h-full rounded-full bg-blue-400 transition-all duration-500"
-                      style={{ width: `${Math.min(100, Math.max(0, xpBar.percentage))}%` }}
+                      style={{
+                        width: `${Math.min(100, Math.max(0, xpBar.percentage))}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -428,12 +430,12 @@ const Modules = () => {
                   </button>
                 </>
               ) : continueModule &&
-              moduleMatchesFilters(
-                continueModule,
-                filterCategory,
-                filterDifficulty,
-              ) &&
-              isModuleLocked(continueModule) ? (
+                moduleMatchesFilters(
+                  continueModule,
+                  filterCategory,
+                  filterDifficulty,
+                ) &&
+                isModuleLocked(continueModule) ? (
                 <div className="space-y-2">
                   <p className="text-sm font-semibold text-blue-50 line-clamp-2">
                     {continueModule.title}

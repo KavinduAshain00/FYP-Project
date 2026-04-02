@@ -17,10 +17,9 @@ import {
   FaUserCircle,
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
-import { useShellPagesCache } from "../utils/shellPagesCacheContext";
 import { achievementsAPI, userAPI } from "../api/api";
-import LoadingScreen from "../components/ui/LoadingScreen";
-import { getXpBarProps } from "../utils/levelFromApi";
+import { LoadingScreen, useShellPagesCache } from "../components/AppRouteShell";
+import { getXpBarProps } from "../utils/levelCurve";
 
 const groupAvatarsByUnlock = (avatars) => {
   const default_ = avatars.filter((a) => a.unlockType === "default");
@@ -655,7 +654,7 @@ const Profile = () => {
                 <div
                   className={`w-1.5 shrink-0 self-stretch rounded-full ${
                     ach.earned
-                      ? "bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.45)]"
+                      ? "bg-blue-400 shadow-[0_0_10px_rgb(var(--color-blue-400-rgb)/0.45)]"
                       : "bg-amber-800"
                   }`}
                   aria-hidden
@@ -663,7 +662,7 @@ const Profile = () => {
                 <div
                   className={`relative z-[1] flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${
                     ach.earned
-                      ? "bg-cyan-400/20 text-cyan-100 ring-2 ring-cyan-400/45 shadow-md shadow-cyan-500/20"
+                      ? "bg-blue-400/20 text-blue-100 ring-2 ring-blue-400/45 shadow-md shadow-blue-500/20"
                       : "bg-blue-900 text-amber-200/90 ring-1 ring-amber-700/50"
                   }`}
                 >
