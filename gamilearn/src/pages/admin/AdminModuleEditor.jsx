@@ -250,13 +250,8 @@ export default function AdminModuleEditor() {
     }
   };
 
-  const handleGenerateModuleSteps = async () => {
-    if (!form || form.id) return;
-    if (!form.title?.trim()) {
-      toast.error("Add a module title first (Details section).");
-      setSectionTab("details");
-      return;
-    }
+  const runGenerateModuleSteps = async () => {
+    if (!form) return;
     setGeneratingSteps(true);
     try {
       const res = await adminAPI.generateModuleSteps({
@@ -264,7 +259,7 @@ export default function AdminModuleEditor() {
         description: form.description || "",
         content: form.content || "",
         category: form.category,
-        difficulty: form.difficulty,
+        difficulty: form.difficulty || "beginner",
         moduleType: "vanilla",
         stepCount: 5,
       });
@@ -285,6 +280,30 @@ export default function AdminModuleEditor() {
     }
   };
 
+  const handleGenerateModuleSteps = () => {
+    if (!form) return;
+    if (!form.title?.trim()) {
+      toast.error("Add a module title first (Details section).");
+      setSectionTab("details");
+      return;
+    }
+    const hasSteps = (form.steps || []).some((s) => s.title && String(s.title).trim());
+    if (hasSteps) {
+      setConfirmModal({
+        open: true,
+        title: "Replace all steps?",
+        message:
+          "AI will replace every step in this form. Save the module to persist changes, or leave without saving to keep the server copy.",
+        onConfirm: () => {
+          setConfirmModal((p) => ({ ...p, open: false }));
+          void runGenerateModuleSteps();
+        },
+      });
+      return;
+    }
+    void runGenerateModuleSteps();
+  };
+
   const handleGenerateCurriculumParts = async (parts) => {
     if (!form) return;
     if (!form.title?.trim()) {
@@ -299,7 +318,7 @@ export default function AdminModuleEditor() {
         description: form.description || "",
         content: form.content || "",
         category: form.category,
-        difficulty: form.difficulty,
+        difficulty: form.difficulty || "beginner",
         moduleType: "vanilla",
         parts,
         steps: (form.steps || [])

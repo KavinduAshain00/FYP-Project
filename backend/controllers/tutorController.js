@@ -168,6 +168,25 @@ async function explainError(req, res) {
   }
 }
 
+function normalizeLectureStepsForAi(steps) {
+  if (!Array.isArray(steps) || steps.length === 0) return undefined;
+  const out = steps
+    .filter((s) => s && typeof s === 'object')
+    .map((s) => ({
+      title: String(s.title ?? '')
+        .trim()
+        .slice(0, 200),
+      concept: String(s.concept ?? '')
+        .trim()
+        .slice(0, 400),
+      instruction: String(s.instruction ?? s.instructions ?? '')
+        .trim()
+        .slice(0, 900),
+    }))
+    .filter((s) => s.title);
+  return out.length ? out : undefined;
+}
+
 async function generateLectureNotes(req, res) {
   const { overview, moduleTitle, difficulty, category, steps, userLevel } = req.body;
   if (!overview || typeof overview !== 'string' || !overview.trim()) {
@@ -180,8 +199,8 @@ async function generateLectureNotes(req, res) {
       moduleTitle: moduleTitle || 'This lesson',
       difficulty: difficulty || 'beginner',
       category: category || '',
-      steps: Array.isArray(steps) ? steps : undefined,
-      userLevel: userLevel || '',
+      steps: normalizeLectureStepsForAi(steps),
+      userLevel: typeof userLevel === 'string' ? userLevel.trim().slice(0, 120) : '',
     });
     return res.json({ lectureNotes: notes });
   } catch (err) {

@@ -391,6 +391,14 @@ Never hand them the complete corrected program; empower them to fix it.`;
   throw new Error('explain() requires type: "code" or "error"');
 }
 
+/** Drop model chit-chat before the first real slide heading. */
+function stripLectureNotesPreamble(text) {
+  const t = (text || "").trim();
+  const idx = t.search(/^##\s/m);
+  if (idx > 0) return t.slice(idx).trim();
+  return t;
+}
+
 async function generateLectureNotes(opts) {
   if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
   const overview = opts?.overview;
@@ -405,14 +413,24 @@ async function generateLectureNotes(opts) {
 
   const stepsSection =
     steps.length > 0
-      ? `\nSTEPS/CONCEPTS YOU WILL COVER:\n${steps.map((s, i) => `${i + 1}. ${s.title}${s.concept ? ` (${s.concept})` : ""}`).join("\n")}`
+      ? `\nSTEPS YOU WILL COVER (use titles, concepts, and tasks—do not invent steps):\n${steps
+          .map((s, i) => {
+            const title = String(s?.title ?? "").trim() || `Step ${i + 1}`;
+            const concept = String(s?.concept ?? "").trim();
+            const instruction = String(s?.instruction ?? "").trim().slice(0, 500);
+            const bits = [`${i + 1}. ${title}`];
+            if (concept) bits.push(`concept: ${concept}`);
+            if (instruction) bits.push(`task: ${instruction}`);
+            return bits.join(" — ");
+          })
+          .join("\n")}`
       : "";
 
   const personalization = userLevel
     ? `\nThe student's experience level: ${userLevel}. Adapt explanations to be accessible but not overly basic.`
     : "";
 
-  const prompt = `You are a warm, clear programming instructor. Turn the overview below into inviting lecture slides learners swipe through one at a time.
+  const prompt = `You are a clear programming instructor. Turn the overview and step list below into lecture-style slides learners swipe through one heading at a time.
 
 --- Module ---
   Title: ${moduleTitle}
@@ -420,25 +438,29 @@ async function generateLectureNotes(opts) {
 ${category ? `  Category: ${category}` : ""}${stepsSection}${personalization}
 
 --- Source material (summary) ---
-${String(overview).substring(0, 2000)}
+${String(overview).substring(0, 4500)}
 
---- Slide flow (use 2–4 slides total) ---
-  • First slide: \`## What You'll Learn\` with 3–4 crisp bullets of takeaways.
-  • Middle slide(s): one big idea each; friendly headings like \`## How It Works\` or \`## Key Concepts\`.
-  • Last slide: \`## Recap\` or \`## Summary\` with 2–3 reinforcing bullets.
+--- Slide flow (use 5-8 slides) ---
+  • Slide 1: \`## What You'll Learn\` — 4-6 outcome bullets tied to the module and steps above.
+  • Slide 2: \`## Why This Matters\` — 3-5 bullets: real use, mental model, or how it connects to building things.
+  • Slides 3-6: deep teaching—pick clear headings (e.g. \`## Key Ideas\`, \`## How It Fits Together\`, \`## Vocabulary\`, \`## Before You Code\`). Each slide: 4-8 bullets and/or 2 short paragraphs. Include at least one slide with 2-4 defined terms (term: plain-language meaning).
+  • Include one slide for pitfalls: \`## Common Stumbles\` or similar — 3-5 bullets (wrong mental model, syntax gotchas, debugging tips) appropriate to ${difficulty}.
+  • Last slide: \`## Recap\` — 4-6 bullets that restate goals, tie back to the steps list, and name one thing to watch for next.
 
 --- Quality bar ---
-  • Explain WHY ideas matter, not only WHAT they are.
-  • Audience: ${difficulty}—simple words; define jargon when you use it.
-  • No full solutions; tiny code samples only inside \`\`\`javascript\`\`\` fences when they teach a point.
-  • Each slide: 2–5 bullets or 1–2 short paragraphs so nothing feels like a wall of text.
+  • Dense but readable: teach like lecture notes, not a slogan deck—facts, relationships, and when you would use this.
+  • Explain WHY and HOW, not only WHAT; connect bullets to the listed steps/tasks when possible.
+  • Audience: ${difficulty}—simple words; define jargon the first time you use it.
+  • No full step-by-step solutions; tiny illustrative snippets only inside \`\`\`javascript\`\`\` (or matching language) fences when they clarify a concept.
+  • Prefer specifics from the source material over generic programming platitudes.
 
---- Markdown rules ---
-  • Output RAW markdown only (never wrap the whole answer in \`\`\`markdown\`\`\`).
-  • Every slide starts with \`## Heading\`. Do not use a single \`#\` top-level title.
+--- Output contract (strict) ---
+  • Your entire reply MUST begin with the first slide heading: a line starting with \`## \`. Nothing before it—no title line, no "here is", no "below", no mention of markdown, slides, or decks.
+  • Output markdown only (never wrap the whole answer in \`\`\`markdown\`\`\`).
+  • Every slide starts with \`## Heading\`. Do not use a single \`#\` top-level document title.
   • Names like \`playerScore\` use inline backticks—not their own code block.
   • Multi-line examples only in fenced \`\`\`js\`\`\` or \`\`\`javascript\`\`\` blocks.
-  • Optional \`---\` between sections if it helps the eye.
+  • Optional \`---\` between slides if it helps scanning.
 
 --- Voice on the slides ---
 ${USER_REPLY_STYLE}
@@ -447,7 +469,7 @@ ${USER_REPLY_STYLE}
   try {
     let notes = await generateTextWithModel(
       prompt,
-      { maxTokens: 1600, temperature: 0.35 },
+      { maxTokens: 3200, temperature: 0.32 },
       AI_LECTURE_MODEL,
     );
     notes = (notes || "").trim();
@@ -463,6 +485,7 @@ ${USER_REPLY_STYLE}
           .replace(/\n?```\s*$/, "")
           .trim();
     }
+    notes = stripLectureNotesPreamble(notes);
     return notes || "Could not generate lecture notes.";
   } catch (err) {
     throw new Error(err.message || "Lecture notes generation failed", {
@@ -506,30 +529,58 @@ async function generateModuleSteps(opts) {
   const content = String(opts?.content ?? "").trim();
   const category = String(opts?.category ?? "").trim();
   const difficulty = String(opts?.difficulty ?? "beginner").trim();
+  const diffLower = difficulty.toLowerCase();
   let n = parseInt(opts?.stepCount, 10);
   if (!Number.isFinite(n)) n = 5;
   n = Math.min(6, Math.max(4, n));
+
+  let difficultyStepBlock = `--- Difficulty is advanced ---
+  • Steps can be more demanding but must stay ordered, verifiable, and tied to the lesson—no unrelated mega-features.
+`;
+  if (diffLower === "beginner") {
+    difficultyStepBlock = `--- Difficulty is beginner (strict) ---
+  • Match the module Level exactly: this is for first-time or early learners.
+  • One small, concrete win per step (e.g. change text, add a variable, one listener, one console.log)—not multi-feature milestones.
+  • Do NOT center the lesson on big calculators, heavy math pipelines, statistics, physics engines, pathfinding, economic simulation, inventory/scoring systems with lots of rules, or other large "systems" unless the lesson content explicitly demands one tiny demo—and then keep formulas trivial (e.g. +1 to a score).
+  • Prefer: simple variables, strings, basic + / * on small numbers, DOM updates, buttons, short loops with small counts, comments.
+`;
+  } else if (diffLower === "intermediate") {
+    difficultyStepBlock = `--- Difficulty is intermediate ---
+  • Steps may combine a few related edits; avoid jumping to a full game architecture or heavy algorithms in a single step.
+`;
+  }
+
+  const stepWordingHint =
+    diffLower === "beginner"
+      ? "short, gentle, no assumed prior jargon."
+      : "appropriate depth for this level.";
 
   const prompt = `You design bite-sized lesson steps for a playful, game-themed coding platform. Each step is something the learner does in the editor—not a lecture.
 
 --- Module snapshot ---
   Title: ${title}
   Blurb: ${description || "(none)"}
-  Level: ${difficulty}
+  Level: ${difficulty} (follow the difficulty rules below exactly)
   Category: ${category || "(unspecified)"}
   Stack: Vanilla HTML, CSS, JavaScript in the browser (no React).
+
+${difficultyStepBlock}
+--- In-app editor (critical) ---
+  • Learners already have the lesson editor open with HTML, CSS, and JavaScript panels side by side—no separate files, no disk saves, no VS Code.
+  • Never tell them to open the editor, create a new file, start a new JavaScript/HTML/CSS file, save as .js, or use an external IDE.
+  • Instructions should jump straight to the task (e.g. "In the JavaScript panel, …" or "Add to your HTML …")—not setup steps about the environment.
 
 --- Lesson content (may be partial) ---
 ${content.slice(0, 6000) || "(infer from title and description)"}
 
 --- Build exactly ${n} steps ---
   • Order them so each step naturally follows the last.
-  • Wording should feel doable and specific for a ${difficulty} learner.
+  • Wording must match Level ${difficulty}: ${stepWordingHint}
   • Starter code is only a thin scaffold: every step must still require real edits the student has not already finished.
 
 --- Each step object (JSON) ---
   "title"           Short, motivating name (optional leading emoji).
-  "instruction"     Plain language: what to do, where to look, what “done” looks like.
+  "instruction"     Plain language: what to do, which panel if helpful, what “done” looks like—never “open the editor” or “create a new … file.”
   "concept"         One sentence that could back an MCQ.
   "verifyType"      One of: "code" | "checkConsole" | "checkComments"
   "expectedConsole" null unless verifyType is "checkConsole"
@@ -625,13 +676,13 @@ const FALLBACK_STARTER_CSS = `body {
   margin: 0;
   font-family: system-ui, sans-serif;
   padding: 1rem;
-  background: #0f172a;
-  color: #e2e8f0;
+  background: #000;
+  color: #fff;
 }
 
 h1 {
   font-size: 1.25rem;
-  color: #38bdf8;
+  color: #fff;
 }`;
 
 const FALLBACK_STARTER_JS = "// Write your JavaScript here\n";
@@ -672,6 +723,7 @@ async function generateModuleCurriculumParts(opts) {
   const content = String(opts?.content ?? "").trim();
   const category = String(opts?.category ?? "").trim();
   const difficulty = String(opts?.difficulty ?? "beginner").trim();
+  const diffLower = difficulty.toLowerCase();
 
   const stepsLines = Array.isArray(opts?.steps)
     ? opts.steps
@@ -694,8 +746,12 @@ async function generateModuleCurriculumParts(opts) {
   const keyList = parts.map((p) => `"${p}"`).join(", ");
   const partRules = [];
   if (parts.includes("hints")) {
+    const beginnerHints =
+      diffLower === "beginner"
+        ? ` Level is beginner: each hint nudges ONE tiny next edit (one line or one idea)—plain words, no jargon pile-ons. Never steer toward big calculators, heavy math, statistics, physics engines, pathfinding, or elaborate scoring/inventory/economy "systems"; keep hints about simple DOM, variables, strings, buttons, and short console output unless the lesson text is narrowly about one minimal concept.`
+        : "";
     partRules.push(
-      `"hints": JSON array of 4–6 short strings—warm nudges, never full solutions. ${USER_REPLY_STYLE} Each hint may start with one small emoji.`,
+      `"hints": JSON array of 4–6 short strings—warm nudges, never full solutions. ${USER_REPLY_STYLE} Each hint may start with one small emoji.${beginnerHints}`,
     );
   }
   if (parts.includes("starterCode")) {
@@ -703,9 +759,27 @@ async function generateModuleCurriculumParts(opts) {
     const serverPart = isMultiplayerCat
       ? `CATEGORY is multiplayer: include a non-empty "serverJs" scaffold only (Node/Socket.IO style) — listen/setup stubs without implementing full game sync or completing lesson logic in the starter.`
       : `CATEGORY is NOT multiplayer: set "serverJs" to exactly "" (empty string).`;
+    const beginnerStarter =
+      diffLower === "beginner"
+        ? ` BEGINNER: keep the scaffold small—few HTML nodes, minimal JS surface (no empty "engine" folders in code, no big placeholder math utilities). Enough structure to learn, not a complex architecture.`
+        : "";
     partRules.push(
-      `"starterCode": JSON object with string fields ONLY: html, css, javascript, serverJs. RUNTIME is always vanilla browser HTML/CSS/JS — NOT React or JSX. SCAFFOLD ONLY — this is the code loaded BEFORE the student starts. You MUST NOT implement the lesson outcome, game logic, step tasks, console.log outputs required by steps, or full event handlers that complete the project. Use: empty or stub function bodies, // TODO markers, placeholder values, and wiring only (e.g. canvas element in HTML, querySelector variables set to null or unused) so the student still has meaningful edits to make. If steps are listed above, the starter must intentionally leave every step's core work undone. You MUST include all three: "html", "css", and "javascript" as NON-EMPTY strings. "html": valid HTML document with structural elements for the lesson but no inline scripts that complete tasks. "css": layout/typography/theme only — no cheating by hiding required work. "javascript": comments, empty stubs, or minimal boilerplate (e.g. const canvas = document.getElementById('gameCanvas');) WITHOUT drawing, game loop, or completing instructions. ${serverPart}`,
+      `"starterCode": JSON object with string fields ONLY: html, css, javascript, serverJs. RUNTIME is always vanilla browser HTML/CSS/JS — NOT React or JSX. SCAFFOLD ONLY — this is the code loaded BEFORE the student starts. You MUST NOT implement the lesson outcome, game logic, step tasks, console.log outputs required by steps, or full event handlers that complete the project. Use: empty or stub function bodies, // TODO markers, placeholder values, and wiring only (e.g. canvas element in HTML, querySelector variables set to null or unused) so the student still has meaningful edits to make. If steps are listed above, the starter must intentionally leave every step's core work undone. You MUST include all three: "html", "css", and "javascript" as NON-EMPTY strings. "html": valid HTML document with structural elements for the lesson but no inline scripts that complete tasks. "css": layout/typography/theme only — no cheating by hiding required work. VISUAL THEME (required): in "css", set the page to a dark editor look—background #000 or #0a0a0a and default text #fff or #f5f5f5 (use body { background; color; } at minimum). Headings and body copy stay light-on-dark; optional accent color for links or UI hints only (e.g. cyan), not dark text on white. "javascript": comments, empty stubs, or minimal boilerplate (e.g. const canvas = document.getElementById('gameCanvas');) WITHOUT drawing, game loop, or completing instructions. ${serverPart}${beginnerStarter}`,
     );
+  }
+
+  let curriculumDifficultyBlock = "";
+  if (diffLower === "beginner") {
+    curriculumDifficultyBlock = `--- Level beginner: scope ---
+  Everything you write must fit true beginners: short, concrete, low cognitive load.
+  Do not frame the module around large calculation systems, multi-step numeric pipelines, or heavy algorithms unless the lesson body explicitly demands a tiny illustration—and then keep it minimal (e.g. add 1 to a number, not a full calculator app).
+
+`;
+  } else if (diffLower === "intermediate") {
+    curriculumDifficultyBlock = `--- Level intermediate ---
+  Hints and starter can assume basic HTML/JS; still avoid suggesting huge subsystems in one go.
+
+`;
   }
 
   const prompt = `You help author curriculum for a game-flavored coding school: hints that feel human, and starter code that invites tinkering—not finished games.
@@ -713,11 +787,11 @@ async function generateModuleCurriculumParts(opts) {
 --- Module ---
   Title: ${title}
   About: ${description || "(none)"}
-  Level: ${difficulty}
+  Level: ${difficulty} (match all difficulty rules below)
   Category: ${category || "(unspecified)"}
   Stack: Vanilla HTML / CSS / JavaScript (no React, no JSX).
 
---- Lesson body ---
+${curriculumDifficultyBlock}--- Lesson body ---
 ${content.slice(0, 8000) || "(infer from title and description)"}
 ${stepsBlock}
 --- Produce ONLY these JSON keys ---
@@ -733,8 +807,9 @@ ${partRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}
 3. If starterCode is included: "html", "css", and "javascript" must each be a non-empty, believable string for ${difficulty} learners.
 ${
   parts.includes("starterCode")
-    ? `4. Starter stays deliberately incomplete: after loading it, the learner must still edit JS (and sometimes HTML/CSS) to pass checks—never ship a solved mini-game.
-5. No finished game loops, no completed step logic, no final console.log outputs that satisfy the lesson; those belong in student code.`
+    ? `4. Starter CSS must use a black (or near-black) page background and white/light default text so the preview matches the app's dark editor.
+5. Starter stays deliberately incomplete: after loading it, the learner must still edit JS (and sometimes HTML/CSS) to pass checks—never ship a solved mini-game.
+6. No finished game loops, no completed step logic, no final console.log outputs that satisfy the lesson; those belong in student code.`
     : ""
 }`;
 

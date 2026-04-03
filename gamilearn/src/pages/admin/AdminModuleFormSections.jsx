@@ -200,33 +200,39 @@ export default function AdminModuleFormSections({
 
         {sectionTab === "steps" && (
           <div className="space-y-4">
-            {!form.id && (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl bg-blue-950/50 border border-blue-700/60">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-blue-100 flex items-center gap-2">
-                    <FaMagic className="text-cyan-300 shrink-0" aria-hidden />
-                    Generate steps with AI
-                  </p>
-                  <p className="text-[12px] text-blue-400 mt-1">
-                    Uses title, description, category, difficulty, and lesson
-                    markdown to propose 4–6 ordered steps. You can edit them
-                    before saving.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleGenerateModuleSteps}
-                  disabled={
-                    generatingSteps ||
-                    !!generatingCurriculum ||
-                    !form.title?.trim()
-                  }
-                  className="shrink-0 px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-blue-500 text-black hover:bg-blue-400 disabled:opacity-45 disabled:cursor-not-allowed shadow-md shadow-black/25"
-                >
-                  {generatingSteps ? "Generating…" : "Generate steps"}
-                </button>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl bg-blue-950/50 border border-blue-700/60">
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-semibold text-blue-100 flex items-center gap-2">
+                  <FaMagic className="text-cyan-300 shrink-0" aria-hidden />
+                  Generate steps with AI
+                </p>
+                <p className="text-[12px] text-blue-400 mt-1">
+                  Uses the module <span className="text-blue-200">Difficulty</span>{" "}
+                  (Details), plus title, description, category, and lesson
+                  markdown, to propose about five ordered steps—beginner modules
+                  get simple, small-scope tasks. You can edit before saving.
+                  {form.id ? (
+                    <>
+                      {" "}
+                      If you already have steps, generating again replaces the
+                      whole list in this form (you will be asked to confirm).
+                    </>
+                  ) : null}
+                </p>
               </div>
-            )}
+              <button
+                type="button"
+                onClick={handleGenerateModuleSteps}
+                disabled={
+                  generatingSteps ||
+                  !!generatingCurriculum ||
+                  !form.title?.trim()
+                }
+                className="shrink-0 px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-blue-500 text-black hover:bg-blue-400 disabled:opacity-45 disabled:cursor-not-allowed shadow-md shadow-black/25"
+              >
+                {generatingSteps ? "Generating…" : "Generate steps"}
+              </button>
+            </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-[12px] text-blue-300">
@@ -248,8 +254,7 @@ export default function AdminModuleFormSections({
 
             {(form.steps || []).length === 0 ? (
               <p className="text-[13px] text-blue-400 py-6 text-center border border-dashed border-blue-700 rounded-xl">
-                No steps yet. Generate with AI (new module) or add steps
-                manually.
+                No steps yet. Generate with AI or add steps manually.
               </p>
             ) : (
               <ul className="space-y-3 list-none p-0 m-0">
@@ -513,8 +518,10 @@ export default function AdminModuleFormSections({
                 </button>
               </div>
               <p className="text-[11px] text-blue-400 sm:w-full basis-full">
-                Uses title, description, lesson content, and step titles (if
-                any). Replaces the hint list when generation succeeds.
+                Uses <span className="text-blue-200">Difficulty</span> (Details),
+                title, description, lesson content, and step titles (if any).
+                Beginner modules get short, easy nudges—not big systems or heavy
+                math. Replaces the hint list when generation succeeds.
               </p>
             </div>
             <div>
@@ -585,9 +592,11 @@ export default function AdminModuleFormSections({
                   Generate starter code with AI
                 </p>
                 <p className="text-[12px] text-blue-400 mt-1">
-                  Scaffold only — HTML/CSS/JS skeleton so learners still
-                  complete the steps (not a finished solution). Server starter
-                  only when category is multiplayer.
+                  Respects <span className="text-blue-200">Difficulty</span>{" "}
+                  (Details): beginner starters stay small and simple. Scaffold
+                  only—HTML/CSS/JS skeleton so learners still complete the steps
+                  (not a finished solution). Server starter only when category
+                  is multiplayer.
                 </p>
               </div>
               <button

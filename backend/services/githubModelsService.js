@@ -22,6 +22,8 @@ function getClient() {
 
 /**
  * Send a chat completion request to GitHub Models.
+ *
+ * @see https://github.com/marketplace/models/azure-openai/gpt-4-1 — OpenAI GPT-4.1 (GitHub Models)
  * @param {Array<{role: string, content: string}>} messages
  * @param {string} model - GitHub Models model identifier (e.g. "meta/Llama-4-Scout-17B-16E-Instruct")
  * @param {object} options - { temperature, maxTokens, topP }
