@@ -30,6 +30,26 @@ A full-stack web application for learning game development through interactive c
 - Axios for API calls
 - CSS3 for styling
 
+## Acknowledgements and AI Usage
+
+- External code reference:
+  - `backend/services/githubModelsService.js` contains an explicit reference to GitHub Models docs:
+    `https://github.com/marketplace/models/azure-openai/gpt-4-1`.
+  - Standard backend patterns and middleware are built using open-source packages from npm (e.g., `express`, `mongoose`, `jsonwebtoken`, `express-rate-limit`, `bcryptjs`) under their respective licenses.
+- AI assisted development:
+  - Code authoring, debugging, and issue analysis were performed with AI assistance (GitHub Copilot / LLM support) to help design routes, schema, and tutor integration patterns.
+  - AI usage includes prompt-based code guidance, refactoring suggestions, and bug triage; all final written code was reviewed and tested by the developer.
+- Academic integrity note:
+  - If any specific copy-paste from public examples is used, cite the source in code comments and README; current repository adherence is documented above.
+
+## Prerequisites
+
+- React 19
+- React Router for navigation
+- CodeMirror for code editing
+- Axios for API calls
+- CSS3 for styling
+
 ## Prerequisites
 
 - Node.js (v16 or higher)
