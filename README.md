@@ -39,8 +39,6 @@ A full-stack web application for learning game development through interactive c
 - AI assisted development:
   - Code authoring, debugging, and issue analysis were performed with AI assistance (GitHub Copilot / LLM support) to help design routes, schema, and tutor integration patterns.
   - AI usage includes prompt-based code guidance, refactoring suggestions, and bug triage; all final written code was reviewed and tested by the developer.
-- Academic integrity note:
-  - If any specific copy-paste from public examples is used, cite the source in code comments and README; current repository adherence is documented above.
 
 ## Prerequisites
 
