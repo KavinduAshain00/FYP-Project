@@ -311,16 +311,6 @@ const Profile = () => {
                   />
                 </div>
               </div>
-
-              {!editMode && (
-                <button
-                  type="button"
-                  onClick={() => setEditMode(true)}
-                  className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-blue-500"
-                >
-                  <FaEdit /> Edit name & avatar
-                </button>
-              )}
             </div>
           </div>
 

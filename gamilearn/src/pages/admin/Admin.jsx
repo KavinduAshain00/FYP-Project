@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
@@ -11,10 +11,6 @@ import {
   FaChartBar,
   FaSearch,
   FaTrophy,
-  FaFileExport,
-  FaSort,
-  FaSortUp,
-  FaSortDown,
   FaCalendarAlt,
   FaBolt,
   FaUserPlus,
@@ -61,12 +57,6 @@ const Admin = () => {
   const [moduleFilterDifficulty, setModuleFilterDifficulty] = useState(
     () => savedAdmin?.moduleFilterDifficulty ?? "",
   );
-  const [userSortBy, setUserSortBy] = useState(
-    () => savedAdmin?.userSortBy ?? "createdAt",
-  );
-  const [userSortOrder, setUserSortOrder] = useState(
-    () => savedAdmin?.userSortOrder ?? "desc",
-  );
   const [userPage, setUserPage] = useState(() => savedAdmin?.userPage ?? 1);
   const [userPageSize, setUserPageSize] = useState(
     () => savedAdmin?.userPageSize ?? 10,
@@ -90,17 +80,8 @@ const Admin = () => {
         recentSignups: [],
       },
   );
-  const [moduleSortBy, setModuleSortBy] = useState(
-    () => savedAdmin?.moduleSortBy ?? "order",
-  );
-  const [moduleSortOrder, setModuleSortOrder] = useState(
-    () => savedAdmin?.moduleSortOrder ?? "asc",
-  );
   const [modulePage, setModulePage] = useState(
     () => savedAdmin?.modulePage ?? 1,
-  );
-  const [achievementSearch, setAchievementSearch] = useState(
-    () => savedAdmin?.achievementSearch ?? "",
   );
   const MODULE_PAGE_SIZE = 10;
   const [adminActionUserId, setAdminActionUserId] = useState(null);
@@ -108,6 +89,8 @@ const Admin = () => {
     open: false,
     title: "",
     message: "",
+    confirmLabel: undefined,
+    cancelLabel: undefined,
     onConfirm: null,
   });
   const initialUserModalRef = useRef(null);
@@ -127,35 +110,31 @@ const Admin = () => {
     userFilterPath,
     moduleFilterCategory,
     moduleFilterDifficulty,
-    userSortBy,
-    userSortOrder,
     userPage,
     userPageSize,
     userPagination,
     stats,
-    moduleSortBy,
-    moduleSortOrder,
     modulePage,
-    achievementSearch,
   };
   useEffect(() => () => put("admin", adminSnapshotRef.current), [put]);
 
-  const loadUsers = async (page = userPage) => {
-    try {
-      const res = await adminAPI.getUsers({
-        page,
-        limit: userPageSize,
-        search: userSearch.trim() || undefined,
-        learningPath: userFilterPath || undefined,
-        sortBy: userSortBy,
-        sortOrder: userSortOrder,
-      });
-      setUsers(res.data.users || []);
-      if (res.data.pagination) setUserPagination(res.data.pagination);
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to load users");
-    }
-  };
+  const loadUsers = useCallback(
+    async (page = userPage) => {
+      try {
+        const res = await adminAPI.getUsers({
+          page,
+          limit: userPageSize,
+          search: userSearch.trim() || undefined,
+          learningPath: userFilterPath || undefined,
+        });
+        setUsers(res.data.users || []);
+        if (res.data.pagination) setUserPagination(res.data.pagination);
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Failed to load users");
+      }
+    },
+    [userPage, userPageSize, userSearch, userFilterPath],
+  );
 
   const loadStats = async () => {
     try {
@@ -211,22 +190,13 @@ const Admin = () => {
     load();
   }, []);
 
-  // loadUsers is recreated when its inputs change; deps intentionally exclude it (see eslint-disable below).
   useEffect(() => {
     if (skipUsersFetchOnce.current) {
       skipUsersFetchOnce.current = false;
       return;
     }
     loadUsers(userPage);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    userPage,
-    userSearch,
-    userFilterPath,
-    userSortBy,
-    userSortOrder,
-    userPageSize,
-  ]);
+  }, [loadUsers, userPage]);
 
   const handleSaveUser = async () => {
     if (!userModal?.id) return;
@@ -257,7 +227,9 @@ const Admin = () => {
     setConfirmModal({
       open: true,
       title: "Delete user",
-      message: `Delete "${u.name}" (${u.email})? This cannot be undone.`,
+      message: `Delete ${u.name} (${u.email})? This permanently removes the account and cannot be undone.`,
+      confirmLabel: "Delete user",
+      cancelLabel: "Keep user",
       onConfirm: () => confirmDeleteUser(u),
     });
   };
@@ -323,7 +295,9 @@ const Admin = () => {
     setConfirmModal({
       open: true,
       title: "Delete module",
-      message: `Delete module "${m.title}"? This cannot be undone.`,
+      message: `Delete "${m.title}"? Learners will no longer be able to open this lesson. This cannot be undone.`,
+      confirmLabel: "Delete lesson",
+      cancelLabel: "Keep lesson",
       onConfirm: () => confirmDeleteModule(m),
     });
   };
@@ -355,7 +329,9 @@ const Admin = () => {
       setConfirmModal({
         open: true,
         title: "Discard changes?",
-        message: "You have unsaved changes. Close without saving?",
+        message: "You have unsaved user changes. If you close now, those edits will be lost.",
+        confirmLabel: "Close without saving",
+        cancelLabel: "Keep editing",
         onConfirm: () => {
           setConfirmModal((p) => ({ ...p, open: false }));
           setUserModal(null);
@@ -388,27 +364,6 @@ const Admin = () => {
     recentSignups: stats.recentSignups || [],
   };
 
-  const achievementEarnedCount = useMemo(() => {
-    const map = {};
-    achievements.forEach((a) => {
-      map[a.id] = users.filter((u) =>
-        u.earnedAchievements?.includes(a.id),
-      ).length;
-    });
-    return map;
-  }, [achievements, users]);
-
-  const filteredAchievements = useMemo(() => {
-    const q = achievementSearch.trim().toLowerCase();
-    if (!q) return achievements;
-    return achievements.filter(
-      (a) =>
-        (a.name || "").toLowerCase().includes(q) ||
-        (a.description || "").toLowerCase().includes(q) ||
-        (a.category || "").toLowerCase().includes(q),
-    );
-  }, [achievements, achievementSearch]);
-
   const filteredModules = useMemo(() => {
     let list = [...modules];
     const q = moduleSearch.trim().toLowerCase();
@@ -428,33 +383,12 @@ const Admin = () => {
         (m) => (m.difficulty || "") === moduleFilterDifficulty,
       );
     }
-    const key = moduleSortBy;
-    const order = moduleSortOrder === "asc" ? 1 : -1;
-    list.sort((a, b) => {
-      let va = a[key];
-      let vb = b[key];
-      if (key === "order" || key === "title") {
-        if (key === "order") {
-          va = Number(va) || 0;
-          vb = Number(vb) || 0;
-          return order * (va - vb);
-        }
-        va = (va || "").toLowerCase();
-        vb = (vb || "").toLowerCase();
-        return order * (va < vb ? -1 : va > vb ? 1 : 0);
-      }
-      va = (va || "").toLowerCase();
-      vb = (vb || "").toLowerCase();
-      return order * (va < vb ? -1 : va > vb ? 1 : 0);
-    });
     return list;
   }, [
     modules,
     moduleSearch,
     moduleFilterCategory,
     moduleFilterDifficulty,
-    moduleSortBy,
-    moduleSortOrder,
   ]);
 
   const totalModulePages = Math.max(
@@ -466,78 +400,25 @@ const Admin = () => {
     return filteredModules.slice(start, start + MODULE_PAGE_SIZE);
   }, [filteredModules, modulePage]);
 
-  const exportUsersCSV = async () => {
-    const headers = [
-      "Name",
-      "Email",
-      "Level",
-      "XP",
-      "Completed",
-      "Path",
-      "Role",
-    ];
-    const res = await adminAPI
-      .getUsers({ page: 1, limit: 10000 })
-      .catch(() => ({ data: { users: [] } }));
-    const allUsers = res.data.users || [];
-    const rows = allUsers.map((u) => [
-      u.name || "",
-      u.email || "",
-      u.level ?? 1,
-      u.totalPoints ?? 0,
-      u.completedModules?.length ?? 0,
-      u.learningPath || "none",
-      u.isAdmin ? "Admin" : "User",
-    ]);
-    const csv = [
-      headers.join(","),
-      ...rows.map((r) =>
-        r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","),
-      ),
-    ].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `gamilearn-users-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("CSV exported");
-  };
-
-  const toggleUserSort = (key) => {
-    setUserPage(1);
-    if (userSortBy === key)
-      setUserSortOrder((o) => (o === "asc" ? "desc" : "asc"));
-    else setUserSortBy(key);
-  };
-
-  const toggleModuleSort = (key) => {
-    if (moduleSortBy === key)
-      setModuleSortOrder((o) => (o === "asc" ? "desc" : "asc"));
-    else setModuleSortBy(key);
-  };
-
   return (
     <>
       <PageHeader
         title="Admin"
-        subtitle="Users, content, and achievements - all in one place"
+        subtitle="Manage users, lessons, and achievements from one place"
         icon={FaShieldAlt}
         badge="Admin"
       />
 
       <div className="max-w-6xl mx-auto min-w-0 px-4 sm:px-6 py-6 text-blue-50">
         <p className="text-sm text-blue-300 mb-3">
-          Pick a tab to work in. Search and filters stay where you left them
-          while you move between these pages.
+          Choose a tab to manage the platform. Search, filters, and pages stay
+          where you left them while you work.
         </p>
         <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-blue-900 shadow-lg shadow-black/30 mb-8 sm:flex sm:flex-wrap sm:max-w-3xl">
           {[
             { id: "overview", label: "Overview", icon: FaChartBar },
             { id: "users", label: "Users", icon: FaUsers },
             { id: "modules", label: "Modules", icon: FaLayerGroup },
-            { id: "achievements", label: "Achievements", icon: FaTrophy },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -546,7 +427,7 @@ const Admin = () => {
               className={`flex w-full items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-colors sm:w-auto sm:justify-start sm:px-4 ${
                 tab === id
                   ? "bg-blue-500 text-black shadow-md shadow-black/25"
-                  : "text-blue-200 hover:text-blue-50 hover:bg-blue-800"
+                  : "bg-blue-900 text-blue-100 hover:text-blue-50 hover:bg-blue-800"
               }`}
             >
               <Icon className="text-sm" />
@@ -719,12 +600,7 @@ const Admin = () => {
                   <option value={50}>50 per page</option>
                 </select>
               </div>
-              <button
-                onClick={exportUsersCSV}
-                className="flex w-full items-center justify-center gap-2 px-4 py-2.5 bg-blue-700 text-black text-[13px] font-semibold hover:bg-blue-600 rounded-xl transition-colors sm:w-auto"
-              >
-                <FaFileExport /> Export CSV
-              </button>
+
             </div>
             <div className="bg-blue-900 overflow-hidden rounded-2xl shadow-xl shadow-black/35">
               <div className="overflow-x-auto -mx-px">
@@ -732,97 +608,22 @@ const Admin = () => {
                   <thead>
                     <tr className="bg-blue-900">
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        <button
-                          type="button"
-                          onClick={() => toggleUserSort("name")}
-                          className="flex items-center gap-1 hover:text-blue-50"
-                        >
-                          Name{" "}
-                          {userSortBy === "name" ? (
-                            userSortOrder === "asc" ? (
-                              <FaSortUp />
-                            ) : (
-                              <FaSortDown />
-                            )
-                          ) : (
-                            <FaSort className="text-blue-400" />
-                          )}
-                        </button>
+                        Name
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        <button
-                          type="button"
-                          onClick={() => toggleUserSort("email")}
-                          className="flex items-center gap-1 hover:text-blue-50"
-                        >
-                          Email{" "}
-                          {userSortBy === "email" ? (
-                            userSortOrder === "asc" ? (
-                              <FaSortUp />
-                            ) : (
-                              <FaSortDown />
-                            )
-                          ) : (
-                            <FaSort className="text-blue-400" />
-                          )}
-                        </button>
+                        Email
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        <button
-                          type="button"
-                          onClick={() => toggleUserSort("level")}
-                          className="flex items-center gap-1 hover:text-blue-50"
-                        >
-                          Level{" "}
-                          {userSortBy === "level" ? (
-                            userSortOrder === "asc" ? (
-                              <FaSortUp />
-                            ) : (
-                              <FaSortDown />
-                            )
-                          ) : (
-                            <FaSort className="text-blue-400" />
-                          )}
-                        </button>
+                        Level
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        <button
-                          type="button"
-                          onClick={() => toggleUserSort("totalPoints")}
-                          className="flex items-center gap-1 hover:text-blue-50"
-                        >
-                          XP{" "}
-                          {userSortBy === "totalPoints" ? (
-                            userSortOrder === "asc" ? (
-                              <FaSortUp />
-                            ) : (
-                              <FaSortDown />
-                            )
-                          ) : (
-                            <FaSort className="text-blue-400" />
-                          )}
-                        </button>
+                        XP
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
                         Completed
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        <button
-                          type="button"
-                          onClick={() => toggleUserSort("learningPath")}
-                          className="flex items-center gap-1 hover:text-blue-50"
-                        >
-                          Path{" "}
-                          {userSortBy === "learningPath" ? (
-                            userSortOrder === "asc" ? (
-                              <FaSortUp />
-                            ) : (
-                              <FaSortDown />
-                            )
-                          ) : (
-                            <FaSort className="text-blue-400" />
-                          )}
-                        </button>
+                        Path
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
                         Role
@@ -936,75 +737,6 @@ const Admin = () => {
               </div>
             )}
           </div>
-        ) : tab === "achievements" ? (
-          <div className="space-y-4">
-            <div className="w-full min-w-0">
-              <div className="relative w-full">
-                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-300 text-sm" />
-                <input
-                  type="text"
-                  placeholder="Search achievements..."
-                  value={achievementSearch}
-                  onChange={(e) => setAchievementSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
-                />
-              </div>
-            </div>
-            <div className="bg-blue-900 overflow-hidden rounded-2xl shadow-xl shadow-black/35">
-              <div className="overflow-x-auto -mx-px">
-                <table className="w-full min-w-[36rem] text-[13px]">
-                  <thead>
-                    <tr className="bg-blue-900">
-                      <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        Name
-                      </th>
-                      <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        Description
-                      </th>
-                      <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        Points
-                      </th>
-                      <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        Category
-                      </th>
-                      <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        Earned by
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredAchievements.map((a) => (
-                      <tr
-                        key={a.id}
-                        className="even:bg-blue-900/50 hover:bg-blue-800 transition-colors"
-                      >
-                        <td className="py-3 px-4 text-blue-50 font-medium">
-                          {a.name}
-                        </td>
-                        <td className="py-3 px-4 text-blue-300 max-w-[200px] truncate">
-                          {a.description}
-                        </td>
-                        <td className="py-3 px-4 text-blue-50">
-                          +{a.points ?? 0}
-                        </td>
-                        <td className="py-3 px-4 text-blue-300">
-                          {a.category || "-"}
-                        </td>
-                        <td className="py-3 px-4 text-blue-300">
-                          {achievementEarnedCount[a.id] ?? 0} users
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            {filteredAchievements.length === 0 && (
-              <p className="text-blue-300 text-[13px] py-4 text-center">
-                No achievements match your search.
-              </p>
-            )}
-          </div>
         ) : (
           <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -1068,79 +800,19 @@ const Admin = () => {
                   <thead>
                     <tr className="bg-blue-900">
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        <button
-                          type="button"
-                          onClick={() => toggleModuleSort("title")}
-                          className="flex items-center gap-1 hover:text-blue-50"
-                        >
-                          Title{" "}
-                          {moduleSortBy === "title" ? (
-                            moduleSortOrder === "asc" ? (
-                              <FaSortUp />
-                            ) : (
-                              <FaSortDown />
-                            )
-                          ) : (
-                            <FaSort className="text-blue-400" />
-                          )}
-                        </button>
+                        Title
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
                         Description
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        <button
-                          type="button"
-                          onClick={() => toggleModuleSort("category")}
-                          className="flex items-center gap-1 hover:text-blue-50"
-                        >
-                          Category{" "}
-                          {moduleSortBy === "category" ? (
-                            moduleSortOrder === "asc" ? (
-                              <FaSortUp />
-                            ) : (
-                              <FaSortDown />
-                            )
-                          ) : (
-                            <FaSort className="text-blue-400" />
-                          )}
-                        </button>
+                        Category
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        <button
-                          type="button"
-                          onClick={() => toggleModuleSort("difficulty")}
-                          className="flex items-center gap-1 hover:text-blue-50"
-                        >
-                          Difficulty{" "}
-                          {moduleSortBy === "difficulty" ? (
-                            moduleSortOrder === "asc" ? (
-                              <FaSortUp />
-                            ) : (
-                              <FaSortDown />
-                            )
-                          ) : (
-                            <FaSort className="text-blue-400" />
-                          )}
-                        </button>
+                        Difficulty
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-blue-300">
-                        <button
-                          type="button"
-                          onClick={() => toggleModuleSort("order")}
-                          className="flex items-center gap-1 hover:text-blue-50"
-                        >
-                          Order{" "}
-                          {moduleSortBy === "order" ? (
-                            moduleSortOrder === "asc" ? (
-                              <FaSortUp />
-                            ) : (
-                              <FaSortDown />
-                            )
-                          ) : (
-                            <FaSort className="text-blue-400" />
-                          )}
-                        </button>
+                        Order
                       </th>
                       <th className="text-right py-3 px-4 font-medium text-blue-300">
                         Actions
@@ -1336,6 +1008,8 @@ const Admin = () => {
         open={confirmModal.open}
         title={confirmModal.title}
         message={confirmModal.message}
+        confirmLabel={confirmModal.confirmLabel}
+        cancelLabel={confirmModal.cancelLabel}
         onConfirm={() => {
           if (typeof confirmModal.onConfirm === "function")
             confirmModal.onConfirm();

@@ -69,7 +69,6 @@ const MODULE_TYPES = {
   "game-development": { tabs: ["html", "css", "js"], defaultTab: "js" },
   "multiplayer": { tabs: ["server", "html", "css", "js"], defaultTab: "server" },
   "advanced-concepts": { tabs: ["html", "css", "js"], defaultTab: "js" },
-  "react-basics": { tabs: ["html", "css", "js"], defaultTab: "html" },
 };
 
 const CodeEditor = () => {
@@ -219,6 +218,7 @@ const CodeEditor = () => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showBackConfirm, setShowBackConfirm] = useState(false);
   const [moduleCompleteModal, setModuleCompleteModal] = useState(null);
+  const [completeLoading, setCompleteLoading] = useState(false);
 
   useEffect(() => {
     codeChangesRef.current = codeChanges;
@@ -1433,8 +1433,36 @@ const CodeEditor = () => {
   }, []);
 
   const handleCompleteModule = async () => {
-    if (!allStepsVerified) return;
+    if (!allStepsVerified || completeLoading) return;
     try {
+      setCompleteLoading(true);
+      const localStepsVerified = stepsVerifiedRef.current;
+      await userAPI.setCurrentModule(moduleId, {
+        currentStepIndex: progressStepIndexForSave,
+        stepsVerified: Array.isArray(localStepsVerified)
+          ? localStepsVerified.map((x) => !!x)
+          : [],
+      });
+
+      const progressResp = await userAPI.getModuleStepProgress(moduleId);
+      const serverStepsVerified =
+        progressResp.data?.progress?.stepsVerified || [];
+      const serverAllStepsVerified =
+        Array.isArray(serverStepsVerified) &&
+        steps.length > 0 &&
+        steps.every((_, i) => Boolean(serverStepsVerified[i]));
+
+      if (!serverAllStepsVerified) {
+        if (
+          Array.isArray(serverStepsVerified) &&
+          serverStepsVerified.length === steps.length
+        ) {
+          setStepsVerified(serverStepsVerified.map((x) => !!x));
+        }
+        toast.error("Verify every step before completing the module.");
+        return;
+      }
+
       const totalPointsStart = Number(
         user?.totalPoints ?? user?.levelInfo?.totalPoints ?? 0,
       );
@@ -1489,6 +1517,9 @@ const CodeEditor = () => {
       });
     } catch (error) {
       console.error("Error completing module:", error);
+      toast.error("Could not complete the module. Please try again.");
+    } finally {
+      setCompleteLoading(false);
     }
   };
 
@@ -1819,7 +1850,7 @@ const CodeEditor = () => {
               className={`min-h-9 inline-flex items-center justify-center gap-2 px-4 rounded-xl text-xs font-semibold transition-colors ${
                 showTutorSidebar
                   ? "bg-blue-600 text-black"
-                  : "bg-blue-900 text-blue-200 hover:text-blue-50 hover:bg-blue-800"
+                  : "bg-blue-800 text-blue-100 hover:text-blue-50 hover:bg-blue-700"
               }`}
             >
               <FaMagic className="text-[9px]" /> AI
@@ -1827,10 +1858,11 @@ const CodeEditor = () => {
             <button
               type="button"
               onClick={handleCompleteModule}
-              disabled={!allStepsVerified}
+              disabled={!allStepsVerified || completeLoading}
               className="min-h-9 inline-flex items-center justify-center gap-2 px-5 rounded-xl bg-blue-600 text-black text-xs font-bold hover:bg-blue-500 transition-colors disabled:bg-neutral-800 disabled:text-blue-500 disabled:cursor-not-allowed"
             >
-              <FaCheck className="text-[9px]" /> Complete
+              <FaCheck className="text-[9px]" />
+              {completeLoading ? "Completing..." : "Complete"}
             </button>
           </div>
         </div>
@@ -2064,7 +2096,7 @@ const CodeEditor = () => {
                   onClick={handleMCQNextStep}
                   className="shrink-0 text-[10px] font-semibold text-blue-400 transition hover:text-blue-200"
                 >
-                  Skip
+                  Skip Quiz
                 </button>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2.5 scrollbar-hide">
@@ -2078,7 +2110,7 @@ const CodeEditor = () => {
                       className="h-3 w-3 shrink-0 rounded-full border-2 border-blue-300 border-t-transparent animate-spin"
                       aria-hidden
                     />
-                    Preparing your quiz…
+                    Preparing concept check…
                   </div>
                 ) : mcqQuestions.length > 0 ? (
                   <div className="space-y-2.5">
@@ -2159,7 +2191,7 @@ const CodeEditor = () => {
                   </div>
                 ) : (
                   <p className="text-xs text-blue-300">
-                    No quiz loaded. Skip to continue.
+                    <p>No concept check available. You can continue to the next step.</p>
                   </p>
                 )}
               </div>
@@ -2203,9 +2235,9 @@ const CodeEditor = () => {
                   <button
                     type="button"
                     onClick={handleMCQNextStep}
-                    className="w-full rounded-lg bg-neutral-800 py-2 text-xs font-semibold text-blue-200 transition hover:bg-neutral-700"
+                    className="w-full rounded-lg bg-neutral-800 py-2 text-xs font-semibold text-blue-200 transition hover:bg-neutral-700 hover:text-blue-100"
                   >
-                    Continue without quiz
+                    Continue to Next Step
                   </button>
                 ) : (
                   <button
@@ -2301,12 +2333,12 @@ const CodeEditor = () => {
                         </span>
                         {isTaskStep && !verified && (
                           <span className="mt-0.5 block text-[9px] font-semibold uppercase tracking-wide text-amber-400/90">
-                            Verify here
+                            Check Here
                           </span>
                         )}
                         {failedFb && isViewing && (
                           <span className="mt-0.5 block text-[10px] text-amber-200/90 line-clamp-2">
-                            Needs another try
+                            Try again
                           </span>
                         )}
                       </span>
@@ -2317,8 +2349,8 @@ const CodeEditor = () => {
               <p className="px-4 pb-3 pt-0 text-[10px] text-blue-500/90 leading-snug">
                 Tap any step to read it. Use{" "}
                 <span className="text-blue-300">Check my code</span> in the
-                header (or this panel) on the step marked{" "}
-                <span className="text-amber-400/90">Verify here</span>.
+                header on the step marked{" "}
+                <span className="text-amber-400/90">Check Here</span>.
               </p>
             </motion.div>
           )}

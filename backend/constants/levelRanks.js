@@ -18,13 +18,13 @@ const EXPERIENCE_RANKS = [
 ];
 
 const XP_PER_LEVEL_BASE = 100;
-const XP_PER_LEVEL_INCREMENT = 10;
+const XP_PER_LEVEL_MULTIPLIER = 2;
 
 const MODULE_COMPLETION_XP = 150;
 const STEP_VERIFY_XP = 15;
 const MCQ_CORRECT_XP = 10;
 
-/** Applied to step verify, MCQ correct, and module completion XP (matches Module.difficulty). */
+/** Applied to step verify, MCQ correct, and module completion XP **/
 const MODULE_DIFFICULTY_XP_MULTIPLIER = {
   beginner: 1,
   intermediate: 1.25,
@@ -41,7 +41,7 @@ function applyModuleDifficultyXpMultiplier(baseXp, difficulty) {
 module.exports = {
   EXPERIENCE_RANKS,
   XP_PER_LEVEL_BASE,
-  XP_PER_LEVEL_INCREMENT,
+  XP_PER_LEVEL_MULTIPLIER,
   MODULE_COMPLETION_XP,
   STEP_VERIFY_XP,
   MCQ_CORRECT_XP,

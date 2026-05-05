@@ -369,12 +369,21 @@ ${USER_REPLY_STYLE}
 ${String(errorMessage).substring(0, 600)}
 ${codeBlock}
 
---- Explain in 2–3 short, friendly paragraphs ---
-  1. What the message is trying to say (plain English)
-  2. Typical causes (typo, type mismatch, missing bracket, etc.)
-  3. What to inspect or try first—ideas only, not a full pasted fix
+--- Your response format (strict) ---
+Use these headings in order:
+1) Issue
+2) Your code snippet
+3) Fixed snippet
+4) Why this fix works
 
-Never hand them the complete corrected program; empower them to fix it.`;
+Rules:
+  • "Your code snippet" should quote the problematic lines from provided code, or a minimal reconstruction when no snippet was provided.
+  • "Fixed snippet" must be concise and only cover the relevant fix.
+  • Keep snippets focused (around 3-12 lines each), not whole-file dumps.
+  • Explain the root cause in plain language.
+  • Markdown output is allowed and preferred for code fences.
+
+Do not return only prose; include both code snippet sections.`;
     try {
       const explanation = await generateTextWithModel(prompt, {
         maxTokens: 400,
@@ -408,6 +417,7 @@ async function generateLectureNotes(opts) {
 
   const steps = Array.isArray(opts?.steps) ? opts.steps : [];
   const difficulty = opts?.difficulty || "beginner";
+  const diffLower = String(difficulty).toLowerCase();
   const category = opts?.category || "";
   const userLevel = opts?.userLevel || "";
 
@@ -430,6 +440,29 @@ async function generateLectureNotes(opts) {
     ? `\nThe student's experience level: ${userLevel}. Adapt explanations to be accessible but not overly basic.`
     : "";
 
+  const slideFlow =
+    diffLower === "advanced"
+      ? `--- Slide flow (use 7-10 slides for advanced build-from-scratch lessons) ---
+  • Slide 1: \`## What You'll Build\` — 4-7 outcome bullets tied to the module and steps above.
+  • Slide 2: \`## Architecture At A Glance\` — explain the major parts, data/state flow, and event loop or update flow.
+  • Slide 3: \`## Build Plan\` — phase-by-phase roadmap aligned to the listed steps (foundation -> core loop -> systems -> polish).
+  • Slides 4-7: deep implementation teaching with clear headings (e.g. \`## Core Systems\`, \`## Input + State\`, \`## Rendering + Timing\`, \`## Rules + Win/Lose\`, \`## Refactoring For Maintainability\`). Each slide: 4-6 bullets and/or 1 short paragraph.
+  • Include at least one slide with 4-6 defined terms (term: plain-language meaning) that appear in this module.
+  • Include one debugging/testing slide (e.g. \`## Debugging Checklist\`) with 4-6 concrete checks.
+  • Include one pitfalls slide: \`## Common Stumbles\` — 4-6 bullets with fixes.
+  • Last slide: \`## Recap + Next Build Moves\` — 5-8 bullets restating what was built and what to improve next.`
+      : `--- Slide flow (use 5-8 slides) ---
+  • Slide 1: \`## What You'll Learn\` — 4-6 outcome bullets tied to the module and steps above.
+  • Slide 2: \`## Why This Matters\` — 3-5 bullets: real use, mental model, or how it connects to building things.
+  • Slides 3-6: deep teaching—pick clear headings (e.g. \`## Key Ideas\`, \`## How It Fits Together\`, \`## Vocabulary\`, \`## Before You Code\`). Each slide: 4-8 bullets and/or 2 short paragraphs. Include at least one slide with 2-4 defined terms (term: plain-language meaning).
+  • Include one slide for pitfalls: \`## Common Stumbles\` or similar — 3-5 bullets (wrong mental model, syntax gotchas, debugging tips) appropriate to ${difficulty}.
+  • Last slide: \`## Recap\` — 4-6 bullets that restate goals, tie back to the steps list, and name one thing to watch for next.`;
+
+  const coverageRule =
+    diffLower === "advanced"
+      ? "• Coverage is mandatory: walk through every major build phase and ensure the notes account for all provided steps/tasks."
+      : "• Connect bullets to the listed steps/tasks when possible.";
+
   const prompt = `You are a clear programming instructor. Turn the overview and step list below into lecture-style slides learners swipe through one heading at a time.
 
 --- Module ---
@@ -440,16 +473,12 @@ ${category ? `  Category: ${category}` : ""}${stepsSection}${personalization}
 --- Source material (summary) ---
 ${String(overview).substring(0, 4500)}
 
---- Slide flow (use 5-8 slides) ---
-  • Slide 1: \`## What You'll Learn\` — 4-6 outcome bullets tied to the module and steps above.
-  • Slide 2: \`## Why This Matters\` — 3-5 bullets: real use, mental model, or how it connects to building things.
-  • Slides 3-6: deep teaching—pick clear headings (e.g. \`## Key Ideas\`, \`## How It Fits Together\`, \`## Vocabulary\`, \`## Before You Code\`). Each slide: 4-8 bullets and/or 2 short paragraphs. Include at least one slide with 2-4 defined terms (term: plain-language meaning).
-  • Include one slide for pitfalls: \`## Common Stumbles\` or similar — 3-5 bullets (wrong mental model, syntax gotchas, debugging tips) appropriate to ${difficulty}.
-  • Last slide: \`## Recap\` — 4-6 bullets that restate goals, tie back to the steps list, and name one thing to watch for next.
+${slideFlow}
 
 --- Quality bar ---
   • Dense but readable: teach like lecture notes, not a slogan deck—facts, relationships, and when you would use this.
-  • Explain WHY and HOW, not only WHAT; connect bullets to the listed steps/tasks when possible.
+  • Explain WHY and HOW, not only WHAT.
+  ${coverageRule}
   • Audience: ${difficulty}—simple words; define jargon the first time you use it.
   • No full step-by-step solutions; tiny illustrative snippets only inside \`\`\`javascript\`\`\` (or matching language) fences when they clarify a concept.
   • Prefer specifics from the source material over generic programming platitudes.
@@ -467,9 +496,10 @@ ${USER_REPLY_STYLE}
   You may use light emoji in bullet text; headings can stay plain or include one emoji if it stays readable.`;
 
   try {
+    const maxTokens = diffLower === "advanced" ? 2200 : 3200;
     let notes = await generateTextWithModel(
       prompt,
-      { maxTokens: 3200, temperature: 0.32 },
+      { maxTokens, temperature: 0.32 },
       AI_LECTURE_MODEL,
     );
     notes = (notes || "").trim();
@@ -530,12 +560,16 @@ async function generateModuleSteps(opts) {
   const category = String(opts?.category ?? "").trim();
   const difficulty = String(opts?.difficulty ?? "beginner").trim();
   const diffLower = difficulty.toLowerCase();
+  const isAdvanced = diffLower === "advanced";
   let n = parseInt(opts?.stepCount, 10);
-  if (!Number.isFinite(n)) n = 5;
-  n = Math.min(6, Math.max(4, n));
+  if (!Number.isFinite(n)) n = isAdvanced ? 12 : 5;
+  n = isAdvanced ? Math.min(16, Math.max(8, n)) : Math.min(6, Math.max(4, n));
 
   let difficultyStepBlock = `--- Difficulty is advanced ---
-  • Steps can be more demanding but must stay ordered, verifiable, and tied to the lesson—no unrelated mega-features.
+  • This lesson should feel like building a real game/app from scratch in clear phases.
+  • Use many granular steps (at least 8), each representing one meaningful implementation move.
+  • Cover end-to-end flow: setup/foundation, core loop/interaction, gameplay/system rules, polish/refactor, and testing/debugging.
+  • Keep each step verifiable and scoped: no giant "do everything" step.
 `;
   if (diffLower === "beginner") {
     difficultyStepBlock = `--- Difficulty is beginner (strict) ---
@@ -627,7 +661,7 @@ ${USER_REPLY_STYLE}
     throw new Error("Steps response was not a non-empty array");
   }
 
-  return parsed.slice(0, 8).map(normalizeAdminStep);
+  return parsed.slice(0, isAdvanced ? 16 : 8).map(normalizeAdminStep);
 }
 
 const CURRICULUM_PARTS = new Set(["hints", "starterCode"]);
@@ -764,7 +798,7 @@ async function generateModuleCurriculumParts(opts) {
         ? ` BEGINNER: keep the scaffold small—few HTML nodes, minimal JS surface (no empty "engine" folders in code, no big placeholder math utilities). Enough structure to learn, not a complex architecture.`
         : "";
     partRules.push(
-      `"starterCode": JSON object with string fields ONLY: html, css, javascript, serverJs. RUNTIME is always vanilla browser HTML/CSS/JS — NOT React or JSX. SCAFFOLD ONLY — this is the code loaded BEFORE the student starts. You MUST NOT implement the lesson outcome, game logic, step tasks, console.log outputs required by steps, or full event handlers that complete the project. Use: empty or stub function bodies, // TODO markers, placeholder values, and wiring only (e.g. canvas element in HTML, querySelector variables set to null or unused) so the student still has meaningful edits to make. If steps are listed above, the starter must intentionally leave every step's core work undone. You MUST include all three: "html", "css", and "javascript" as NON-EMPTY strings. "html": valid HTML document with structural elements for the lesson but no inline scripts that complete tasks. "css": layout/typography/theme only — no cheating by hiding required work. VISUAL THEME (required): in "css", set the page to a dark editor look—background #000 or #0a0a0a and default text #fff or #f5f5f5 (use body { background; color; } at minimum). Headings and body copy stay light-on-dark; optional accent color for links or UI hints only (e.g. cyan), not dark text on white. "javascript": comments, empty stubs, or minimal boilerplate (e.g. const canvas = document.getElementById('gameCanvas');) WITHOUT drawing, game loop, or completing instructions. ${serverPart}${beginnerStarter}`,
+      `"starterCode": JSON object with string fields ONLY: html, css, javascript, serverJs. RUNTIME is always vanilla browser HTML/CSS/JS — NOT React or JSX. SCAFFOLD ONLY — this is the code loaded BEFORE the student starts. You MUST NOT implement the lesson outcome, game logic, step tasks, console.log outputs required by steps, or full event handlers that complete the project. Use: empty or stub function bodies, // TODO markers, placeholder values, and wiring only (e.g. canvas element in HTML, querySelector variables set to null or unused) so the student still has meaningful edits to make. If steps are listed above, the starter must intentionally leave every step's core work undone. You MUST include all three: "html", "css", and "javascript" as NON-EMPTY strings. "html": valid HTML document with structural elements for the lesson but no inline scripts that complete tasks. "css": layout/typography/theme only — no cheating by hiding required work. VISUAL THEME (required): in "css", set the page to a dark editor look—background #000 or #0a0a0a and default text #fff or #f5f5f5 (use body { background; color; } at minimum). Headings and body copy stay light-on-dark; optional accent color for links or UI hints only (e.g. cyan), not dark text on white. "javascript": comments, empty stubs, or minimal boilerplate (e.g. const canvas = document.getElementById('gameCanvas');) WITHOUT drawing, game loop, or completing instructions. If "serverJs" is used, do NOT use Express. ${serverPart}${beginnerStarter}`,
     );
   }
 

@@ -4,11 +4,11 @@ const ease = [0.25, 0.1, 0.25, 1];
 
 const ConfirmModal = ({
   open,
-  title = "Confirm",
+  title = "Please confirm",
   message = "",
   onConfirm,
   onCancel,
-  confirmLabel = "Confirm",
+  confirmLabel = "Yes, continue",
   cancelLabel = "Cancel",
 }) => {
   return (
@@ -56,7 +56,7 @@ const ConfirmModal = ({
                 type="button"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-black hover:bg-blue-600 transition-colors"
+                className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-black hover:bg-blue-500 transition-colors"
                 onClick={onCancel}
               >
                 {cancelLabel}
@@ -65,7 +65,7 @@ const ConfirmModal = ({
                 type="button"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="rounded-xl bg-blue-400 px-4 py-2.5 text-sm font-semibold text-black hover:bg-blue-300 transition-colors"
+                className="rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-black hover:bg-blue-400 transition-colors"
                 onClick={onConfirm}
               >
                 {confirmLabel}

@@ -1,12 +1,12 @@
 const {
   EXPERIENCE_RANKS,
   XP_PER_LEVEL_BASE,
-  XP_PER_LEVEL_INCREMENT,
+  XP_PER_LEVEL_MULTIPLIER,
 } = require('../constants/levelRanks');
 
 function xpToAdvanceFromLevel(level) {
   const L = Math.max(1, Math.floor(Number(level)) || 1);
-  return XP_PER_LEVEL_BASE + (L - 1) * XP_PER_LEVEL_INCREMENT;
+  return XP_PER_LEVEL_BASE * Math.pow(XP_PER_LEVEL_MULTIPLIER, L - 1);
 }
 
 function peelTotalPointsToProgress(totalPoints) {

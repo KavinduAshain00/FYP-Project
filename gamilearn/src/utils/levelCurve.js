@@ -4,12 +4,9 @@
  * getXpBarProps: display from API `levelInfo.xpProgress` everywhere else.
  */
 
-export const XP_PER_LEVEL_BASE = 100;
-export const XP_PER_LEVEL_INCREMENT = 10;
-
 export function xpToAdvanceFromLevel(level) {
   const L = Math.max(1, Math.floor(Number(level)) || 1);
-  return XP_PER_LEVEL_BASE + (L - 1) * XP_PER_LEVEL_INCREMENT;
+  return 100 * Math.pow(2, L - 1);
 }
 
 export function peelTotalPointsToProgress(totalPoints) {
@@ -32,7 +29,7 @@ export function peelTotalPointsToProgress(totalPoints) {
 }
 
 /**
- * XP bar props from API `user.levelInfo` / dashboard `levelInfo` (no client XP math).
+ * XP bar props from API `user.levelInfo` / dashboard `levelInfo`.
  */
 export function getXpBarProps(levelInfo) {
   const p = levelInfo?.xpProgress;

@@ -421,14 +421,14 @@ async function setCurrentModule(req, res) {
       const allBasicsDone =
         basicsIds.length > 0 && basicsIds.every((id) => completedIds.includes(id));
 
-      // Lock all non-JS modules until all JS basics are completed
+      // Keep new learners on the basics path before opening advanced lessons.
       if (module.category !== 'javascript-basics' && !allBasicsDone) {
         return res
           .status(403)
-          .json({ message: 'Complete all JavaScript basics modules to unlock other modules' });
+          .json({ message: 'Complete JavaScript basics to unlock this lesson.' });
       }
 
-      // Within JS basics, prevent skipping ahead (must complete previous module first)
+      // JavaScript basics must be completed in order.
       if (module.category === 'javascript-basics') {
         const idx = basicsIds.indexOf(module._id.toString());
         if (idx > 0) {
@@ -436,7 +436,7 @@ async function setCurrentModule(req, res) {
           if (!completedIds.includes(prevId)) {
             return res
               .status(403)
-              .json({ message: 'Complete the previous JavaScript basics module first' });
+              .json({ message: 'Complete the previous JavaScript basics lesson first.' });
           }
         }
       }

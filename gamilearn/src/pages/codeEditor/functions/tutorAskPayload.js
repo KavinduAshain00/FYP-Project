@@ -20,6 +20,7 @@ export function buildTutorAskOptions({
     type: "hint-mode",
     hintStyle: "general",
     moduleTitle: module?.title,
+    moduleDifficulty: module?.difficulty || "beginner",
     moduleStepTitles,
     currentStepIndex,
     currentStepDescription: steps[currentStepIndex]?.title ?? null,

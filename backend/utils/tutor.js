@@ -185,10 +185,15 @@ They are inside a MODULE and on a CURRENT STEP. Ground every answer in that cont
     (context?.recentErrors && context.recentErrors.length > 0);
   if (hasErrorContext) {
     promptParts.push(
-      `\n--- Priority: they are stuck on an error ---\nExplain it kindly, suggest what to check, and guide—do not paste a full fix.`,
+      `\n--- Priority: they are stuck on an error ---\nExplain it kindly with clear diagnosis and focused guidance. Include concise code snippets, but never provide a full project solution.`,
     );
     if (context.errorMessage) {
       promptParts.push(`\n--- Primary error message ---\n${context.errorMessage}`);
+    }
+    if (context?.codeExcerpt) {
+      promptParts.push(
+        `\n--- Student code excerpt (use this when explaining) ---\n\`\`\`javascript\n${String(context.codeExcerpt).slice(0, 1200)}\n\`\`\``,
+      );
     }
     if (context.recentErrors && context.recentErrors.length > 0) {
       const errList = context.recentErrors
@@ -197,9 +202,15 @@ They are inside a MODULE and on a CURRENT STEP. Ground every answer in that cont
         .join("\n");
       promptParts.push(`\n--- Recent console lines ---\n${errList}`);
     }
+    promptParts.push(`\n--- Error response format (strict) ---\nUse these sections in order:\n1) Issue\n2) Your code snippet\n3) Fixed snippet\n4) Why this fix works\n\nRules:\n- "Your code snippet" should quote or minimally reconstruct the problematic lines.\n- "Fixed snippet" must be concise and directly fix the issue discussed.\n- Keep snippets short and focused; do not dump entire files.`);
   }
   if (context?.moduleTitle) {
     promptParts.push(`\n--- Module ---\n${context.moduleTitle}`);
+  }
+  const moduleDifficulty = String(context?.moduleDifficulty || "beginner").toLowerCase();
+  promptParts.push(`\n--- Module difficulty ---\n${moduleDifficulty}`);
+  if (moduleDifficulty === "advanced") {
+    promptParts.push(`\n--- Advanced module coaching rule ---\nInclude at least one small sample code snippet (about 4-12 lines) that guides the next move without completing the whole task.`);
   }
   if (context?.moduleStepTitles && Array.isArray(context.moduleStepTitles)) {
     const titles = context.moduleStepTitles

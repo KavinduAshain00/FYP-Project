@@ -92,7 +92,9 @@ function LogoutControl({ onNavigate, compact = false }) {
       <ConfirmModal
         open={showLogoutConfirm}
         title="Log out?"
-        message="Are you sure you want to log out?"
+        message="You will return to the sign in page. Any saved progress will stay on your account."
+        confirmLabel="Log out"
+        cancelLabel="Stay signed in"
         onConfirm={confirmLogout}
         onCancel={() => setShowLogoutConfirm(false)}
       />
@@ -109,19 +111,19 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
     {
       path: "/dashboard",
       label: "Dashboard",
-      caption: "Overview",
+      caption: "Progress and next lesson",
       icon: FaHome,
     },
     {
       path: "/modules",
       label: "Modules",
-      caption: "All modules",
+      caption: "Browse lessons",
       icon: FaLayerGroup,
     },
     {
       path: "/profile",
       label: "Profile",
-      caption: "Account and achievements",
+      caption: "Account and rewards",
       icon: FaUser,
     },
     ...(user?.isAdmin
@@ -129,7 +131,7 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
           {
             path: "/admin",
             label: "Admin",
-            caption: "Manage GamiLearn",
+            caption: "Manage users and lessons",
             icon: FaShieldAlt,
           },
         ]
@@ -160,7 +162,7 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
               GamiLearn
             </p>
             <p className="text-[11px] text-blue-200 leading-snug mt-1">
-              AI-Guided Game Development Learning Platform
+              Learn game development with guided lessons
             </p>
           </div>
         </Link>
@@ -187,13 +189,13 @@ function SidebarContent({ onNavigate, isActive, mobile = false }) {
               className={`w-full rounded-2xl px-3 py-3 text-left transition-colors ${
                 active
                   ? "bg-blue-400 text-black shadow-md shadow-blue-400/30"
-                  : "bg-blue-900 text-blue-200 hover:bg-blue-700 hover:text-blue-50"
+                  : "bg-blue-800 text-blue-100 hover:bg-blue-700 hover:text-blue-50"
               }`}
             >
               <div className="flex items-center gap-3">
                 <span
                   className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                    active ? "bg-neutral-900/40" : "bg-blue-700 text-blue-300"
+                    active ? "bg-neutral-900/40" : "bg-blue-600 text-blue-200"
                   }`}
                 >
                   <link.icon className="text-sm" />

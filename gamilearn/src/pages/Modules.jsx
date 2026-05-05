@@ -296,8 +296,8 @@ const Modules = () => {
     return (
       <div className="max-w-6xl mx-auto min-w-0 px-4 sm:px-6 py-8">
         <LoadingScreen
-          message="Loading modules…"
-          subMessage="Fetching lessons and your progress"
+          message="Loading lessons"
+          subMessage="Getting your lessons and progress ready"
         />
       </div>
     );
@@ -332,10 +332,8 @@ const Modules = () => {
             Module catalog
           </h1>
           <p className="text-blue-300 mt-2 max-w-xl text-sm sm:text-base leading-relaxed">
-            Browse everything in one place. Filters narrow the grid; your path
-            card below matches Home. We jump to your continue lesson (in
-            progress or next on the path) when it appears in the grid, including
-            after changing pages.
+            Browse all available lessons. Use filters to find a topic, or jump
+            back into the lesson already selected for your path.
           </p>
         </div>
 
@@ -350,7 +348,7 @@ const Modules = () => {
                   {completionPct}%
                 </span>
                 <span className="text-sm text-blue-400 font-medium">
-                  path complete
+                  complete
                 </span>
               </div>
               <div className="mt-3 h-3 rounded-full bg-blue-950 overflow-hidden">
@@ -365,7 +363,7 @@ const Modules = () => {
                 </span>
                 <span className="text-blue-500"> / </span>
                 <span className="tabular-nums">{totalPathModules}</span>
-                <span className="text-blue-500"> modules on your track</span>
+                <span className="text-blue-500"> lessons in your path</span>
               </p>
             </div>
 
@@ -439,8 +437,7 @@ const Modules = () => {
                   </p>
                   <p className="text-xs text-blue-400 leading-relaxed flex items-start gap-2">
                     <FaLock className="text-xs mt-0.5 shrink-0" />
-                    Complete the previous step on your path to unlock this
-                    lesson.
+                    Complete the previous lesson in your path to unlock this.
                   </p>
                 </div>
               ) : continueModule &&
@@ -462,12 +459,12 @@ const Modules = () => {
                     }}
                     className="w-full rounded-2xl bg-blue-700 px-4 py-3 text-sm font-semibold text-black hover:bg-blue-600 transition-colors"
                   >
-                    Reset filters and show next
+                    Show my next lesson
                   </button>
                 </div>
               ) : (
                 <p className="text-sm text-blue-400 leading-relaxed">
-                  You are caught up on your path. Browse any module below.
+                  You are caught up on your path. Browse any lesson below.
                 </p>
               )}
             </div>
@@ -624,8 +621,8 @@ const Modules = () => {
                     {profile?.learningPath === "javascript-basics" &&
                     !jsBasicsComplete &&
                     module.category !== "javascript-basics"
-                      ? "Locked until basics path is done"
-                      : "Locked - finish the previous step"}
+                      ? "Complete JavaScript basics to unlock this"
+                      : "Complete the previous lesson first"}
                   </button>
                 ) : (
                   <button
@@ -637,7 +634,7 @@ const Modules = () => {
                         : "bg-blue-700 text-black hover:bg-blue-600"
                     }`}
                   >
-                    {isNext ? "Continue this module" : "Open module"}
+                    {isNext ? "Continue lesson" : "Open lesson"}
                   </button>
                 )}
               </div>
@@ -649,7 +646,7 @@ const Modules = () => {
       {gridModules.length === 0 && !loading && (
         <div className="rounded-3xl bg-blue-900 py-16 text-center mt-6">
           <p className="text-blue-300 text-sm">
-            Nothing matches these filters.
+            No lessons match these filters.
           </p>
           <button
             type="button"
@@ -658,7 +655,7 @@ const Modules = () => {
               setFilterDifficulty("all");
               setQuestPage(1);
             }}
-            className="mt-4 text-sm font-semibold text-blue-200 hover:text-blue-100"
+            className="mt-4 px-4 py-2.5 text-sm font-semibold text-black bg-blue-500 hover:bg-blue-400 rounded-lg transition-colors"
           >
             Clear filters
           </button>
@@ -671,9 +668,9 @@ const Modules = () => {
             type="button"
             onClick={() => setQuestPage((p) => Math.max(1, p - 1))}
             disabled={questPage <= 1}
-            className={`${pageBtn} bg-blue-700 text-black hover:bg-blue-600`}
+            className={`${pageBtn} bg-blue-600 text-black hover:bg-blue-500`}
           >
-            <FaChevronLeft className="text-xs" /> Newer
+            <FaChevronLeft className="text-xs" /> Previous
           </button>
           <span className="text-sm text-blue-300 tabular-nums">
             Page {questPage} of {totalQuestPages}
@@ -684,9 +681,9 @@ const Modules = () => {
               setQuestPage((p) => Math.min(totalQuestPages, p + 1))
             }
             disabled={questPage >= totalQuestPages}
-            className={`${pageBtn} bg-blue-700 text-black hover:bg-blue-600`}
+            className={`${pageBtn} bg-blue-600 text-black hover:bg-blue-500`}
           >
-            Older <FaChevronRight className="text-xs" />
+            Next <FaChevronRight className="text-xs" />
           </button>
         </div>
       )}

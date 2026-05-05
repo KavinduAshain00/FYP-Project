@@ -266,9 +266,24 @@ async function postTutor(req, res) {
       }
 
       const aiPreferences = req.user?.aiPreferences || {};
+      let codeExcerpt = '';
+      if (context?.code && typeof context.code === 'object') {
+        codeExcerpt = [
+          context.code.html,
+          context.code.css,
+          context.code.javascript,
+          context.code.serverJs,
+        ]
+          .filter((v) => typeof v === 'string' && v.trim())
+          .join('\n\n')
+          .slice(0, 1200);
+      } else if (typeof context?.code === 'string') {
+        codeExcerpt = context.code.slice(0, 1200);
+      }
       const hintContext = {
         ...context,
         codeSummary,
+        codeExcerpt,
         codeIsEmpty,
         recentErrors: context?.recentErrors || [],
         errorMessage: context?.errorMessage || null,
@@ -669,13 +684,30 @@ YOUR JOB - verify the student demonstrated the CONCEPT for this step:
 
 3. DO NOT require exact variable names, exact string content, exact numeric values, or pixel-perfect output. Focus on whether the right programming concept was applied.
 
-Respond with ONLY a JSON object: {"correct": true or false, "feedback": "brief sentence"}
-- If correct: positive, encouraging feedback.
-- If incorrect: explain what concept is missing and what to try, without giving the answer.`;
+Respond with ONLY a JSON object: {"correct": true or false, "feedback": "detailed feedback"}
+
+FEEDBACK FORMAT:
+- If correct: positive, encouraging feedback. Example: "Great! You've successfully implemented a loop to repeat the action 5 times. Step complete! ✅"
+- If incorrect: MUST include FOUR parts:
+  1) WHAT IS THE ISSUE: Name the specific problem or missing concept
+  2) WHAT IS WRONG: Point to the problematic code or what's missing (don't give the full fix)
+  3) SAMPLE CODE SNIPPET: Show a small starter code example (4-10 lines) that demonstrates the pattern they need
+  4) WHAT TO TRY NEXT: Suggest the next concrete action without giving the answer
+  
+  Example format: "Issue: Your code doesn't have a loop to repeat the action. What's missing: The step asks for a loop, but I see only a single function call.
+
+Sample code snippet:
+\`\`\`javascript
+for (let i = 0; i < 5; i++) {
+  // Call your function here
+}
+\`\`\`
+
+Try: Copy this loop structure into your code and call your function inside it."`;
 
     const raw = await ai.generateTextWithModel(
       prompt,
-      { maxTokens: 256, temperature: 0.15 },
+      { maxTokens: 512, temperature: 0.15 },
       AI_CODER_MODEL
     );
     const result = parseVerificationResponse(raw);

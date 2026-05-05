@@ -79,11 +79,72 @@ export function buildServerPreviewHtml(channelName, serverCode) {
         var handlers = this._handlers[event] || [];
         handlers.forEach(function(fn) { fn(data); });
       };
+      MockServerSocket.prototype.off = function(event, fn) {
+        if (!this._handlers[event]) return;
+        var idx = this._handlers[event].indexOf(fn);
+        if (idx > -1) this._handlers[event].splice(idx, 1);
+      };
+      MockServerSocket.prototype.once = function(event, fn) {
+        var self = this;
+        var wrapper = function(data) {
+          fn(data);
+          self.off(event, wrapper);
+        };
+        this.on(event, wrapper);
+      };
+
+      function createHttpServer() {
+        var self = {
+          _port: null,
+          _listening: false,
+          _requestHandlers: [],
+          listen: function(port, callback) {
+            self._port = port;
+            self._listening = true;
+            slog('Server listening on port ' + port);
+            if (typeof callback === 'function') {
+              setTimeout(callback, 0);
+            }
+            return self;
+          },
+          close: function(callback) {
+            self._listening = false;
+            slog('Server closed');
+            if (typeof callback === 'function') {
+              setTimeout(callback, 0);
+            }
+            return self;
+          },
+          on: function(event, fn) {
+            if (event === 'request') {
+              self._requestHandlers.push(fn);
+            }
+            return self;
+          }
+        };
+        return self;
+      }
 
       var ioMock = {
         _connectionHandlers: [],
+        _sockets: sockets,
         on: function(event, fn) {
           if (event === 'connection') ioMock._connectionHandlers.push(fn);
+        },
+        off: function(event, fn) {
+          if (event === 'connection') {
+            var idx = ioMock._connectionHandlers.indexOf(fn);
+            if (idx > -1) ioMock._connectionHandlers.splice(idx, 1);
+          }
+        },
+        once: function(event, fn) {
+          if (event === 'connection') {
+            var wrapper = function(socket) {
+              fn(socket);
+              ioMock.off(event, wrapper);
+            };
+            ioMock.on(event, wrapper);
+          }
         },
         emit: function(event, data) {
           channel.postMessage({ type: 'server-to-client', target: 'all', event: event, data: data });
@@ -101,6 +162,19 @@ export function buildServerPreviewHtml(channelName, serverCode) {
           };
         }
       };
+
+      function createSocketIoFactory() {
+        // Support both common styles:
+        //   const io = require('socket.io')(httpServer)
+        //   const { Server } = require('socket.io'); const io = new Server(httpServer)
+        function socketIo(httpServer) {
+          return ioMock;
+        }
+        socketIo.Server = function Server(httpServer) {
+          return ioMock;
+        };
+        return socketIo;
+      }
 
       channel.onmessage = function(e) {
         var msg = e.data;
@@ -130,11 +204,15 @@ export function buildServerPreviewHtml(channelName, serverCode) {
           return { use: function(){}, get: function(){}, post: function(){} };
         };
         if (mod === 'http') return {
-          createServer: function() {
-            return { listen: function(port, cb) { slog('Server listening on port ' + port); if (cb) cb(); } };
+          createServer: function(requestHandler) {
+            var server = createHttpServer();
+            if (typeof requestHandler === 'function') {
+              server._requestHandlers.push(requestHandler);
+            }
+            return server;
           }
         };
-        if (mod === 'socket.io') return { Server: function() { return ioMock; } };
+        if (mod === 'socket.io') return createSocketIoFactory();
         return {};
       }
 

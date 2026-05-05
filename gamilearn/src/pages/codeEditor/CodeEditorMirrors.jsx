@@ -61,7 +61,7 @@ export default function CodeEditorMirrors({
   onChangeJs,
   onChangeServer,
 }) {
-  const r = codeRefs.current;
+  const userCode = codeRefs.current;
   /** Root div must fill flex parent so height:100% → .cm-scroller scrolls inside */
   const mirrorShell =
     "h-full min-h-0 w-full overflow-hidden [&_.cm-editor]:min-h-0";
@@ -70,7 +70,7 @@ export default function CodeEditorMirrors({
       {activeTab === "html" && (
         <CodeMirror
           key={`html-${editorKey}`}
-          value={r.html}
+          value={userCode.html}
           height="100%"
           className={mirrorShell}
           theme={vscodeDark}
@@ -83,7 +83,7 @@ export default function CodeEditorMirrors({
       {activeTab === "css" && (
         <CodeMirror
           key={`css-${editorKey}`}
-          value={r.css}
+          value={userCode.css}
           height="100%"
           className={mirrorShell}
           theme={vscodeDark}
@@ -96,7 +96,7 @@ export default function CodeEditorMirrors({
       {activeTab === "js" && (
         <CodeMirror
           key={`js-${editorKey}`}
-          value={r.js}
+          value={userCode.js}
           height="100%"
           className={mirrorShell}
           theme={vscodeDark}
@@ -109,7 +109,7 @@ export default function CodeEditorMirrors({
       {activeTab === "server" && (
         <CodeMirror
           key={`server-${editorKey}`}
-          value={r.server}
+          value={userCode.server}
           height="100%"
           className={mirrorShell}
           theme={vscodeDark}

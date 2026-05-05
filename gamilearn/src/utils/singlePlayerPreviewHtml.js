@@ -3,16 +3,16 @@
  * @param {{ html: string, css: string, js: string }} code
  */
 export function buildSinglePlayerPreviewHtml({ html, css, js }) {
-  const r = { html: html || "", css: css || "", js: js || "" };
+  const userCode = { html: html || "", css: css || "", js: js || "" };
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>${r.css}</style>
+  <style>${userCode.css}</style>
 </head>
 <body>
-  ${r.html}
+  ${userCode.html}
   <script>
     (function () {
       var originalConsole = {
@@ -51,7 +51,7 @@ export function buildSinglePlayerPreviewHtml({ html, css, js }) {
       var con = window.__capturedConsole || console;
       try {
         (function (console) {
-          ${r.js}
+          ${userCode.js}
         })(con);
       } catch (e) {
         con.error('Runtime error: ' + (e && e.message ? e.message : String(e)));

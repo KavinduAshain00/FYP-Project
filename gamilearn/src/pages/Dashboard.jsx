@@ -67,7 +67,7 @@ const Dashboard = () => {
         setDashboardData(res.data || null);
         if (basicsMsg) {
           toast.info(
-            "Welcome! Your JavaScript basics modules are ready - start from the first lesson on your path.",
+            "Welcome! Your JavaScript basics lessons are ready. Start with the first lesson in your path.",
           );
         }
       } catch (error) {
@@ -222,7 +222,7 @@ const Dashboard = () => {
         "lg:py-4 lg:pb-4 lg:h-[100dvh] lg:max-h-[100dvh] lg:min-h-0 lg:overflow-hidden lg:flex lg:flex-col"
       }
     >
-      {/* -- Top: command center -- */}
+      {/* Main progress summary and the learner's next best action. */}
       <motion.section
         className="shrink-0 rounded-3xl overflow-hidden relative mb-10 lg:mb-3"
         initial={{ opacity: 0, y: 20 }}
@@ -275,7 +275,7 @@ const Dashboard = () => {
                     <span className="text-blue-200 font-medium capitalize">
                       {pathLabel}
                     </span>{" "}
-                    track · level {level}
+                    path · level {level}
                   </p>
                 </div>
               </div>
@@ -316,7 +316,7 @@ const Dashboard = () => {
                     onClick={() => navigate(`/editor/${continueModuleId}`)}
                     className={btnPrimary}
                   >
-                    <FaPlay className="text-xs" /> Continue in editor
+                    <FaPlay className="text-xs" /> Continue lesson
                   </button>
                 ) : nextModule ? (
                   <button
@@ -324,7 +324,7 @@ const Dashboard = () => {
                     onClick={() => handleStartModule(nextModule._id)}
                     className={btnPrimary}
                   >
-                    <FaRocket className="text-xs" /> Start the lesson
+                    <FaRocket className="text-xs" /> Start lesson
                   </button>
                 ) : (
                   <button
@@ -341,7 +341,7 @@ const Dashboard = () => {
         </div>
       </motion.section>
 
-      {/* -- Metrics ribbon -- */}
+      {/* Quick stats shown below the welcome panel. */}
       <motion.div
         className="shrink-0 grid grid-cols-2 gap-3 sm:gap-4 mb-12 lg:mb-3 lg:flex lg:flex-wrap lg:gap-2"
         initial={{ opacity: 0 }}
@@ -401,7 +401,7 @@ const Dashboard = () => {
           "lg:overflow-y-auto xl:overflow-hidden xl:grid xl:grid-cols-12"
         }
       >
-        {/* -- Path: vertical list -- */}
+        {/* Ordered lesson path with completion and lock states. */}
         <motion.section
           className="flex flex-col min-h-0 xl:col-span-7 xl:h-full"
           initial={{ opacity: 0, y: 12 }}
@@ -410,15 +410,11 @@ const Dashboard = () => {
         >
           <div className="shrink-0 flex items-end justify-between gap-4 mb-3 lg:mb-2">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-blue-300/90 font-display mb-1">
-                Quest map
-              </p>
               <h2 className="text-xl lg:text-lg font-bold text-blue-50 font-display tracking-tight">
                 Your path
               </h2>
               <p className="text-sm lg:text-xs text-blue-300 mt-1 line-clamp-2 xl:line-clamp-1">
-                Clear stages in order to unlock the next checkpoint
-                on your run.
+                Complete each lesson in order to unlock the next step.
               </p>
             </div>
           </div>
@@ -429,7 +425,7 @@ const Dashboard = () => {
                 <button
                   type="button"
                   onClick={() => navigate("/modules")}
-                  className="text-blue-200 font-semibold hover:underline"
+                  className="px-3 py-1.5 rounded-lg bg-blue-700 text-blue-100 text-sm font-semibold hover:bg-blue-600 hover:text-blue-50 transition-colors"
                 >
                   Browse all modules
                 </button>
@@ -446,7 +442,7 @@ const Dashboard = () => {
                       <span className="text-blue-400 font-medium"> / </span>
                       {modulePath.length}
                       <span className="text-blue-400 font-medium ml-1">
-                        stages
+                        lessons
                       </span>
                     </p>
                   </div>
@@ -634,11 +630,11 @@ const Dashboard = () => {
             <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <h2 className="flex items-center gap-1.5 text-lg font-bold text-blue-50 lg:text-base">
-                  <FaTrophy className="shrink-0 text-amber-300" aria-hidden />
                   Achievements
                 </h2>
-                <p className="mt-0.5 text-[11px] leading-snug text-blue-400 lg:text-[10px]">
-                </p>
+                <p className="text-sm lg:text-xs text-blue-300 mt-1 line-clamp-2 xl:line-clamp-1">
+                Earn Archivements
+              </p>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {achievements.length > 0 && (
@@ -656,9 +652,9 @@ const Dashboard = () => {
                 <button
                   type="button"
                   onClick={() => navigate("/profile")}
-                  className="text-[10px] font-semibold text-blue-300 hover:text-blue-100 sm:text-xs"
+                  className="px-3 py-1.5 rounded-lg bg-blue-700 text-blue-100 text-[10px] font-semibold hover:bg-blue-600 hover:text-blue-50 transition-colors sm:text-xs"
                 >
-                  Profile →
+                  My Profile →
                 </button>
               </div>
             </div>

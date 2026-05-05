@@ -47,7 +47,7 @@ export default function AdminModuleEditor() {
   const navigate = useNavigate();
   const moduleId = moduleIdParam != null ? String(moduleIdParam).trim() : "";
   const isNew = moduleId === "new";
-  /** Bad links or stale URLs (e.g. `/modules/${undefined}`) */
+  // Guard against broken edit links before calling the API.
   const missingEditId = !isNew && (!moduleId || moduleId === "undefined");
 
   const [form, setForm] = useState(null);
@@ -62,6 +62,8 @@ export default function AdminModuleEditor() {
     open: false,
     title: "",
     message: "",
+    confirmLabel: undefined,
+    cancelLabel: undefined,
     onConfirm: null,
   });
 
@@ -156,7 +158,9 @@ export default function AdminModuleEditor() {
       setConfirmModal({
         open: true,
         title: "Discard changes?",
-        message: "You have unsaved changes. Leave without saving?",
+        message: "You have unsaved changes. If you leave now, those edits will be lost.",
+        confirmLabel: "Leave without saving",
+        cancelLabel: "Keep editing",
         onConfirm: () => {
           setConfirmModal((p) => ({ ...p, open: false }));
           navigate("/admin");
@@ -254,6 +258,7 @@ export default function AdminModuleEditor() {
     if (!form) return;
     setGeneratingSteps(true);
     try {
+      const requestedStepCount = form.difficulty === "advanced" ? 12 : 5;
       const res = await adminAPI.generateModuleSteps({
         title: form.title.trim(),
         description: form.description || "",
@@ -261,7 +266,7 @@ export default function AdminModuleEditor() {
         category: form.category,
         difficulty: form.difficulty || "beginner",
         moduleType: "vanilla",
-        stepCount: 5,
+        stepCount: requestedStepCount,
       });
       const steps = res.data?.steps || [];
       if (!steps.length) {
@@ -293,7 +298,9 @@ export default function AdminModuleEditor() {
         open: true,
         title: "Replace all steps?",
         message:
-          "AI will replace every step in this form. Save the module to persist changes, or leave without saving to keep the server copy.",
+          "New AI-generated steps will replace the steps currently in this form. Review them before saving.",
+        confirmLabel: "Replace steps",
+        cancelLabel: "Keep current steps",
         onConfirm: () => {
           setConfirmModal((p) => ({ ...p, open: false }));
           void runGenerateModuleSteps();
@@ -376,7 +383,7 @@ export default function AdminModuleEditor() {
                 className={`text-left px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
                   sectionTab === t.id
                     ? "bg-blue-600 text-black shadow-md shadow-blue-900/30"
-                    : "text-blue-200 hover:bg-blue-800/80 hover:text-blue-50"
+                    : "bg-blue-700 text-blue-100 hover:text-blue-50 hover:bg-blue-600"
                 }`}
               >
                 {t.label}
@@ -390,7 +397,7 @@ export default function AdminModuleEditor() {
             <button
               type="button"
               onClick={() => goBack()}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-semibold text-blue-200 bg-blue-800/80 hover:bg-blue-700 hover:text-blue-50 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-semibold text-blue-100 bg-blue-800 hover:bg-blue-700 hover:text-blue-50 transition-colors"
             >
               <FaArrowLeft className="text-xs" aria-hidden />
               Back to admin
@@ -426,7 +433,7 @@ export default function AdminModuleEditor() {
             <button
               type="button"
               onClick={() => goBack()}
-              className="w-full px-4 py-2.5 text-[13px] font-semibold text-blue-300 hover:text-blue-50 hover:bg-blue-800 rounded-xl transition-colors sm:w-auto"
+              className="w-full px-4 py-2.5 text-[13px] font-semibold bg-blue-800 text-blue-100 hover:text-blue-50 hover:bg-blue-700 rounded-xl transition-colors sm:w-auto"
             >
               Cancel
             </button>
@@ -446,6 +453,8 @@ export default function AdminModuleEditor() {
         open={confirmModal.open}
         title={confirmModal.title}
         message={confirmModal.message}
+        confirmLabel={confirmModal.confirmLabel}
+        cancelLabel={confirmModal.cancelLabel}
         onConfirm={() => {
           if (typeof confirmModal.onConfirm === "function")
             confirmModal.onConfirm();

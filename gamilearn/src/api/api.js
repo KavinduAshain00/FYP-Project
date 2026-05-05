@@ -3,6 +3,7 @@ import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const REQUEST_TIMEOUT_MS = 30000;
+const LECTURE_NOTES_TIMEOUT_MS = 90000;
 const AVATARS_CACHE_KEY = "gamilearn_avatars";
 const AVATARS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const ACHIEVEMENTS_CACHE_KEY = "gamilearn_achievements";
@@ -154,7 +155,10 @@ export const tutorAPI = {
       codeSnippet: codeSnippet || "",
       language: language || "javascript",
     }),
-  generateLectureNotes: (payload) => api.post("/tutor/lecture-notes", payload),
+  generateLectureNotes: (payload) =>
+    api.post("/tutor/lecture-notes", payload, {
+      timeout: LECTURE_NOTES_TIMEOUT_MS,
+    }),
 };
 
 export const achievementsAPI = {

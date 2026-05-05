@@ -1,0 +1,720 @@
+[{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3450c"
+  },
+  "id": 3,
+  "name": "Quick Learner",
+  "description": "Complete 3 modules",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/bolt.svg",
+  "points": 100,
+  "category": "learning",
+  "requirement": "complete_3_modules",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3451e"
+  },
+  "id": 21,
+  "name": "Architect",
+  "description": "Earn 750 points",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/building-skyscraper.svg",
+  "points": 300,
+  "category": "general",
+  "requirement": "points_750",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34523"
+  },
+  "id": 26,
+  "name": "Error Decoder",
+  "description": "Use Explain Error 5 times",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/puzzle-2.svg",
+  "points": 90,
+  "category": "coding",
+  "requirement": "ai_explain_error_5",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34528"
+  },
+  "id": 31,
+  "name": "Unstoppable Streak",
+  "description": "Complete 10 runs in a row",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/flame.svg",
+  "points": 120,
+  "category": "coding",
+  "requirement": "streak_10",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3450b"
+  },
+  "id": 2,
+  "name": "First Module",
+  "description": "Complete your first module",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/book-2.svg",
+  "points": 50,
+  "category": "learning",
+  "requirement": "complete_1_module",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3450f"
+  },
+  "id": 6,
+  "name": "Basics Complete",
+  "description": "Finish all JavaScript basics lessons",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/list-check.svg",
+  "points": 150,
+  "category": "learning",
+  "requirement": "complete_basics_track",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34512"
+  },
+  "id": 9,
+  "name": "Code Warrior",
+  "description": "Make 10 code edits",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/keyboard.svg",
+  "points": 20,
+  "category": "coding",
+  "requirement": "edit_10_times",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34519"
+  },
+  "id": 16,
+  "name": "Error Whisperer",
+  "description": "Use Explain Error once",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/alert-circle.svg",
+  "points": 60,
+  "category": "coding",
+  "requirement": "ai_explain_error_once",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3451b"
+  },
+  "id": 18,
+  "name": "Century Club",
+  "description": "Earn 100 points",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/trophy.svg",
+  "points": 50,
+  "category": "general",
+  "requirement": "points_100",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3451d"
+  },
+  "id": 20,
+  "name": "Legend",
+  "description": "Earn 500 points",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/shield-star.svg",
+  "points": 200,
+  "category": "general",
+  "requirement": "points_500",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34521"
+  },
+  "id": 24,
+  "name": "Hint Strategist",
+  "description": "Ask AI Companion for 10 hints",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/bulb.svg",
+  "points": 120,
+  "category": "special",
+  "requirement": "ai_hint_10",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34525"
+  },
+  "id": 28,
+  "name": "Refactor Titan",
+  "description": "Make 100 code edits",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/edit-circle.svg",
+  "points": 140,
+  "category": "coding",
+  "requirement": "edit_100_times",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3452a"
+  },
+  "id": 33,
+  "name": "Execution Expert",
+  "description": "Run code 50 times",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/player-play-filled.svg",
+  "points": 170,
+  "category": "coding",
+  "requirement": "run_50_times",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3452d"
+  },
+  "id": 36,
+  "name": "Grand Architect",
+  "description": "Earn 1500 points",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/building-community.svg",
+  "points": 450,
+  "category": "general",
+  "requirement": "points_1500",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34514"
+  },
+  "id": 11,
+  "name": "Speed Demon",
+  "description": "Complete 5 runs in a row",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/player-play.svg",
+  "points": 25,
+  "category": "coding",
+  "requirement": "streak_5",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34517"
+  },
+  "id": 14,
+  "name": "Bug Hunter",
+  "description": "Fix and run code 10 times",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/bug.svg",
+  "points": 35,
+  "category": "coding",
+  "requirement": "run_10_times",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3451a"
+  },
+  "id": 17,
+  "name": "Night Owl",
+  "description": "Code after midnight",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/moon-stars.svg",
+  "points": 40,
+  "category": "special",
+  "requirement": "code_night",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3451c"
+  },
+  "id": 19,
+  "name": "Master Builder",
+  "description": "Earn 250 points",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/medal.svg",
+  "points": 100,
+  "category": "general",
+  "requirement": "points_250",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34522"
+  },
+  "id": 25,
+  "name": "Deep Dive Explainer",
+  "description": "Use Explain Selection 5 times",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/brackets-angle.svg",
+  "points": 90,
+  "category": "coding",
+  "requirement": "ai_explain_code_5",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34524"
+  },
+  "id": 27,
+  "name": "Run Commander",
+  "description": "Run code 25 times",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/player-track-next.svg",
+  "points": 110,
+  "category": "coding",
+  "requirement": "run_25_times",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34526"
+  },
+  "id": 29,
+  "name": "Path Pioneer",
+  "description": "Complete 15 modules",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/compass.svg",
+  "points": 180,
+  "category": "learning",
+  "requirement": "complete_15_modules",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34527"
+  },
+  "id": 30,
+  "name": "Curriculum Conqueror",
+  "description": "Complete 20 modules",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/map-2.svg",
+  "points": 250,
+  "category": "learning",
+  "requirement": "complete_20_modules",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3452c"
+  },
+  "id": 35,
+  "name": "Master Prober",
+  "description": "Ask AI Companion for 25 hints",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/help-circle.svg",
+  "points": 200,
+  "category": "special",
+  "requirement": "ai_hint_25",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3450a"
+  },
+  "id": 1,
+  "name": "Getting Started",
+  "description": "Welcome to GamiLearn!",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/target.svg",
+  "points": 10,
+  "category": "learning",
+  "requirement": "signup",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.203Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.203Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3450d"
+  },
+  "id": 4,
+  "name": "Dedicated",
+  "description": "Complete 5 modules",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/diamond.svg",
+  "points": 150,
+  "category": "learning",
+  "requirement": "complete_5_modules",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3450e"
+  },
+  "id": 5,
+  "name": "Module Master",
+  "description": "Complete 10 modules",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/crown.svg",
+  "points": 250,
+  "category": "learning",
+  "requirement": "complete_10_modules",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34510"
+  },
+  "id": 7,
+  "name": "AI Companion Activated",
+  "description": "Use AI Companion for help once",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/robot.svg",
+  "points": 20,
+  "category": "learning",
+  "requirement": "ai_companion_first_use",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34511"
+  },
+  "id": 8,
+  "name": "First Steps",
+  "description": "Write your first line of code",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/code.svg",
+  "points": 10,
+  "category": "coding",
+  "requirement": "edit_1_time",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34513"
+  },
+  "id": 10,
+  "name": "Code Ninja",
+  "description": "Make 50 code edits",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/terminal.svg",
+  "points": 75,
+  "category": "coding",
+  "requirement": "edit_50_times",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34515"
+  },
+  "id": 12,
+  "name": "Persistent Coder",
+  "description": "Code for 10 minutes",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/infinity.svg",
+  "points": 30,
+  "category": "coding",
+  "requirement": "session_10_min",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34516"
+  },
+  "id": 13,
+  "name": "Hint Hunter",
+  "description": "Ask AI Companion for 3 hints",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/message-chatbot.svg",
+  "points": 80,
+  "category": "coding",
+  "requirement": "ai_hint_3",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.204Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34518"
+  },
+  "id": 15,
+  "name": "Code Interpreter",
+  "description": "Use Explain Selection once",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/code-circle-2.svg",
+  "points": 45,
+  "category": "coding",
+  "requirement": "ai_explain_code_once",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3451f"
+  },
+  "id": 22,
+  "name": "Mythic",
+  "description": "Earn 1000 points",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/award.svg",
+  "points": 400,
+  "category": "general",
+  "requirement": "points_1000",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34520"
+  },
+  "id": 23,
+  "name": "AI Ally",
+  "description": "Use AI Companion 10 times",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/robot-face.svg",
+  "points": 80,
+  "category": "special",
+  "requirement": "ai_companion_10_uses",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d34529"
+  },
+  "id": 32,
+  "name": "Hourglass Hero",
+  "description": "Code for 60 minutes",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/clock-hour-8.svg",
+  "points": 130,
+  "category": "coding",
+  "requirement": "session_60_min",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "69c157107260b99bf2d3452b"
+  },
+  "id": 34,
+  "name": "Prompt Power User",
+  "description": "Use AI Companion 25 times",
+  "icon": "https://cdn.jsdelivr.net/npm/@tabler/icons@2.47.0/icons/messages.svg",
+  "points": 180,
+  "category": "special",
+  "requirement": "ai_companion_25_uses",
+  "isActive": true,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  },
+  "updatedAt": {
+    "$date": "2026-03-23T15:06:56.205Z"
+  }
+}]

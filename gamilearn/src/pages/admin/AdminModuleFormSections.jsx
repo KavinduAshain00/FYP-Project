@@ -10,7 +10,7 @@ import {
 } from "../../utils/moduleUtils";
 
 /**
- * Shared module create/edit fields (used on full-page editor).
+ * Shared create/edit fields for lesson modules in the admin editor.
  * @param {object} props
  * @param {object} props.form
  * @param {function} props.setForm
@@ -51,7 +51,7 @@ export default function AdminModuleFormSections({
             className={`px-3 py-2 rounded-lg text-[12px] font-semibold transition-colors ${
               sectionTab === t.id
                 ? "bg-blue-600 text-black shadow-sm"
-                : "text-blue-300 hover:text-blue-50 hover:bg-blue-800/80"
+                : "bg-blue-900 text-blue-100 hover:text-blue-50 hover:bg-blue-800"
             }`}
           >
             {t.label}
@@ -64,7 +64,7 @@ export default function AdminModuleFormSections({
           <>
             <div>
               <label className="block text-[11px] font-medium text-blue-300 mb-1">
-                Title
+                Lesson title
               </label>
               <input
                 type="text"
@@ -77,7 +77,7 @@ export default function AdminModuleFormSections({
             </div>
             <div>
               <label className="block text-[11px] font-medium text-blue-300 mb-1">
-                Description
+                Short description
               </label>
               <textarea
                 value={form.description}
@@ -139,7 +139,7 @@ export default function AdminModuleFormSections({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-medium text-blue-300 mb-1">
-                  Order (unique)
+                  Lesson order
                 </label>
                 <input
                   type="number"
@@ -155,13 +155,13 @@ export default function AdminModuleFormSections({
                   }`}
                 />
                 <p className="text-[11px] text-blue-400 mt-1">
-                  Each module needs a distinct order. If this number matches
-                  another module, it will be bumped up automatically when you
-                  save.
+                  Each lesson needs a different order number. If this number
+                  matches another lesson, it will be moved to the next free slot
+                  when you save.
                 </p>
                 {orderDuplicatesAnother && (
                   <p className="text-[11px] text-amber-300 mt-1 font-medium">
-                    This order is already used — save will assign the next free
+                    This order is already used. Saving will assign the next free
                     number.
                   </p>
                 )}
@@ -180,7 +180,7 @@ export default function AdminModuleFormSections({
             </div>
             <div>
               <label className="block text-[11px] font-medium text-blue-300 mb-1">
-                Lesson content (markdown)
+                Lesson content
               </label>
               <textarea
                 value={form.content}
@@ -191,7 +191,7 @@ export default function AdminModuleFormSections({
                 className="w-full px-3 py-2.5 bg-blue-800 text-blue-50 text-[13px] rounded-xl focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50 font-mono"
               />
               <p className="text-[11px] text-blue-400 mt-1">
-                Used in the module view and as context when generating steps
+                Shown in the lesson view and used as context when generating steps
                 with AI.
               </p>
             </div>
@@ -204,13 +204,14 @@ export default function AdminModuleFormSections({
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold text-blue-100 flex items-center gap-2">
                   <FaMagic className="text-cyan-300 shrink-0" aria-hidden />
-                  Generate steps with AI
+                  Generate learner steps with AI
                 </p>
                 <p className="text-[12px] text-blue-400 mt-1">
-                  Uses the module <span className="text-blue-200">Difficulty</span>{" "}
-                  (Details), plus title, description, category, and lesson
-                  markdown, to propose about five ordered steps—beginner modules
-                  get simple, small-scope tasks. You can edit before saving.
+                  Uses the lesson <span className="text-blue-200">Difficulty</span>{" "}
+                  from Details, plus the title, description, category, and lesson
+                  content, to suggest an ordered step plan (advanced modules
+                  generate many more guided steps). You can edit
+                  everything before saving.
                   {form.id ? (
                     <>
                       {" "}
@@ -236,7 +237,7 @@ export default function AdminModuleFormSections({
 
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-[12px] text-blue-300">
-                Editor steps drive the Code Editor sidebar and verification.
+                These steps appear in the Code Editor sidebar and control lesson checks.
               </p>
               <button
                 type="button"
@@ -246,7 +247,7 @@ export default function AdminModuleFormSections({
                     steps: [...(p.steps || []), emptyModuleStep()],
                   }))
                 }
-                className="px-3 py-1.5 text-[12px] font-semibold rounded-lg bg-blue-700 text-black hover:bg-blue-600"
+                className="px-3 py-1.5 text-[12px] font-semibold rounded-lg bg-blue-600 text-black hover:bg-blue-500"
               >
                 + Add step
               </button>
@@ -254,7 +255,7 @@ export default function AdminModuleFormSections({
 
             {(form.steps || []).length === 0 ? (
               <p className="text-[13px] text-blue-400 py-6 text-center border border-dashed border-blue-700 rounded-xl">
-                No steps yet. Generate with AI or add steps manually.
+                No steps yet. Generate steps with AI or add them manually.
               </p>
             ) : (
               <ul className="space-y-3 list-none p-0 m-0">
@@ -358,7 +359,7 @@ export default function AdminModuleFormSections({
                       />
                       <input
                         type="text"
-                        placeholder="Concept (short — used for quizzes / tutor context)"
+                        placeholder="Concept (short note for quizzes and tutor help)"
                         value={step.concept}
                         onChange={(e) =>
                           setForm((p) => {
@@ -372,7 +373,7 @@ export default function AdminModuleFormSections({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[11px] font-medium text-blue-300 mb-1">
-                            Verify type
+                            How to check this step
                           </label>
                           <select
                             value={step.verifyType}
@@ -443,7 +444,7 @@ export default function AdminModuleFormSections({
                         ecPreset === "custom" && (
                           <div>
                             <label className="block text-[11px] font-medium text-blue-300 mb-1">
-                              expectedConsole JSON
+                              Console check JSON
                             </label>
                             <textarea
                               key={`ec-json-${i}-${form.id || "new"}`}
@@ -460,7 +461,7 @@ export default function AdminModuleFormSections({
                                     parsed === null
                                   ) {
                                     toast.error(
-                                      "expectedConsole must be a JSON object",
+                                      "Console check must be a JSON object.",
                                     );
                                     return;
                                   }
@@ -474,7 +475,7 @@ export default function AdminModuleFormSections({
                                   });
                                 } catch {
                                   toast.error(
-                                    "Invalid JSON for expectedConsole",
+                                    "Console check JSON is invalid.",
                                   );
                                 }
                               }}
@@ -482,7 +483,7 @@ export default function AdminModuleFormSections({
                               className="w-full px-3 py-2 bg-blue-800 text-blue-50 text-[12px] rounded-xl font-mono focus:outline-none focus:outline focus:outline-2 focus:outline-blue-400/50"
                             />
                             <p className="text-[10px] text-blue-500 mt-1">
-                              Tab out or click away to apply JSON changes.
+                              Click away from this field to apply JSON changes.
                             </p>
                           </div>
                         )}
@@ -499,7 +500,7 @@ export default function AdminModuleFormSections({
             <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 p-4 rounded-xl bg-blue-950/50 border border-blue-700/60">
               <span className="text-[13px] font-semibold text-blue-100 flex items-center gap-2 shrink-0">
                 <FaMagic className="text-cyan-300" aria-hidden />
-                AI generate
+                Generate hints with AI
               </span>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -518,10 +519,9 @@ export default function AdminModuleFormSections({
                 </button>
               </div>
               <p className="text-[11px] text-blue-400 sm:w-full basis-full">
-                Uses <span className="text-blue-200">Difficulty</span> (Details),
+                Uses <span className="text-blue-200">Difficulty</span> from Details,
                 title, description, lesson content, and step titles (if any).
-                Beginner modules get short, easy nudges—not big systems or heavy
-                math. Replaces the hint list when generation succeeds.
+                Generated hints replace the current hint list after a successful request.
               </p>
             </div>
             <div>
@@ -539,7 +539,7 @@ export default function AdminModuleFormSections({
                   }
                   className="text-[12px] font-semibold text-cyan-300 hover:text-cyan-100"
                 >
-                  + Add
+                  Add hint
                 </button>
               </div>
               <ul className="space-y-2 list-none p-0 m-0">
@@ -576,7 +576,7 @@ export default function AdminModuleFormSections({
               </ul>
               {(form.hints || []).length === 0 && (
                 <p className="text-[12px] text-blue-500 py-2">
-                  No hints listed.
+                  No hints yet.
                 </p>
               )}
             </div>
@@ -592,11 +592,9 @@ export default function AdminModuleFormSections({
                   Generate starter code with AI
                 </p>
                 <p className="text-[12px] text-blue-400 mt-1">
-                  Respects <span className="text-blue-200">Difficulty</span>{" "}
-                  (Details): beginner starters stay small and simple. Scaffold
-                  only—HTML/CSS/JS skeleton so learners still complete the steps
-                  (not a finished solution). Server starter only when category
-                  is multiplayer.
+                  Uses <span className="text-blue-200">Difficulty</span> from
+                  Details. Starter code should be a small scaffold, so learners
+                  still complete the lesson themselves.
                 </p>
               </div>
               <button
@@ -646,7 +644,7 @@ export default function AdminModuleFormSections({
             ))}
             {!isMultiplayerCategory(form.category) && (
               <p className="text-[12px] text-blue-400 border border-dashed border-blue-700 rounded-xl px-3 py-2">
-                Server starter code is only available when category is{" "}
+                Server starter code is only available when the category is{" "}
                 <span className="text-blue-200 font-medium">multiplayer</span>.
               </p>
             )}
