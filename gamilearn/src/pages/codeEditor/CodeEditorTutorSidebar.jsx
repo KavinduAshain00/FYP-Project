@@ -169,7 +169,7 @@ export default function CodeEditorTutorSidebar({
                     {explainCodeLoading
                       ? "Explaining your code…"
                       : tutorLoading
-                        ? "Thinking of a hint…"
+                        ? "Thinking…"
                         : "Explaining this error…"}
                   </span>
                 </div>

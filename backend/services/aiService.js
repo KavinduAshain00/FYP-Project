@@ -10,6 +10,10 @@ const { debug } = require("../utils/logger");
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const STEP_VERIFY_TYPES = new Set(["code", "checkConsole", "checkComments"]);
 
+// aiService is the backend's AI boundary. Controllers build request context and
+// call these helpers; this file owns prompt construction, model selection,
+// parsing, validation, and fallback behavior for GitHub Models responses.
+
 // Appended to prompts so tutor copy stays warm and scannable.
 const USER_REPLY_STYLE = `--- How your answer should feel (learners read this) ---
   Voice    Warm, patient, encouraging—like a supportive coach, not a cold manual.
@@ -24,6 +28,10 @@ if (!GITHUB_TOKEN) {
 
 debug(`Using GitHub Models with model ${AI_MODEL}`);
 
+/**
+ * Low-level text generation wrapper used by every AI feature in this service.
+ * Keeps token/temperature defaults in one place and normalizes provider errors.
+ */
 async function generateTextWithModel(prompt, options = {}, model = AI_MODEL) {
   if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
 
@@ -47,6 +55,11 @@ async function generateTextWithModel(prompt, options = {}, model = AI_MODEL) {
   }
 }
 
+/**
+ * Build a compact, grounded summary of the student's current editor files.
+ * Tutor chat uses this instead of sending full source when a short context is
+ * enough, reducing prompt size and lowering the chance of unrelated advice.
+ */
 async function summarizeCodeToMarkdown(codeByFile) {
   if (!GITHUB_TOKEN) return "Code context unavailable.";
   const parts = [];
@@ -61,6 +74,10 @@ async function summarizeCodeToMarkdown(codeByFile) {
   if (codeByFile.javascript)
     parts.push(
       `JavaScript (excerpt): ${codeByFile.javascript.substring(0, 600).replace(/\n/g, " ")}`,
+    );
+  if (codeByFile.serverJs)
+    parts.push(
+      `Server JavaScript (excerpt): ${codeByFile.serverJs.substring(0, 600).replace(/\n/g, " ")}`,
     );
   if (parts.length === 0) return "No code provided.";
 
@@ -93,6 +110,10 @@ Markdown bullets only. No intro line. No fenced code blocks.`;
   }
 }
 
+/**
+ * Second-pass safety check for tutor answers. The controller can replace a
+ * failed answer with a safer fallback instead of showing hallucinated guidance.
+ */
 async function verifyTutorResponse(question, response) {
   if (!GITHUB_TOKEN) return { ok: true };
   const prompt = `You are a careful fact-checker for educational AI answers.
@@ -125,6 +146,10 @@ Rules: no markdown fences, no extra keys, no explanation outside the JSON.`;
   }
 }
 
+/**
+ * Checks that summarizeCodeToMarkdown stayed faithful to the supplied code.
+ * This prevents a generated summary from becoming false context for the tutor.
+ */
 async function verifyCodeSummary(codeExcerpt, summary) {
   if (!GITHUB_TOKEN) return true;
   const prompt = `You verify whether a short summary stays faithful to code.
@@ -152,6 +177,10 @@ Your answer:`;
   }
 }
 
+/**
+ * Generate step-gated multiple-choice questions. The parser below enforces the
+ * exact JSON shape the frontend expects before returning questions to the UI.
+ */
 async function generateMCQs(stepTitle, stepConcept, moduleTitle, count = 2) {
   if (!GITHUB_TOKEN) return { questions: [] };
 
@@ -181,6 +210,8 @@ ${stepConcept ? `  Teaching focus (stick to this; do not drift into unrelated to
   Shape: {"questions":[{"question":"...","options":["opt0","opt1","opt2","opt3"],"correctIndex":0}]}
   correctIndex is 0-based. Exactly four options per question.`;
 
+  // Model output is treated as untrusted JSON: strip markdown fences, parse,
+  // then reject malformed or ambiguous questions before they reach the client.
   const parseQuestions = (raw) => {
     const trimmed = raw
       .trim()
@@ -264,6 +295,10 @@ ${stepConcept ? `  Teaching focus (stick to this; do not drift into unrelated to
   }
 }
 
+/**
+ * Verify an MCQ selection. Correct answers return immediately; wrong answers
+ * get a short AI explanation that teaches the concept without shaming.
+ */
 async function verifyMCQAnswer(question, options, correctIndex, selectedIndex) {
   if (!GITHUB_TOKEN)
     return {
@@ -318,6 +353,10 @@ ${(options || []).map((o, i) => `  [${i}] ${o}`).join("\n")}
   }
 }
 
+/**
+ * Shared explainer for selected code and runtime errors. The caller chooses
+ * opts.type so the prompt can be strict about the output shape for each UI.
+ */
 async function explain(opts) {
   if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
   const type = opts?.type;
@@ -408,6 +447,10 @@ function stripLectureNotesPreamble(text) {
   return t;
 }
 
+/**
+ * Create lecture-style markdown slides from a module overview and its steps.
+ * The lesson popup consumes the returned markdown one ## heading at a time.
+ */
 async function generateLectureNotes(opts) {
   if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
   const overview = opts?.overview;
@@ -524,6 +567,10 @@ ${USER_REPLY_STYLE}
   }
 }
 
+/**
+ * Normalize AI-generated admin step objects before saving or returning them.
+ * This clamps text length and forces unsupported verify types back to "code".
+ */
 function normalizeAdminStep(raw) {
   const title = String(raw?.title ?? "")
     .trim()
@@ -550,6 +597,10 @@ function normalizeAdminStep(raw) {
   };
 }
 
+/**
+ * Admin helper that drafts lesson steps from a module title/content snapshot.
+ * It returns structured steps only; the controller decides whether to persist.
+ */
 async function generateModuleSteps(opts) {
   if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
   const title = String(opts?.title ?? "").trim();
@@ -666,6 +717,7 @@ ${USER_REPLY_STYLE}
 
 const CURRICULUM_PARTS = new Set(["hints", "starterCode"]);
 
+/** Remove ```json fences before parsing model output as JSON. */
 function stripAiJsonBlock(raw) {
   let text = String(raw || "").trim();
   if (text.startsWith("```")) {
@@ -683,6 +735,7 @@ function stripAiJsonBlock(raw) {
   return text;
 }
 
+/** Clamp starter-code fields to safe string sizes before storing/displaying. */
 function normalizeStarterCodeForAdmin(raw) {
   const d = (v) => String(v ?? "");
   const sc = raw && typeof raw === "object" ? raw : {};
@@ -721,6 +774,10 @@ h1 {
 
 const FALLBACK_STARTER_JS = "// Write your JavaScript here\n";
 
+/**
+ * Guarantee the editor receives runnable vanilla HTML/CSS/JS even when the
+ * model leaves a field blank or returns partial starter code.
+ */
 function ensureVanillaStarterCode(sc, moduleTitle) {
   const out = normalizeStarterCodeForAdmin(sc);
   const safeTitle = String(moduleTitle || "Lesson")
@@ -742,6 +799,11 @@ function ensureVanillaStarterCode(sc, moduleTitle) {
   return out;
 }
 
+/**
+ * Admin helper for generating hints and/or starter code. It intentionally
+ * prompts for incomplete scaffolds so generated modules still require student
+ * edits to pass their steps.
+ */
 async function generateModuleCurriculumParts(opts) {
   if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not configured");
   const title = String(opts?.title ?? "").trim();

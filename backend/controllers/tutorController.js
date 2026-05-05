@@ -247,6 +247,7 @@ async function postTutor(req, res) {
           context.code.html,
           context.code.css,
           context.code.javascript,
+          context.code.serverJs,
         ]
           .filter(Boolean)
           .join('\n')
@@ -258,6 +259,7 @@ async function postTutor(req, res) {
         const codeObj = {};
         if (file.includes('html')) codeObj.html = context.code;
         else if (file.includes('css')) codeObj.css = context.code;
+        else if (file.includes('server')) codeObj.serverJs = context.code;
         else codeObj.javascript = context.code;
         codeSummary = await ai.summarizeCodeToMarkdown(codeObj);
       }
